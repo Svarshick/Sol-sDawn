@@ -23,7 +23,7 @@ public record PlayerStats(
 
 public class Player : IUpdatable, IDrawable
 {
-    public PlayerStats Stats;
+    public readonly PlayerStats Stats;
     
     public Vector2 Position { get; private set; } = Vector2.Zero;
     public Vector2 MoveDirection { get; private set; } = Vector2.Zero;
@@ -46,15 +46,15 @@ public class Player : IUpdatable, IDrawable
 
         var defaultStats = MainConfig.PlayerStats;
         Stats = new(
-            defaultStats.Velocity,
-            defaultStats.BladeDistance,
-            defaultStats.TeleportMinDistance,
-            defaultStats.TeleportMaxDistance,
+            _layout.ToPixels(defaultStats.Velocity),
+           _layout.ToPixels(defaultStats.BladeDistance),
+            _layout.ToPixels(defaultStats.TeleportMinDistance),
+            _layout.ToPixels(defaultStats.TeleportMaxDistance),
             defaultStats.TeleportHoldDuration,
-            defaultStats.TeleportThickness,
+            _layout.ToPixels(defaultStats.TeleportThickness),
             defaultStats.TeleportStartColor,
             defaultStats.TeleportEndColor,
-            defaultStats.TeleportTraceThickness,
+            _layout.ToPixels(defaultStats.TeleportTraceThickness),
             defaultStats.TeleportTraceStartColor,
             defaultStats.TeleportTraceEndColor
         );
@@ -68,18 +68,16 @@ public class Player : IUpdatable, IDrawable
     private void TeleportStarted(Vector2 screenPosition)
     {
         _moveLock = true;
-        var thickness = _layout.ToPixels(Stats.TeleportThickness);
-        var lookPosition = _layout.Camera.ScreenToWorld(screenPosition);
-        var endPosition = TeleportPosition(lookPosition, 0);
-        _teleportLine = new(_spriteBatch, Position, endPosition, Stats.TeleportStartColor, thickness);
+        var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var endPosition = TeleportPosition(mousePosition, 0);
+        _teleportLine = new(_spriteBatch, Position, endPosition, Stats.TeleportStartColor, Stats.TeleportThickness);
         _effectsPool.Add(_teleportLine);
     }
 
     private void TeleportUpdated(Vector2 screenPosition, double elapsedTime)
     {
         _teleportLine.Start = Position;
-        var mouseState = MouseExtended.GetState();
-        var mousePosition = _layout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
+        var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
         var lerp = TeleportLerp(elapsedTime);
         _teleportLine.End = TeleportPosition(mousePosition, lerp);
         _teleportLine.Color = Color.Lerp(Stats.TeleportStartColor, Stats.TeleportEndColor, lerp);
@@ -100,7 +98,7 @@ public class Player : IUpdatable, IDrawable
             endPosition,
             Stats.TeleportTraceStartColor,
             Stats.TeleportTraceEndColor,
-            _layout.ToPixels(Stats.TeleportTraceThickness),
+            Stats.TeleportTraceThickness,
             2
             ));
         
@@ -113,12 +111,12 @@ public class Player : IUpdatable, IDrawable
         return MathHelper.Clamp((float)(elapsedTime / Stats.TeleportHoldDuration), 0f, 1f);
     }
     
-    private Vector2 TeleportPosition(Vector2 lookPosition, float lerp)
+    private Vector2 TeleportPosition(Vector2 pointPosition, float lerp)
     {
-        var teleportDirection = lookPosition - Position;
+        var teleportDirection = pointPosition - Position;
         teleportDirection.Normalize();
-        var delta = lerp * _layout.ToPixels(Stats.TeleportMaxDistance - Stats.TeleportMinDistance);
-        return Position + teleportDirection * (_layout.ToPixels(Stats.TeleportMinDistance) + delta);
+        var delta = lerp * (Stats.TeleportMaxDistance - Stats.TeleportMinDistance);
+        return Position + teleportDirection * (Stats.TeleportMinDistance + delta);
     }
     
     private void Move(Vector2 moveDirection)
@@ -133,7 +131,7 @@ public class Player : IUpdatable, IDrawable
     {
         if (_moveDirectionUpdated)
         {
-            var velocity = _layout.ToPixels(Stats.Velocity);
+            var velocity = Stats.Velocity;
             var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
             Position += shift * MoveDirection;
         }
@@ -161,7 +159,7 @@ public class Player : IUpdatable, IDrawable
         bladeDirection.Normalize();
         var bladeRadius = _layout.ToPixels(0.2f);
         _spriteBatch.DrawCircle(
-            center: Position + bladeDirection * _layout.ToPixels(Stats.BladeDistance),
+            center: Position + bladeDirection * Stats.BladeDistance,
             radius: bladeRadius,
             sides: 20,
             color: Color.Aqua,
