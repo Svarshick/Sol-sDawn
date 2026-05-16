@@ -59,6 +59,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         void InitScreen()
         {
+            IsMouseVisible = false;
             _screenLayout = new ScreenLayout(Window, GraphicsDevice);
             _graphicsDeviceManager.PreferredBackBufferWidth = _screenLayout.WidthResolution;
             _graphicsDeviceManager.PreferredBackBufferHeight = _screenLayout.HeightResolution;

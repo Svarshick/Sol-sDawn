@@ -6,10 +6,11 @@ namespace SolsDawn.Core.Effects;
 
 public class LineTrace : IEffect
 {
-    public readonly Vector2 Start;
-    public readonly Vector2 End;
-    public readonly Color Color;
-    public readonly float Thickness;
+    private Vector2 _start;
+    private Vector2 _end;
+    private Color _startColor;
+    private Color _endColor;
+    private float _thickness;
 
     private SpriteBatch _spriteBatch;
     private double _duration;
@@ -19,16 +20,18 @@ public class LineTrace : IEffect
         SpriteBatch spriteBatch,
         Vector2 start,
         Vector2 end,
-        Color color,
+        Color startColor,
+        Color endColor,
         float thickness,
         float duration)
     {
         _spriteBatch = spriteBatch;
 
-        Start = start;
-        End = end;
-        Color = color;
-        Thickness = thickness;
+        _start = start;
+        _end = end;
+        _startColor = startColor;
+        _endColor = endColor;
+        _thickness = thickness;
 
         _duration = duration;
         _startTime = Time.TotalGameTime.TotalSeconds;
@@ -47,11 +50,13 @@ public class LineTrace : IEffect
 
     public void Draw(GameTime gameTime)
     {
+        var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
+        var t = MathHelper.Clamp((float)(elapsedTime / _duration), 0f, 1f);
         _spriteBatch.DrawLine(
-            Start,
-            End,
-            Color,
-            Thickness
+            _start,
+            _end,
+            Color.Lerp(_startColor, _endColor, t),
+            _thickness
         );
     }
 }

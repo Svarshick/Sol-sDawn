@@ -73,7 +73,7 @@ public class Input : IUpdatable
         KeyboardStateExtended keyboardState)
     {
         var spaceDown = keyboardState.IsKeyDown(Keys.Space); 
-        var mousePosition = new Vector2(mouseState.Position.X, mouseState.Position.Y);
+        var mousePosition = mouseState.Position.ToVector2();
         var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _teleportStartTime;
         
         switch (_teleportState)
