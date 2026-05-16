@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "SolsDawn (DesktopGL)",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/SolsDawn.DesktopGL/SolsDawn.DesktopGL.csproj",
+            "preLaunchTask": "Build: SolsDawn.DesktopGL"
+        },
+        {
+            "name": "SolsDawn (DesktopVK)",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/SolsDawn.DesktopVK/SolsDawn.DesktopVK.csproj",
+            "preLaunchTask": "Build: SolsDawn.DesktopVK"
+        },
+        {
+            "name": "SolsDawn (WindowsDX12)",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/SolsDawn.WindowsDX12/SolsDawn.WindowsDX12.csproj",
+            "preLaunchTask": "Build: SolsDawn.WindowsDX12"
+        },
+        {
+            "name": "SolsDawn (Android / iOS)",
+            "type": "maui",
+            "request": "launch",
+            "preLaunchTask": "maui: Build"
+        }
+    ]
+}

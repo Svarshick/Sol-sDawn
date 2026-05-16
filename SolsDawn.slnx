@@ -1,0 +1,7 @@
+﻿<Solution>
+  <Folder Name="/Platforms/">
+    <Project Path="SolsDawn.DesktopVK/SolsDawn.DesktopVK.csproj" />
+  </Folder>
+  <Project Path="SolsDawn.Content/SolsDawn.Content.csproj" />
+  <Project Path="SolsDawn.Core/SolsDawn.Core.csproj" />
+</Solution>

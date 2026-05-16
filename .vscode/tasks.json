@@ -1,0 +1,70 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build: SolsDawn.DesktopGL",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SolsDawn.DesktopGL/SolsDawn.DesktopGL.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "/tl:off"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Build: SolsDawn.DesktopVK",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SolsDawn.DesktopVK/SolsDawn.DesktopVK.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "/tl:off"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Build: SolsDawn.WindowsDX12",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SolsDawn.WindowsDX12/SolsDawn.WindowsDX12.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "/tl:off"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Build: SolsDawn.Android",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SolsDawn.Android/SolsDawn.Android.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "/tl:off"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Build: SolsDawn.iOS",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/SolsDawn.iOS/SolsDawn.iOS.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "/tl:off"
+            ],
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
