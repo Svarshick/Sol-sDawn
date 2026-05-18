@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
-namespace SolsDawn.Core.Effects;
+namespace SolsDawn.Core.Logic.Effects;
 
 public class LineTrace : IEffect
 {

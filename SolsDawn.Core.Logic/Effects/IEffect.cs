@@ -1,4 +1,4 @@
-namespace SolsDawn.Core.Effects;
+namespace SolsDawn.Core.Logic.Effects;
 
 public interface IPassiveEffect : IDrawable
 {

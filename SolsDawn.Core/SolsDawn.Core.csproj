@@ -1,24 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Platforms>AnyCPU</Platforms>
-  </PropertyGroup>
-  <!--
-  <ItemGroup>
-    <Reference Include="ModelMediator.Abstractions">
-      <HintPath>/home/sable/MonoGame/Codegen/ModelMediator/ModelMediator.Abstractions/bin/Debug/net10.0/ModelMediator.Abstractions.dll</HintPath>
-    </Reference>
-    <Analyzer Include="/home/sable/MonoGame/Codegen/ModelMediator/ModelMediator/bin/Debug/netstandard2.0/ModelMediator.dll" />
-    <Analyzer Include="/home/sable/MonoGame/Codegen/ModelMediator/ModelMediator/bin/Debug/netstandard2.0/Scriban.Signed.dll" />
-  </ItemGroup>  
-  -->
-  <ItemGroup>
-    <PackageReference Include="Gum.MonoGame" Version="2026.4.27.1-preview.9" />
-    <PackageReference Include="MonoGame.Extended" Version="6.0.0" />
-    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5-preview.*">
-      <PrivateAssets>All</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="ObservableCollections.R3" Version="3.3.4" />
-    <PackageReference Include="Stateless" Version="5.20.1" />
-  </ItemGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MonoGame.Extended" Version="6.0.0" />
+        <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5-preview.*">
+            <PrivateAssets>All</PrivateAssets>
+        </PackageReference>
+    </ItemGroup>
+ 
 </Project>

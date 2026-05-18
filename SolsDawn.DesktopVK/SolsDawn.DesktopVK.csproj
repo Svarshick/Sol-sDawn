@@ -10,7 +10,7 @@
     <MonoGamePlatform>DesktopVK</MonoGamePlatform>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SolsDawn.Core\SolsDawn.Core.csproj" />
+    <ProjectReference Include="..\SolsDawn.Core.Logic\SolsDawn.Core.Logic.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5-preview.*" />

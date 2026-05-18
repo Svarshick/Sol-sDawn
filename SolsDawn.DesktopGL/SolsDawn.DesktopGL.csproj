@@ -5,12 +5,12 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>false</TieredCompilation>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>../SolsDawn.Core/Assets/Icon.ico</ApplicationIcon>
+    <ApplicationIcon>../SolsDawn.Core.Logic/Assets/Icon.ico</ApplicationIcon>
     <AssemblyName>SolsDawn</AssemblyName>
     <MonoGamePlatform>DesktopGL</MonoGamePlatform>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SolsDawn.Core\SolsDawn.Core.csproj" />
+    <ProjectReference Include="..\SolsDawn.Core.Logic\SolsDawn.Core.Logic.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5-preview.*" />

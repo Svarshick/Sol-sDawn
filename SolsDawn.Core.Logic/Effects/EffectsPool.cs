@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-namespace SolsDawn.Core.Effects;
+namespace SolsDawn.Core.Logic.Effects;
 
 public class EffectsPool : IUpdatable, IDrawable
 {

@@ -1,27 +1,31 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using MonoGame.Extended.Input;
-using SolsDawn.Core.Configs;
-using SolsDawn.Core.Effects;
+using SolsDawn.Core.Logic.Configs;
+using SolsDawn.Core.Logic.Effects;
 
-namespace SolsDawn.Core.Gameplay;
+namespace SolsDawn.Core.Logic.Gameplay;
 
-public record PlayerStats(
-    float Velocity,
-    float BladeDistance,
-    float TeleportMinDistance,
-    float TeleportMaxDistance,
-    float TeleportHoldDuration,
-    float TeleportThickness,
-    Color TeleportStartColor,
-    Color TeleportEndColor,
-    float TeleportTraceThickness,
-    Color TeleportTraceStartColor,
-    Color TeleportTraceEndColor
-);
+public class PlayerStats
+{
+    public Color Color;
+    [Units] public float Size;
+    [Units] public float Velocity;
+    [Units] public float BladeDistance;
+    [Units] public float TeleportMinDistance;
+    [Units] public float TeleportMaxDistance;
+    public float TeleportHoldDuration;
+    [Units] public float TeleportThickness;
+    public Color TeleportStartColor;
+    public Color TeleportEndColor;
+    [Units] public float TeleportTraceThickness;
+    public Color TeleportTraceStartColor;
+    public Color TeleportTraceEndColor;
+}
 
-public class Player : IUpdatable, IDrawable
+public sealed class Player : Component<Player>, IUpdatable, IDrawable
 {
     public readonly PlayerStats Stats;
     
@@ -31,38 +35,73 @@ public class Player : IUpdatable, IDrawable
     private bool _moveLock;
     
     private Line _teleportLine;
-    private SpriteBatch _spriteBatch;
-    private EffectsPool _effectsPool;
-    private ScreenLayout _layout;
+    private readonly Collider _collider;
+    private readonly SpriteBatch _spriteBatch;
+    private readonly EffectsPool _effectsPool;
+    private readonly ScreenLayout _layout;
     public Player(
+        GameObject go,
         SpriteBatch spriteBatch, 
         EffectsPool effectsPool,
         ScreenLayout layout, 
-        Input input)
+        Input input) : base(go)
     {
+        _collider = GameObject.GetComponent<Collider>() ?? throw new NullReferenceException("Can't get collider component");
         _spriteBatch = spriteBatch;
         _effectsPool = effectsPool;
         _layout = layout;
 
-        var defaultStats = MainConfig.PlayerStats;
-        Stats = new(
-            _layout.ToPixels(defaultStats.Velocity),
-           _layout.ToPixels(defaultStats.BladeDistance),
-            _layout.ToPixels(defaultStats.TeleportMinDistance),
-            _layout.ToPixels(defaultStats.TeleportMaxDistance),
-            defaultStats.TeleportHoldDuration,
-            _layout.ToPixels(defaultStats.TeleportThickness),
-            defaultStats.TeleportStartColor,
-            defaultStats.TeleportEndColor,
-            _layout.ToPixels(defaultStats.TeleportTraceThickness),
-            defaultStats.TeleportTraceStartColor,
-            defaultStats.TeleportTraceEndColor
-        );
+        Stats = ConfigReader.Read(MainConfig.PlayerStats, _layout);
             
         input.Move += Move;
         input.TeleportStarted += TeleportStarted;
         input.TeleportUpdated += TeleportUpdated;
         input.TeleportReleased += TeleportReleased;
+    }
+
+    public override void Dispose() { }
+
+    public void Update(GameTime gameTime)
+    {
+        if (_moveDirectionUpdated)
+        {
+            var velocity = Stats.Velocity;
+            var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            Position += shift * MoveDirection;
+        }
+        
+        var bounds = new BoundingCircle2D(Position, Stats.Size/2);
+        _collider.Shape = new CollisionShape2D(bounds);
+    }
+
+    public void LateUpdate(GameTime gameTime)
+    {
+        _moveDirectionUpdated = false;
+    }
+    
+    public void Draw(GameTime gameTime)
+    {
+        var radius = Stats.Size/2;
+        _spriteBatch.DrawCircle(
+            center: Position,
+            radius: radius,
+            sides: 20,
+            color: Stats.Color,
+            thickness: radius 
+        );
+
+        var mouseState = MouseExtended.GetState();
+        var mousePosition = _layout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
+        var bladeDirection = mousePosition - Position;
+        bladeDirection.Normalize();
+        var bladeRadius = _layout.ToPixels(0.2f);
+        _spriteBatch.DrawCircle(
+            center: Position + bladeDirection * Stats.BladeDistance,
+            radius: bladeRadius,
+            sides: 20,
+            color: Color.Aqua,
+            thickness: bladeRadius
+        );
     }
     
     private void TeleportStarted(Vector2 screenPosition)
@@ -125,45 +164,5 @@ public class Player : IUpdatable, IDrawable
             return;
         MoveDirection = moveDirection;
         _moveDirectionUpdated = true;
-    }
-    
-    public void Update(GameTime gameTime)
-    {
-        if (_moveDirectionUpdated)
-        {
-            var velocity = Stats.Velocity;
-            var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            Position += shift * MoveDirection;
-        }
-    }
-
-    public void LateUpdate(GameTime gameTime)
-    {
-        _moveDirectionUpdated = false;
-    }
-    
-    public void Draw(GameTime gameTime)
-    {
-        var radius = _layout.ToPixels(0.5f);
-        _spriteBatch.DrawCircle(
-            center: Position,
-            radius: radius,
-            sides: 20,
-            color: Color.Blue,
-            thickness: radius 
-        );
-
-        var mouseState = MouseExtended.GetState();
-        var mousePosition = _layout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        var bladeDirection = mousePosition - Position;
-        bladeDirection.Normalize();
-        var bladeRadius = _layout.ToPixels(0.2f);
-        _spriteBatch.DrawCircle(
-            center: Position + bladeDirection * Stats.BladeDistance,
-            radius: bladeRadius,
-            sides: 20,
-            color: Color.Aqua,
-            thickness: bladeRadius
-        );
     }
 }

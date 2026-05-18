@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using MonoGame.Extended.ViewportAdapters;
 
-namespace SolsDawn.Core;
+namespace SolsDawn.Core.Logic;
 
 public class ScreenLayout
 {

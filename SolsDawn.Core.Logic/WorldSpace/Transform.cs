@@ -1,7 +1,7 @@
 /*using Microsoft.Xna.Framework;
 using ModelMediator.Abstractions;
 
-namespace SolsDawn.Core.WorldSpace;
+namespace SolsDawn.Core.Logic.WorldSpace;
 
 [Model]
 [Prop<Vector2>("Position")]

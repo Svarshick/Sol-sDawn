@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
-namespace SolsDawn.Core.Gameplay;
+namespace SolsDawn.Core.Logic.Gameplay;
 
 public class Boss : IUpdatable, IDrawable
 {

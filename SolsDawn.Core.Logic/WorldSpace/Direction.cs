@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 
-namespace SolsDawn.Core.WorldSpace;
+namespace SolsDawn.Core.Logic.WorldSpace;
 
 public enum Direction
 {

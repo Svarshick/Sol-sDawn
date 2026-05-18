@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
-using SolsDawn.Core.Effects;
-using SolsDawn.Core.Gameplay;
+using SolsDawn.Core.Logic.Configs;
+using SolsDawn.Core.Logic.Effects;
+using SolsDawn.Core.Logic.Gameplay;
 
-namespace SolsDawn.Core;
+namespace SolsDawn.Core.Logic;
 
 public sealed class Game : Microsoft.Xna.Framework.Game
 {
@@ -25,7 +26,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
     private List<IDrawable> _drawables;
     private List<IUpdatable> _updatables;
-    private Boss _boss;
     private Player _player;
 
     public Game()
@@ -43,12 +43,11 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _updatables = new();
         _drawables = new();
 
-        _boss = new Boss(_spriteBatch, _screenLayout);
-        _player = new Player(_spriteBatch, _effectsPool, _screenLayout, _input);
-        _updatables.Add(_player);
-        _updatables.Add(_boss);
-        _drawables.Add(_boss);
-        _drawables.Add(_player);
+        var go = new GameObject();
+        new Collider(go, 1, Collision.LayerName.Player);
+        _player = new Player(go, _spriteBatch, _effectsPool, _screenLayout, _input);
+        _updatables.Add(go);
+        _drawables.Add(go);
         return;
 
         void InitSystems()
@@ -82,7 +81,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         foreach (var updatable in _updatables)
             updatable.Update(gameTime);
-
+        
         base.Update(gameTime);
         LateUpdate(gameTime);
     }
@@ -94,7 +93,25 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         foreach (var updatable in _updatables)
             updatable.LateUpdate(gameTime);
+        
+        Collision.World.RebuildDynamicLayers();
+        var circle = new BoundingCircle2D(_c, _r);
+        var bounds = BoundingBox2D.CreateFromCenterAndExtents(circle.Center, new(circle.Radius));
+        _player.Stats.Color = MainConfig.PlayerStats.Color;
+        foreach (var actor in Collision.World.QueryCandidates(bounds, Collision.LayerName.Player))
+        {
+            var shape = new CollisionShape2D(circle);
+            if (actor.Shape.Intersects(shape))
+            {
+                _player.Stats.Color = Color.Red;
+            }
+        }
     }
+
+    private Vector2 _c = new Vector2(15, 15);
+    private float _r = 15f;
+    private Vector2 _b = Vector2.Zero;
+    private Vector2 _e = new Vector2(30, 30);
 
     protected override void Draw(GameTime gameTime)
     {
@@ -104,6 +121,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             rasterizerState: RasterizerState.CullNone,
             transformMatrix: _screenLayout.Camera.GetViewMatrix()
         );
+        
+        _spriteBatch.DrawRectangle(_b, _e, Color.Aqua, 30);
 
         _effectsPool.Draw(gameTime);
 

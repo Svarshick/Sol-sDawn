@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
-using MonoGame.Extended;
 
-namespace SolsDawn.Core.WorldSpace;
+namespace SolsDawn.Core.Logic.WorldSpace;
 
 public static class Space
 {

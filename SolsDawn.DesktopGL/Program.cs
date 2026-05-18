@@ -1,4 +1,5 @@
 ﻿using SolsDawn.Core;
+using SolsDawn.Core.Logic;
 
 internal class Program
 {
