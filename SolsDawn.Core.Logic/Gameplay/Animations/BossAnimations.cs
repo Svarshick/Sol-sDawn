@@ -6,7 +6,7 @@ using SolsDawn.Core.Logic.Configs.Utils;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout) : IAnimationPlayer
+public class BossAnimations : IAnimationPlayer
 {
     public const string Idle = "Idle";
     public const string Telegraph = "Telegraph";
@@ -15,7 +15,15 @@ public class BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout) : IAni
     public Vector2 Position { get; set; }
     
     private IAnimation _currentAnimation;
-    private readonly BossStats Stats = ConfigReader.Read(MainConfig.BossStats, layout);
+    private readonly SpriteBatch _spriteBatch;
+    private readonly BossStats Stats;
+
+    public BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout)
+    {
+        _spriteBatch = spriteBatch;
+        Stats = ConfigReader.Read(MainConfig.BossStats, layout);
+        TryPlay(Idle);
+    }
 
     public void TryPlay(string animationName)
     {
@@ -23,7 +31,7 @@ public class BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout) : IAni
         {
             case Idle:
                 _currentAnimation = new IdleCircleAnimation(
-                    spriteBatch,
+                    _spriteBatch,
                     Position,
                     Stats.Radius,
                     20,
@@ -33,7 +41,7 @@ public class BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout) : IAni
             case Telegraph:
                 _currentAnimation = new CircleBlickAnimation(
                     false,
-                    spriteBatch,
+                    _spriteBatch,
                     Stats.BladeTelegraphDuration,
                     Position,
                     Stats.Radius,
@@ -44,7 +52,7 @@ public class BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout) : IAni
                 break;
             case Parried:
                 _currentAnimation = new IdleCircleAnimation(
-                    spriteBatch,
+                    _spriteBatch,
                     Position,
                     Stats.Radius,
                     20,

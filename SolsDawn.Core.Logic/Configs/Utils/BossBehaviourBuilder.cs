@@ -9,10 +9,15 @@ public record BossBehaviourContext(Boss Boss, Player Player, ScreenLayout Layout
 public class BossBehaviourBuilder
 {
     private readonly List<Action<BossBehaviourContext>> _actions = new();
+    
+    private BossBehaviourBuilder() { }
+    public static BossBehaviourBuilder Create() => new();
+    
+    public IReadOnlyList<Action<BossBehaviourContext>> Build() => _actions;
 
-    public BossBehaviourBuilder Then(BossBehaviourBuilder other)
+    public BossBehaviourBuilder Then(Func<BossBehaviourBuilder> nextFactory)
     {
-        _actions.AddRange(other._actions);
+        _actions.AddRange(nextFactory()._actions);
         return this;
     }
     
@@ -33,8 +38,6 @@ public class BossBehaviourBuilder
         _actions.Add(ctx => ctx.Boss.Blade(lookPosition.Evaluate(ctx)));
         return this;
     }
-
-    public IReadOnlyList<Action<BossBehaviourContext>> Build() => _actions;
 
     public static VectorExpression Units(float x, float y) => new UnitsVectorExpression(x, y);
     public static VectorExpression Player => new PlayerPositionExpression();

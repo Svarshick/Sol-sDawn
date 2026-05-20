@@ -80,7 +80,6 @@ public sealed class Boss : Component<Boss>, IUpdatable
 
         _machine = new StateMachine<State, Trigger>(State.Pending);
         _machine.Configure(State.Pending)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
             .Permit(Trigger.Wait, State.Idling)
             .Permit(Trigger.TelegraphBladeAttack, State.BladeTelegraphing)
             .Permit(Trigger.Teleport, State.Teleporting);
