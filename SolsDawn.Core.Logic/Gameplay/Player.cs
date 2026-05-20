@@ -1,11 +1,14 @@
 using System;
+using System.Net.Sockets;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using MonoGame.Extended.Input;
+using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Effects;
+using SolsDawn.Core.Logic.Gameplay.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -15,14 +18,23 @@ public class PlayerStats
     [Units] public float Width;
     [Units] public float Height;
     [Units] public float Velocity;
+
+    public float TeleportRechargeDuration;
+    public float BladeRechargeDuration;
+    public float FireRechargeDuration;
+    
+    public float HitInvulnerabilityDuration;
+    public Color HitBlinkColor;
     
     [Units] public float BladeAttackDistance;
-    [Euler] public float BladeAttackAngle;
-    [Units] public float BladeAttackLength;
-    [Units] public float BladeAttackWidth;
+    [Euler] public float BladeAttackEdgeAngle;
+    [Units] public float BladeAttackEdgeLength;
+    [Units] public float BladeAttackEdgeWidth;
     [Units] public float BladeDashDistance;
     [Units] public float BladeDashWidth;
     public float BladeTraceDuration;
+    public Color BladeTraceStartColor;
+    public Color BladeTraceEndColor;
     [Units] public float BladeAimDistance;
     [Units] public float BladeAimRadius;
     public Color BladeAimColor;
@@ -31,7 +43,8 @@ public class PlayerStats
     [Units] public float FireWidth;
     public float FireTraceDuration;
     [Units] public float FireTraceWidth;
-    public Color FireTraceColor;
+    public Color FireTraceStartColor;
+    public Color FireTraceEndColor;
     
     [Units] public float TeleportMinDistance;
     [Units] public float TeleportMaxDistance;
@@ -52,6 +65,10 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     public Vector2 MoveDirection { get; private set; } = Vector2.Zero;
     private bool _moveDirectionUpdated;
     private bool _moveLock;
+    private bool _teleportLock;
+    private double _lastTeleportUsage;
+    private double _lastBladeUsage;
+    private double _lastFireUsage;
 
     private Line _teleportLine;
     
@@ -60,6 +77,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     private readonly EffectsPool _effectsPool;
     private readonly ScreenLayout _layout;
     private readonly Input _input;
+    private readonly Animator _animator;
     
     public Player(
         GameObject go,
@@ -77,6 +95,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         DebugStats = ConfigReader.Read(MainConfig.DebugStats, _layout);
         
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
+        _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
 
         _input.Move += Move;
         _input.TeleportStarted += TeleportStarted;
@@ -102,10 +121,10 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         {
             var velocity = Stats.Velocity;
             var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            GameObject.Position += shift * MoveDirection;
+            GameObject.Transform.Position += shift * MoveDirection;
         }
         
-        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Width/2, Stats.Height/2));
+        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Transform.Position, new Vector2(Stats.Width/2, Stats.Height/2));
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
@@ -116,39 +135,84 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     
     public void Draw(GameTime gameTime)
     {
-        _spriteBatch.FillRectangle(
-            GameObject.Position.X - Stats.Width / 2,
-            GameObject.Position.Y - Stats.Height / 2,
-            Stats.Width,
-            Stats.Height,
-            Stats.Color
-        );
-
         var mouseState = MouseExtended.GetState();
         var mousePosition = _layout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        var bladeDirection = mousePosition - GameObject.Position;
+        var bladeDirection = mousePosition - GameObject.Transform.Position;
         bladeDirection.Normalize();
         _spriteBatch.DrawCircle(
-            center: GameObject.Position + bladeDirection * Stats.BladeAimDistance,
-            radius: Stats.BladeAimRadius,
-            sides: 20,
-            color: Stats.BladeAimColor,
-            thickness: Stats.BladeAimRadius
-        );
+            GameObject.Transform.Position + bladeDirection * Stats.BladeAimDistance,
+            Stats.BladeAimRadius,
+            20,
+            Stats.BladeAimColor,
+            Stats.BladeAimRadius);
+
+        var indicatorRadius = _layout.ToPixels(0.5f);
+        var indicatorPadding = _layout.ToPixels(0.3f);
+        var indicatorY = _layout.CameraTopLeft().Y + indicatorRadius + indicatorPadding;
+        var indicatorX = _layout.CameraTopLeft().X + indicatorRadius + indicatorPadding;
+        var teleportAllowed = Time.TotalGameTime.TotalSeconds - _lastTeleportUsage > Stats.TeleportRechargeDuration;
+        var bladeAllowed = Time.TotalGameTime.TotalSeconds - _lastBladeUsage > Stats.BladeRechargeDuration;
+        var fireAllowed = Time.TotalGameTime.TotalSeconds - _lastFireUsage > Stats.FireRechargeDuration;
+        
+        if (teleportAllowed)
+        {
+            _spriteBatch.DrawCircle(
+                indicatorX,
+                indicatorY,
+                indicatorRadius,
+                20,
+                Stats.TeleportTraceStartColor,
+                indicatorRadius,
+                0.9f
+            );
+        }
+
+        indicatorX += (indicatorRadius * 2 + indicatorPadding);
+        if (bladeAllowed)
+        {
+            _spriteBatch.DrawCircle(
+                indicatorX,
+                indicatorY,
+                indicatorRadius,
+                20,
+                Stats.BladeTraceStartColor,
+                indicatorRadius,
+                0.9f
+            );
+        }
+        
+        indicatorX += (indicatorRadius * 2 + indicatorPadding);
+        if (fireAllowed)
+        {
+            _spriteBatch.DrawCircle(
+                indicatorX,
+                indicatorY,
+                indicatorRadius,
+                20,
+                Stats.FireTraceStartColor,
+                indicatorRadius,
+                0.9f
+            );
+        }
     }
     
     private void TeleportStarted(Vector2 screenPosition)
     {
+        _teleportLock = Time.TotalGameTime.TotalSeconds - _lastTeleportUsage < Stats.TeleportRechargeDuration;
+        if (_teleportLock)
+            return;
         _moveLock = true;
         var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
         var endPosition = TeleportPosition(mousePosition, 0);
-        _teleportLine = new(_spriteBatch, GameObject.Position, endPosition, Stats.TeleportStartColor, Stats.TeleportWidth);
+        _teleportLine = new(_spriteBatch, GameObject.Transform.Position, endPosition, Stats.TeleportStartColor, Stats.TeleportWidth);
         _effectsPool.Add(_teleportLine);
     }
 
     private void TeleportUpdated(Vector2 screenPosition, double elapsedTime)
     {
-        _teleportLine.Start = GameObject.Position;
+        if (_teleportLock)
+            return;
+        _teleportLine.Start = GameObject.Transform.Position;
         var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
         var lerp = TeleportLerp(elapsedTime);
         _teleportLine.End = TeleportPosition(mousePosition, lerp);
@@ -157,6 +221,8 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
     private void TeleportReleased(Vector2 screenPosition, double elapsedTime)
     {
+        if (_teleportLock)
+            return;
         _teleportLine.IsFinished = true;
         _teleportLine = null;
         
@@ -167,15 +233,16 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         _effectsPool.Add(new LineTrace(
             _spriteBatch,
             2,
-            GameObject.Position,
+            GameObject.Transform.Position,
             endPosition,
             Stats.TeleportTraceStartColor,
             Stats.TeleportTraceEndColor,
             Stats.TeleportTraceWidth
             ));
         
-        GameObject.Position = endPosition;
+        GameObject.Transform.Position = endPosition;
         _moveLock = false;
+        _lastTeleportUsage = Time.TotalGameTime.TotalSeconds;
     }
     
     private float TeleportLerp(double elapsedTime)
@@ -185,10 +252,10 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     
     private Vector2 TeleportPosition(Vector2 pointPosition, float lerp)
     {
-        var teleportDirection = pointPosition - GameObject.Position;
+        var teleportDirection = pointPosition - GameObject.Transform.Position;
         teleportDirection.Normalize();
         var delta = lerp * (Stats.TeleportMaxDistance - Stats.TeleportMinDistance);
-        return GameObject.Position + teleportDirection * (Stats.TeleportMinDistance + delta);
+        return GameObject.Transform.Position + teleportDirection * (Stats.TeleportMinDistance + delta);
     }
     
     private void Move(Vector2 moveDirection)
@@ -201,32 +268,33 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
     private void Blade(Vector2 screenPosition)
     {
+        if (Time.TotalGameTime.TotalSeconds - _lastBladeUsage < Stats.BladeRechargeDuration)
+            return;
         var worldPosition = _layout.Camera.ScreenToWorld(screenPosition);
-        var bladeDirection = worldPosition - GameObject.Position;
+        var bladeDirection = worldPosition - GameObject.Transform.Position;
         bladeDirection.Normalize();
 
-        var nextPosition = GameObject.Position + bladeDirection * Stats.BladeDashDistance;
+        var nextPosition = GameObject.Transform.Position + bladeDirection * Stats.BladeDashDistance;
         _effectsPool.Add(new LineTrace(
             _spriteBatch,
             Stats.BladeTraceDuration,
-            GameObject.Position,
+            GameObject.Transform.Position,
             nextPosition,
-            Color.White,
-            Color.Transparent,
-            Stats.BladeDashWidth
-            ));
+            Stats.BladeTraceStartColor,
+            Stats.BladeTraceEndColor,
+            Stats.BladeDashWidth));
         
         var attackPosition = nextPosition + bladeDirection * Stats.BladeAttackDistance;
-        var blade = new Vector2(0, -Stats.BladeAttackLength);
+        var blade = new Vector2(0, -Stats.BladeAttackEdgeLength);
         Vector2[] bladeVertices =
         [
-            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
-            attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
+            GameObject.Transform.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
+            attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
             attackPosition,
-            attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2 
+            attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
+            GameObject.Transform.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2 
         ];
-        GameObject.Position = nextPosition;
+        GameObject.Transform.Position = nextPosition;
         
         #if DEBUG
         _effectsPool.Add(new PolygonTrace(
@@ -238,8 +306,8 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
             DebugStats.HitColliderColor, 
             DebugStats.HitColliderWidth));
         #else
-        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[1], Color.White, Color.Transparent, Stats.BladeAttackWidth, 1));
-        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[3], Color.White, Color.Transparent, Stats.BladeAttackWidth, 1));
+        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[1], Stats.BladeTraceStartColor, Stats.BladeTraceEndColor, Stats.BladeAttackEdgeWidth, 1));
+        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[3], Stats.BladeTraceStartColor, Stats.BladeTraceEndColor, Stats.BladeAttackEdgeWidth, 1));
         #endif
         
         var bounds = BoundingBox2D.CreateFromPoints(bladeVertices);
@@ -273,19 +341,23 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
                 AffectResolver.Affect(affect);
             }
         }
+        
+        _lastBladeUsage = Time.TotalGameTime.TotalSeconds;
     }
 
     private void Fire(Vector2 screenPosition)
     {
+        if (Time.TotalGameTime.TotalSeconds - _lastFireUsage < Stats.FireRechargeDuration)
+            return;
         var worldPosition = _layout.Camera.ScreenToWorld(screenPosition);
-        var fireDirection = worldPosition - GameObject.Position;
+        var fireDirection = worldPosition - GameObject.Transform.Position;
         fireDirection.Normalize();
-        var fireEnd = GameObject.Position + fireDirection * Stats.FireDistance;
+        var fireEnd = GameObject.Transform.Position + fireDirection * Stats.FireDistance;
 
-        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.FireTraceDuration, GameObject.Position, fireEnd, Stats.FireTraceColor, Color.Transparent, Stats.FireTraceWidth));
+        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.FireTraceDuration, GameObject.Transform.Position, fireEnd, Stats.FireTraceStartColor, Stats.FireTraceEndColor, Stats.FireTraceWidth));
         
         var bounds = new OrientedBoundingBox2D(
-            (GameObject.Position + fireEnd) / 2, 
+            (GameObject.Transform.Position + fireEnd) / 2, 
             fireDirection, 
             new Vector2(fireDirection.Y, fireDirection.X), 
             new Vector2(Stats.FireDistance/2, Stats.FireWidth/2));
@@ -302,12 +374,12 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
                 AffectResolver.Affect(affect);
             }
         }
+        
+        _lastFireUsage = Time.TotalGameTime.TotalSeconds;
     }
     
-    //TODO TEMPORARY
-    public event Action<int> damaged;
     public void Damage(int value)
     {
-        damaged?.Invoke(value);
+        _animator.TryPlay(PlayerAnimations.Hit);
     }
 }

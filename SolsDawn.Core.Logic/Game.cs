@@ -43,16 +43,17 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         var playerGo = new GameObject();
         new Collider(playerGo, 1, Collision.LayerName.Player);
         new Hp(playerGo, 10);
+        new Animator(playerGo, new PlayerAnimations(_spriteBatch, _screenLayout), PlayerAnimations.Idle);
         _player = new Player(playerGo, _spriteBatch, _effectsPool, _screenLayout, _input);
+        
         var bossGo = new GameObject();
         new Collider(bossGo, 2, Collision.LayerName.Enemy);
         new Hp(bossGo, 10);
-        new Animator(bossGo, new BossAnimations(_spriteBatch, _screenLayout));
+        new Animator(bossGo, new BossAnimations(_spriteBatch, _screenLayout), BossAnimations.Idle);
         var boss = new Boss(bossGo, _spriteBatch, _effectsPool, _screenLayout);
 
         var context = new BossBehaviourContext(boss, _player, _screenLayout);
         _bossAI = new(MainConfig.BossBehaviourBuilder, context);
-        DoStuff();
         return;
 
         void InitSystems()
@@ -72,12 +73,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             _graphicsDeviceManager.ApplyChanges();
             Window.AllowUserResizing = false;
         }
-
-        void DoStuff()
-        {
-            _player.damaged += _ => Console.WriteLine("player damaged");
-            boss.damaged += _ => Console.WriteLine("boss damaged");
-        }
     }
 
     protected override void Update(GameTime gameTime)
@@ -86,7 +81,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         MonoTask.Update(gameTime);
         
         _effectsPool.Update(gameTime);
-        _screenLayout.FollowPosition(_player.GameObject.Position);
+        _screenLayout.FollowPosition(_player.GameObject.Transform.Position);
         
         _input.Update(gameTime);
         _bossAI.Update(gameTime);

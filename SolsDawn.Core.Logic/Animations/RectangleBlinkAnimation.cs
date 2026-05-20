@@ -8,7 +8,7 @@ public class RectangleBlinkAnimation(
     bool isOneShot,
     SpriteBatch spriteBatch,
     float duration,
-    Vector2 center,
+    Transform transform,
     float width,
     float height,
     Color trueColor,
@@ -47,8 +47,8 @@ public class RectangleBlinkAnimation(
         }
 
         spriteBatch.FillRectangle(
-            center.X - width / 2,
-            center.Y - height / 2,
+            transform.Position.X - width / 2,
+            transform.Position.Y - height / 2,
             width,
             height,
             color,

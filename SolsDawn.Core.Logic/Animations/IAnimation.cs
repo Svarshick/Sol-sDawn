@@ -11,5 +11,5 @@ public interface IAnimation : IDrawable
 public interface IAnimationPlayer : IDrawable
 {
     public void TryPlay(string animationName);
-    public Vector2 Position { get; set; }
+    public Transform Transform { get; set; }
 }

@@ -18,8 +18,8 @@ public abstract class Component<T> : IDisposable where T : Component<T>
 public sealed class GameObject : IUpdatable, IDrawable, IDisposable
 {
     private readonly List<IDisposable> _components = new();
-
-    public Vector2 Position { get; set; }
+    
+    public readonly Transform Transform = new();
     
     public GameObject()
     {

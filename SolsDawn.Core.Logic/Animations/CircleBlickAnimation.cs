@@ -8,7 +8,7 @@ public class CircleBlickAnimation(
     bool isOneShot,
     SpriteBatch spriteBatch,
     float duration,
-    Vector2 position,
+    Transform transform,
     float radius,
     int sides,
     Color trueColor,
@@ -48,7 +48,7 @@ public class CircleBlickAnimation(
         }
 
         spriteBatch.DrawCircle(
-            position,
+            transform.Position,
             radius,
             sides,
             color,

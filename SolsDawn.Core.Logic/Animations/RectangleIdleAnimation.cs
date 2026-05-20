@@ -6,7 +6,7 @@ namespace SolsDawn.Core.Logic.Animations;
 
 public class RectangleIdleAnimation(
     SpriteBatch spriteBatch,
-    Vector2 center,
+    Transform transform,
     float width,
     float height,
     Color color,
@@ -18,8 +18,8 @@ public class RectangleIdleAnimation(
     public void Draw(GameTime time)
     {
         spriteBatch.FillRectangle(
-            center.X - width / 2,
-            center.Y - height / 2,
+            transform.Position.X - width / 2,
+            transform.Position.Y - height / 2,
             width,
             height,
             color,

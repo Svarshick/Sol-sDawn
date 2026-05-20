@@ -4,12 +4,15 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public sealed class Hp : Component<Hp>
 {
-    public int Max { get; private set; }
+    public int Max; 
+    public float InvulnerabilityDuration;
+
     public int Current { get; private set; }
 
+    private double _lastHit;
+    
     public bool IsDied => Current <= 0;
-    public event Action<int> Damaged;
-    public event Action<int> Healed;
+    public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
 
     public Hp(GameObject go, int max) : base(go)
     {
@@ -21,21 +24,9 @@ public sealed class Hp : Component<Hp>
     {
     }
 
-    public void Damage(int value)
+    public void Hit(int value)
     {
-        if (value < 0)
-            throw  new ArgumentOutOfRangeException(nameof(value), value, "Value cannot be negative.");
-
         Current = Math.Max(0, Current - value);
-        Damaged?.Invoke(value);
-    }
-
-    public void Heal(int value)
-    {
-        if (value < 0)
-            throw  new ArgumentOutOfRangeException(nameof(value), value, "Value cannot be negative.");
-
-        Current = Math.Min(Max, Current + value);
-        Healed?.Invoke(value);
+        _lastHit = Time.TotalGameTime.TotalSeconds;
     }
 }

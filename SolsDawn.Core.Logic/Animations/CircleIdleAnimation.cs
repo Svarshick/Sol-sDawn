@@ -6,7 +6,7 @@ namespace SolsDawn.Core.Logic.Animations;
 
 public class CircleIdleAnimation(
     SpriteBatch spriteBatch,
-    Vector2 position,
+    Transform transform,
     float radius,
     int sides,
     Color color,
@@ -19,7 +19,7 @@ public class CircleIdleAnimation(
     public void Draw(GameTime gameTime)
     {
         spriteBatch.DrawCircle(
-            position,
+            transform.Position,
             radius,
             sides,
             color,

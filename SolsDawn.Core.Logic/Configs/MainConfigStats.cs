@@ -24,13 +24,22 @@ public static partial class MainConfig
         Height = 1.3f,
         Velocity = 5,
         
+        TeleportRechargeDuration = 1.5f,
+        BladeRechargeDuration = 1f,
+        FireRechargeDuration = 2f,
+    
+        HitInvulnerabilityDuration = 0.5f,
+        HitBlinkColor = Color.Red,
+        
         BladeAttackDistance = 1,
-        BladeAttackAngle = 40,
-        BladeAttackLength = 2,
-        BladeAttackWidth = 0.5f,
+        BladeAttackEdgeAngle = 40,
+        BladeAttackEdgeLength = 2,
+        BladeAttackEdgeWidth = 0.5f,
         BladeDashDistance = 2,
         BladeDashWidth = 1f,
         BladeTraceDuration = 1f,
+        BladeTraceStartColor = Color.White,
+        BladeTraceEndColor = Color.Transparent,
         BladeAimDistance = 3f,
         BladeAimRadius = 0.2f,
         BladeAimColor = new Color(0, 255, 255, 122),
@@ -39,7 +48,8 @@ public static partial class MainConfig
         FireWidth = 0.3f,
         FireTraceDuration = 1,
         FireTraceWidth = 0.3f,
-        FireTraceColor = Color.Red,
+        FireTraceStartColor = Color.Red,
+        FireTraceEndColor = Color.Transparent,
         
         TeleportMinDistance = 3,
         TeleportMaxDistance = 7,
@@ -57,21 +67,25 @@ public static partial class MainConfig
         Color = Color.BlueViolet,
         Width = 0.7f,
         Height = 1.4f,
-
+        
+        HitDuration = 0.5f,
+        HitBlinkColor = Color.Red,
+        
         BladeTelegraphDuration = 0.5f,
+        BladeTelegraphBlinkColor = Color.White,
 
         BladeAttackDistance = 1.5f,
-        BladeAttackAngle = 45f,
-        BladeAttackLength = 2.5f,
-        BladeAttackWidth = 0.7f,
+        BladeAttackEdgeAngle = 45f,
+        BladeAttackEdgeLength = 2.5f,
+        BladeAttackEdgeWidth = 0.7f,
         BladeDashDistance = 2.5f,
         BladeDashWidth = 1.2f,
         BladeTraceDuration = 1.2f,
-        BladeAimDistance = 4f,
-        BladeAimRadius = 0.3f,
-        BladeAimColor = new Color(255, 0, 255, 122),
+        BladeTraceStartColor = Color.White,
+        BladeTraceEndColor = Color.Transparent,
 
         ParryDuration = 1f,
+        ParryColor = Color.White,
 
         TeleportTraceWidth = 1f,
         TeleportTraceStartColor = Color.Red,

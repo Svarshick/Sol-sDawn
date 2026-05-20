@@ -49,12 +49,12 @@ public class UnitsVectorExpression(float x, float y) : VectorExpression
 
 public class PlayerPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Player.GameObject.Position;
+    public override Vector2 Evaluate(BossBehaviourContext context) => context.Player.GameObject.Transform.Position;
 }
 
 public class BossPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Boss.GameObject.Position;
+    public override Vector2 Evaluate(BossBehaviourContext context) => context.Boss.GameObject.Transform.Position;
 }
 
 public class CameraCenterPositionExpression : VectorExpression

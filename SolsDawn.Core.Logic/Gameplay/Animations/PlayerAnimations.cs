@@ -6,24 +6,22 @@ using SolsDawn.Core.Logic.Configs.Utils;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class BossAnimations : IAnimationPlayer
+public class PlayerAnimations : IAnimationPlayer
 {
     public const string Idle = "Idle";
-    public const string Telegraph = "Telegraph";
-    public const string Parried = "Parried";
     public const string Hit = "Hit";
 
     public Transform Transform { get; set; }
-    
-    private IAnimation _baseAnimation;
-    private IAnimation _overlayAnimation;
-    private readonly SpriteBatch _spriteBatch;
-    private readonly BossStats Stats;
 
-    public BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout)
+    private IAnimation _baseAnimation;
+    private IAnimation? _overlayAnimation;
+    private readonly SpriteBatch _spriteBatch;
+    private readonly PlayerStats Stats;
+
+    public PlayerAnimations(SpriteBatch spriteBatch, ScreenLayout layout)
     {
         _spriteBatch = spriteBatch;
-        Stats = ConfigReader.Read(MainConfig.BossStats, layout);
+        Stats = ConfigReader.Read(MainConfig.PlayerStats, layout);
     }
 
     public void TryPlay(string animationName)
@@ -38,31 +36,11 @@ public class BossAnimations : IAnimationPlayer
                     Stats.Height,
                     Stats.Color);
                 break;
-            case Telegraph:
-                _overlayAnimation = null;
-                _baseAnimation = new RectangleBlinkAnimation(
-                    false,
-                    _spriteBatch,
-                    Stats.BladeTelegraphDuration,
-                    Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color,
-                    Stats.BladeTelegraphBlinkColor);
-                break;
-            case Parried:
-                _baseAnimation = new RectangleIdleAnimation(
-                    _spriteBatch,
-                    Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.ParryColor);
-                break;
             case Hit:
                 _overlayAnimation = new RectangleBlinkAnimation(
                     true,
                     _spriteBatch,
-                    Stats.HitDuration,
+                    Stats.HitInvulnerabilityDuration,
                     Transform,
                     Stats.Width,
                     Stats.Height,
@@ -71,7 +49,7 @@ public class BossAnimations : IAnimationPlayer
                 break;
         }
     }
-
+    
     public void Draw(GameTime gameTime)
     {
         if (_overlayAnimation is { IsFinished: false })
