@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Configs.Utils;
 
 
 public abstract class VectorExpression

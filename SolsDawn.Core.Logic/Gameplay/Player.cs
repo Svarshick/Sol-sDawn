@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using MonoGame.Extended.Input;
 using SolsDawn.Core.Logic.Configs;
+using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Effects;
 
 namespace SolsDawn.Core.Logic.Gameplay;

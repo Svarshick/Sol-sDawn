@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
+using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Effects;
 using SolsDawn.Core.Logic.Gameplay.Animations;
 using Stateless;

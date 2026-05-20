@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay;
 
 namespace SolsDawn.Core.Logic.Configs;

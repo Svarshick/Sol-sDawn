@@ -1,3 +1,5 @@
+using SolsDawn.Core.Logic.Configs.Utils;
+
 namespace SolsDawn.Core.Logic.Configs;
 using static BossBehaviourBuilder;
 

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using SolsDawn.Core.Logic.Gameplay;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Configs.Utils;
 
 public record BossBehaviourContext(Boss Boss, Player Player, ScreenLayout Layout);
 

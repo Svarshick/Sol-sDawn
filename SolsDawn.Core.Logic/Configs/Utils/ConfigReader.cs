@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.Xna.Framework;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Configs.Utils;
 
 public static class ConfigReader
 {
