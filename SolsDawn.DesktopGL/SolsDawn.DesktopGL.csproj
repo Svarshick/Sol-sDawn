@@ -5,7 +5,7 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>false</TieredCompilation>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>../SolsDawn.Core.Logic/Assets/Icon.ico</ApplicationIcon>
+    <ApplicationIcon>../SolsDawn.Core/Assets/Icon.ico</ApplicationIcon>
     <AssemblyName>SolsDawn</AssemblyName>
     <MonoGamePlatform>DesktopGL</MonoGamePlatform>
   </PropertyGroup>
