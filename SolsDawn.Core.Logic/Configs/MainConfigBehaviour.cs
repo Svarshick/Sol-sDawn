@@ -5,7 +5,7 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => B3;
+    public static BossBehaviourBuilder BossBehaviourBuilder => B4;
     
     private static readonly BossBehaviourBuilder B1 = new BossBehaviourBuilder()
         .Teleport(CameraBottomLeft)
@@ -26,4 +26,7 @@ public static partial class MainConfig
         .Wait(2)
         .Teleport(Units(3, 3))
         .Blade(Units(0, 0));
+
+    private static readonly BossBehaviourBuilder B4 = new BossBehaviourBuilder()
+        .Teleport(Units(0, 0));
 }
