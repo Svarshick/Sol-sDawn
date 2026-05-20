@@ -20,7 +20,8 @@ public static partial class MainConfig
     public static readonly PlayerStats PlayerStats = new()
     {
         Color = Color.Blue,
-        Radius = 0.5f,
+        Width = 0.7f,
+        Height = 1.3f,
         Velocity = 5,
         
         BladeAttackDistance = 1,
@@ -54,7 +55,8 @@ public static partial class MainConfig
     public static readonly BossStats BossStats = new()
     {
         Color = Color.BlueViolet,
-        Radius = 0.5f,
+        Width = 0.7f,
+        Height = 1.4f,
 
         BladeTelegraphDuration = 0.5f,
 

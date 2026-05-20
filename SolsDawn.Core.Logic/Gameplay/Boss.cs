@@ -14,7 +14,8 @@ namespace SolsDawn.Core.Logic.Gameplay;
 public class BossStats
 {
     public Color Color;
-    [Units] public float Radius;
+    [Units] public float Width;
+    [Units] public float Height;
 
     public float BladeTelegraphDuration;
     
@@ -75,9 +76,6 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
         _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
         
-        var bounds = new BoundingCircle2D(GameObject.Position, Stats.Radius);
-        _collider.Shape = new CollisionShape2D(bounds);
-
         _machine = new StateMachine<State, Trigger>(State.Pending);
         _machine.Configure(State.Pending)
             .Permit(Trigger.Wait, State.Idling)
@@ -124,7 +122,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 break;
         }
         
-        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Radius, Stats.Radius));
+        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Width/2, Stats.Height/2));
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
@@ -180,11 +178,11 @@ public sealed class Boss : Component<Boss>, IUpdatable
         var blade = new Vector2(0, -Stats.BladeAttackLength);
         Vector2[] bladeVertices =
         [
-            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Radius,
+            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
             attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
             attackPosition,
             attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Radius
+            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2
         ];
         #if DEBUG
         _parryEffect = new PolygonTrace(
@@ -233,11 +231,11 @@ public sealed class Boss : Component<Boss>, IUpdatable
         var blade = new Vector2(0, -Stats.BladeAttackLength);
         Vector2[] bladeVertices =
         [
-            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Radius,
+            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
             attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
             attackPosition,
             attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Radius
+            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2
         ];
         GameObject.Position = nextPosition;
         

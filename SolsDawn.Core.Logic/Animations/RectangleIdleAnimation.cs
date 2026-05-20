@@ -4,26 +4,25 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public class IdleCircleAnimation(
+public class RectangleIdleAnimation(
     SpriteBatch spriteBatch,
-    Vector2 position,
-    float radius,
-    int sides,
+    Vector2 center,
+    float width,
+    float height,
     Color color,
-    float thickness,
     float layerDepth = 0.0f)
     : IAnimation
 {
     public bool IsFinished { get; } = true;
 
-    public void Draw(GameTime gameTime)
+    public void Draw(GameTime time)
     {
-        spriteBatch.DrawCircle(
-            position,
-            radius,
-            sides,
+        spriteBatch.FillRectangle(
+            center.X - width / 2,
+            center.Y - height / 2,
+            width,
+            height,
             color,
-            thickness,
             layerDepth);
     }
 

@@ -12,7 +12,8 @@ namespace SolsDawn.Core.Logic.Gameplay;
 public class PlayerStats
 {
     public Color Color;
-    [Units] public float Radius;
+    [Units] public float Width;
+    [Units] public float Height;
     [Units] public float Velocity;
     
     [Units] public float BladeAttackDistance;
@@ -104,7 +105,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
             GameObject.Position += shift * MoveDirection;
         }
         
-        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Radius, Stats.Radius));
+        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Width/2, Stats.Height/2));
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
@@ -115,13 +116,12 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     
     public void Draw(GameTime gameTime)
     {
-        var radius = Stats.Radius;
-        _spriteBatch.DrawCircle(
-            center: GameObject.Position,
-            radius: radius,
-            sides: 20,
-            color: Stats.Color,
-            thickness: radius 
+        _spriteBatch.FillRectangle(
+            GameObject.Position.X - Stats.Width / 2,
+            GameObject.Position.Y - Stats.Height / 2,
+            Stats.Width,
+            Stats.Height,
+            Stats.Color
         );
 
         var mouseState = MouseExtended.GetState();
@@ -220,11 +220,11 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         var blade = new Vector2(0, -Stats.BladeAttackLength);
         Vector2[] bladeVertices =
         [
-            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Radius,
+            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
             attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
             attackPosition,
             attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Radius
+            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2 
         ];
         GameObject.Position = nextPosition;
         

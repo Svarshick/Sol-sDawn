@@ -30,34 +30,31 @@ public class BossAnimations : IAnimationPlayer
         switch (animationName)
         {
             case Idle:
-                _currentAnimation = new IdleCircleAnimation(
+                _currentAnimation = new RectangleIdleAnimation(
                     _spriteBatch,
                     Position,
-                    Stats.Radius,
-                    20,
-                    Stats.Color,
-                    Stats.Radius);
+                    Stats.Width,
+                    Stats.Height,
+                    Stats.Color);
                 break;
             case Telegraph:
-                _currentAnimation = new CircleBlickAnimation(
+                _currentAnimation = new RectangleBlinkAnimation(
                     false,
                     _spriteBatch,
                     Stats.BladeTelegraphDuration,
                     Position,
-                    Stats.Radius,
-                    20,
+                    Stats.Width,
+                    Stats.Height,
                     Stats.Color,
-                    Color.White,
-                    Stats.Radius);
+                    Color.White);
                 break;
             case Parried:
-                _currentAnimation = new IdleCircleAnimation(
+                _currentAnimation =  new RectangleIdleAnimation(
                     _spriteBatch,
                     Position,
-                    Stats.Radius,
-                    20,
-                    Color.White,
-                    Stats.Radius);
+                    Stats.Width,
+                    Stats.Height,
+                    Color.White);
                 break;
         }
     }
