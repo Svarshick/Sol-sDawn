@@ -4,9 +4,9 @@ namespace SolsDawn.Core;
 
 public static class MonoTask 
 {
-    private static List<(TaskCompletionSource CompletionSource, int Frames)> _pendingFrameTasks = new();
-    private static List<(TaskCompletionSource CompletionSource, int Frames)> _pendingFrameTasksBuff = new();
-    private static List<(TaskCompletionSource CompletionSource, int Frames)> _newFrameTasks = new();
+    private static List<(TaskCompletionSource<bool> CompletionSource, int Frames, CancellationToken Token)> _pendingFrameTasks = new();
+    private static List<(TaskCompletionSource<bool> CompletionSource, int Frames, CancellationToken Token)> _pendingFrameTasksBuff = new();
+    private static List<(TaskCompletionSource<bool> CompletionSource, int Frames, CancellationToken Token)> _newFrameTasks = new();
    
     public static void Update(GameTime gameTime)
     {
@@ -14,14 +14,22 @@ public static class MonoTask
         {
             var completionSource = _pendingFrameTasks[i].CompletionSource;
             var frames = _pendingFrameTasks[i].Frames;
+            var token = _pendingFrameTasks[i].Token;
+
+            if (token.IsCancellationRequested)
+            {
+                completionSource.TrySetResult(false);
+                continue;
+            }
+            
             frames--;
             if (frames <= 0)
             {
-                completionSource.SetResult();
+                completionSource.SetResult(true);
             }
             else
             {
-                _pendingFrameTasksBuff.Add((completionSource, frames));
+                _pendingFrameTasksBuff.Add((completionSource, frames, token));
             }
         }
         
@@ -31,12 +39,15 @@ public static class MonoTask
         (_pendingFrameTasks, _pendingFrameTasksBuff) = (_pendingFrameTasksBuff, _pendingFrameTasks);
     }
 
-    public static Task NextFrame() => DelayFrames(1);
+    public static Task<bool> NextFrame() => DelayFrames(1);
 
-    public static Task DelayFrames(int frames)
+    public static Task<bool> DelayFrames(int frames, CancellationToken token = default)
     {
-        var completionSource = new TaskCompletionSource();
-        _newFrameTasks.Add((completionSource, frames));
+        if (token.IsCancellationRequested) 
+            return Task.FromResult(false);
+        
+        var completionSource = new TaskCompletionSource<bool>();
+        _newFrameTasks.Add((completionSource, frames, token));
         return completionSource.Task;
     }
 }

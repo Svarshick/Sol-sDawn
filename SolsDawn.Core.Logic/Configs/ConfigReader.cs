@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Xna.Framework;
 
 namespace SolsDawn.Core.Logic.Configs;
 
@@ -7,9 +8,8 @@ public static class ConfigReader
     public static T Read<T>(T sourceConfig, ScreenLayout layout) where T : class, new()
     {
         var config = new T();
-        var type = typeof(T);
 
-        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var field in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
         {
             var value = field.GetValue(sourceConfig);
 
@@ -17,11 +17,15 @@ public static class ConfigReader
             {
                 value = layout.ToPixels(sourceFloat);
             }
+            else if (field.GetCustomAttribute<EulerAttribute>() != null && value is float sourceEuler)
+            {
+                value = MathHelper.ToRadians(sourceEuler);
+            }
 
             field.SetValue(config, value);
         }
 
-        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var prop in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             if (!prop.CanWrite) continue;
 
@@ -30,6 +34,10 @@ public static class ConfigReader
             if (prop.GetCustomAttribute<UnitsAttribute>() != null && value is float sourceFloat)
             {
                 value = layout.ToPixels(sourceFloat);
+            }
+            else if (prop.GetCustomAttribute<EulerAttribute>() != null && value is float sourceEuler)
+            {
+                value = layout.ToPixels(sourceEuler);
             }
 
             prop.SetValue(config, value);

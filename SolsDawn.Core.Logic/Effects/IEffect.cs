@@ -5,7 +5,8 @@ public interface IPassiveEffect : IDrawable
     public bool IsFinished { get; }
 }
 
-public interface IEffect : IUpdatable, IDrawable
+public interface IEffect : IDrawable
 {
     public bool IsFinished { get; }
+    public void Cancel();
 }

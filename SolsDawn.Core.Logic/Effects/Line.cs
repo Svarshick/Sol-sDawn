@@ -10,6 +10,7 @@ public class Line : IPassiveEffect
     public Vector2 End;
     public Color Color;
     public float Thickness;
+    public float LayerDepth;
 
     private SpriteBatch _spriteBatch;
 
@@ -18,7 +19,8 @@ public class Line : IPassiveEffect
         Vector2 start,
         Vector2 end,
         Color color,
-        float thickness)
+        float thickness,
+        float layerDepth = 0.0f)
     {
         _spriteBatch = spriteBatch;
 
@@ -26,6 +28,7 @@ public class Line : IPassiveEffect
         End = end;
         Color = color;
         Thickness = thickness;
+        LayerDepth = layerDepth;
     }
 
     public bool IsFinished { get; set; }
@@ -36,7 +39,8 @@ public class Line : IPassiveEffect
             Start,
             End,
             Color,
-            Thickness
+            Thickness,
+            LayerDepth
         );
     }
 }

@@ -2,7 +2,7 @@ using MonoGame.Extended;
 using MonoGame.Extended.Collisions;
 using MonoGame.Extended.Collisions.Layers;
 
-namespace SolsDawn.Core;
+namespace SolsDawn.Core.Logic.Gameplay;
 
 public static class Collision
 {
@@ -11,18 +11,21 @@ public static class Collision
         public const string Default = CollisionWorld2D.DefaultLayerName;
         public const string Player = "player";
         public const string Enemy = "enemy";
+        public const string Parry = "parry";
     }
 
     public static readonly CollisionWorld2D World;
     public static readonly Layer DefaultLayer = new(new SpatialHash(new SizeF(64f, 64f)));
     public static readonly Layer PlayerLayer = new(new SpatialHash(new SizeF(64f, 64f)));
     public static readonly Layer EnemyLayer = new(new SpatialHash(new SizeF(64f, 64f)));
+    public static readonly Layer ParryLayer = new(new SpatialHash(new SizeF(64f, 64f)));
 
     static Collision()
     {
         World = new CollisionWorld2D(DefaultLayer);
         World.AddLayer(LayerName.Player, PlayerLayer);
         World.AddLayer(LayerName.Enemy, EnemyLayer);
+        World.AddLayer(LayerName.Parry, ParryLayer);
     }
 }
 

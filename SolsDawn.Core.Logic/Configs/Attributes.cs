@@ -6,3 +6,8 @@ namespace SolsDawn.Core.Logic.Configs;
 public class UnitsAttribute : Attribute
 {
 }
+
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+public class EulerAttribute : Attribute
+{
+}

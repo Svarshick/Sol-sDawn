@@ -19,7 +19,14 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable
 {
     private readonly List<IDisposable> _components = new();
 
-    public T GetComponent<T>() where T : Component<T>
+    public Vector2 Position { get; set; }
+    
+    public GameObject()
+    {
+        GameObjectPool.Add(this);
+    }
+
+    public T? GetComponent<T>() where T : Component<T>
     {
         foreach (var component in _components)
         {
@@ -53,7 +60,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable
 
         throw new ArgumentException($"The component {typeof(T).Name} isn't attached");
     }
-    
+
     public void Update(GameTime gameTime)
     {
         foreach (var component in _components)
@@ -85,5 +92,6 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable
     {
         foreach(var component in _components)
             component.Dispose();
-    } 
+        GameObjectPool.Remove(this);
+    }
 }

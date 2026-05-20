@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
@@ -11,16 +10,33 @@ namespace SolsDawn.Core.Logic.Gameplay;
 public class PlayerStats
 {
     public Color Color;
-    [Units] public float Size;
+    [Units] public float Radius;
     [Units] public float Velocity;
-    [Units] public float BladeDistance;
+    
+    [Units] public float BladeAttackDistance;
+    [Euler] public float BladeAttackAngle;
+    [Units] public float BladeAttackLength;
+    [Units] public float BladeAttackWidth;
+    [Units] public float BladeDashDistance;
+    [Units] public float BladeDashWidth;
+    public float BladeTraceDuration;
+    [Units] public float BladeAimDistance;
+    [Units] public float BladeAimRadius;
+    public Color BladeAimColor;
+
+    [Units] public float FireDistance;
+    [Units] public float FireWidth;
+    public float FireTraceDuration;
+    [Units] public float FireTraceWidth;
+    public Color FireTraceColor;
+    
     [Units] public float TeleportMinDistance;
     [Units] public float TeleportMaxDistance;
     public float TeleportHoldDuration;
-    [Units] public float TeleportThickness;
+    [Units] public float TeleportWidth;
     public Color TeleportStartColor;
     public Color TeleportEndColor;
-    [Units] public float TeleportTraceThickness;
+    [Units] public float TeleportTraceWidth;
     public Color TeleportTraceStartColor;
     public Color TeleportTraceEndColor;
 }
@@ -28,17 +44,20 @@ public class PlayerStats
 public sealed class Player : Component<Player>, IUpdatable, IDrawable
 {
     public readonly PlayerStats Stats;
+    public readonly DebugStats DebugStats;
     
-    public Vector2 Position { get; private set; } = Vector2.Zero;
     public Vector2 MoveDirection { get; private set; } = Vector2.Zero;
     private bool _moveDirectionUpdated;
     private bool _moveLock;
-    
+
     private Line _teleportLine;
+    
     private readonly Collider _collider;
     private readonly SpriteBatch _spriteBatch;
     private readonly EffectsPool _effectsPool;
     private readonly ScreenLayout _layout;
+    private readonly Input _input;
+    
     public Player(
         GameObject go,
         SpriteBatch spriteBatch, 
@@ -46,20 +65,33 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         ScreenLayout layout, 
         Input input) : base(go)
     {
-        _collider = GameObject.GetComponent<Collider>() ?? throw new NullReferenceException("Can't get collider component");
         _spriteBatch = spriteBatch;
         _effectsPool = effectsPool;
         _layout = layout;
-
+        _input = input;
+        
         Stats = ConfigReader.Read(MainConfig.PlayerStats, _layout);
-            
-        input.Move += Move;
-        input.TeleportStarted += TeleportStarted;
-        input.TeleportUpdated += TeleportUpdated;
-        input.TeleportReleased += TeleportReleased;
+        DebugStats = ConfigReader.Read(MainConfig.DebugStats, _layout);
+        
+        _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
+
+        _input.Move += Move;
+        _input.TeleportStarted += TeleportStarted;
+        _input.TeleportUpdated += TeleportUpdated;
+        _input.TeleportReleased += TeleportReleased;
+        _input.Blade += Blade;
+        _input.Fire += Fire;
     }
 
-    public override void Dispose() { }
+    public override void Dispose()
+    {
+        _input.Move -= Move;
+        _input.TeleportStarted -= TeleportStarted;
+        _input.TeleportUpdated -= TeleportUpdated;
+        _input.TeleportReleased -= TeleportReleased;
+        _input.Blade -= Blade;
+        _input.Fire -= Fire;
+    }
 
     public void Update(GameTime gameTime)
     {
@@ -67,10 +99,10 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         {
             var velocity = Stats.Velocity;
             var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            Position += shift * MoveDirection;
+            GameObject.Position += shift * MoveDirection;
         }
         
-        var bounds = new BoundingCircle2D(Position, Stats.Size/2);
+        var bounds = new BoundingCircle2D(GameObject.Position, Stats.Radius);
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
@@ -81,9 +113,9 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     
     public void Draw(GameTime gameTime)
     {
-        var radius = Stats.Size/2;
+        var radius = Stats.Radius;
         _spriteBatch.DrawCircle(
-            center: Position,
+            center: GameObject.Position,
             radius: radius,
             sides: 20,
             color: Stats.Color,
@@ -92,15 +124,14 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
         var mouseState = MouseExtended.GetState();
         var mousePosition = _layout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        var bladeDirection = mousePosition - Position;
+        var bladeDirection = mousePosition - GameObject.Position;
         bladeDirection.Normalize();
-        var bladeRadius = _layout.ToPixels(0.2f);
         _spriteBatch.DrawCircle(
-            center: Position + bladeDirection * Stats.BladeDistance,
-            radius: bladeRadius,
+            center: GameObject.Position + bladeDirection * Stats.BladeAimDistance,
+            radius: Stats.BladeAimRadius,
             sides: 20,
-            color: Color.Aqua,
-            thickness: bladeRadius
+            color: Stats.BladeAimColor,
+            thickness: Stats.BladeAimRadius
         );
     }
     
@@ -109,13 +140,13 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         _moveLock = true;
         var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
         var endPosition = TeleportPosition(mousePosition, 0);
-        _teleportLine = new(_spriteBatch, Position, endPosition, Stats.TeleportStartColor, Stats.TeleportThickness);
+        _teleportLine = new(_spriteBatch, GameObject.Position, endPosition, Stats.TeleportStartColor, Stats.TeleportWidth);
         _effectsPool.Add(_teleportLine);
     }
 
     private void TeleportUpdated(Vector2 screenPosition, double elapsedTime)
     {
-        _teleportLine.Start = Position;
+        _teleportLine.Start = GameObject.Position;
         var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
         var lerp = TeleportLerp(elapsedTime);
         _teleportLine.End = TeleportPosition(mousePosition, lerp);
@@ -133,15 +164,15 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         
         _effectsPool.Add(new LineTrace(
             _spriteBatch,
-            Position,
+            2,
+            GameObject.Position,
             endPosition,
             Stats.TeleportTraceStartColor,
             Stats.TeleportTraceEndColor,
-            Stats.TeleportTraceThickness,
-            2
+            Stats.TeleportTraceWidth
             ));
         
-        Position = endPosition;
+        GameObject.Position = endPosition;
         _moveLock = false;
     }
     
@@ -152,10 +183,10 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     
     private Vector2 TeleportPosition(Vector2 pointPosition, float lerp)
     {
-        var teleportDirection = pointPosition - Position;
+        var teleportDirection = pointPosition - GameObject.Position;
         teleportDirection.Normalize();
         var delta = lerp * (Stats.TeleportMaxDistance - Stats.TeleportMinDistance);
-        return Position + teleportDirection * (Stats.TeleportMinDistance + delta);
+        return GameObject.Position + teleportDirection * (Stats.TeleportMinDistance + delta);
     }
     
     private void Move(Vector2 moveDirection)
@@ -164,5 +195,110 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
             return;
         MoveDirection = moveDirection;
         _moveDirectionUpdated = true;
+    }
+
+    private void Blade(Vector2 screenPosition)
+    {
+        var worldPosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var bladeDirection = worldPosition - GameObject.Position;
+        bladeDirection.Normalize();
+
+        var nextPosition = GameObject.Position + bladeDirection * Stats.BladeDashDistance;
+        _effectsPool.Add(new LineTrace(
+            _spriteBatch,
+            Stats.BladeTraceDuration,
+            GameObject.Position,
+            nextPosition,
+            Color.White,
+            Color.Transparent,
+            Stats.BladeDashWidth
+            ));
+        
+        var attackPosition = nextPosition + bladeDirection * Stats.BladeAttackDistance;
+        var blade = new Vector2(0, -Stats.BladeAttackLength);
+        Vector2[] bladeVertices =
+        [
+            GameObject.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Radius,
+            attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
+            attackPosition,
+            attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackAngle / 2 + bladeDirection.ToAngle()),
+            GameObject.Position + bladeDirection.PerpendicularClockwise() * Stats.Radius
+        ];
+        GameObject.Position = nextPosition;
+        
+        #if DEBUG
+        _effectsPool.Add(new PolygonTrace(
+            _spriteBatch, 
+            Stats.BladeTraceDuration, 
+            Vector2.Zero, 
+            bladeVertices, 
+            DebugStats.HitColliderColor, 
+            DebugStats.HitColliderColor, 
+            DebugStats.HitColliderWidth));
+        #else
+        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[1], Color.White, Color.Transparent, Stats.BladeAttackWidth, 1));
+        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[3], Color.White, Color.Transparent, Stats.BladeAttackWidth, 1));
+        #endif
+        
+        var bounds = BoundingBox2D.CreateFromPoints(bladeVertices);
+        var polygon = BoundingPolygon2D.CreateFromVertices(bladeVertices);
+        var shape = new CollisionShape2D(polygon);
+        foreach (var actor in Collision.World.QueryCandidates(bounds, Collision.LayerName.Enemy))
+        {
+            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            {
+                var affect = new Affect(
+                    GameObject,
+                    collider.GameObject,
+                    AffectType.Damage,
+                    new DamageArgs(1));
+                AffectResolver.Affect(affect);
+            }
+        }
+        
+        foreach (var actor in Collision.World.QueryCandidates(bounds, Collision.LayerName.Parry))
+        {
+            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            {
+                var parry = collider.GameObject.GetComponent<Parry>();
+                if (parry is null)
+                    continue;
+                var affect = new Affect(
+                    GameObject,
+                    parry.Target,
+                    AffectType.Parry,
+                    new ParryArgs(parry));
+                AffectResolver.Affect(affect);
+            }
+        }
+    }
+
+    private void Fire(Vector2 screenPosition)
+    {
+        var worldPosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var fireDirection = worldPosition - GameObject.Position;
+        fireDirection.Normalize();
+        var fireEnd = GameObject.Position + fireDirection * Stats.FireDistance;
+
+        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.FireTraceDuration, GameObject.Position, fireEnd, Stats.FireTraceColor, Color.Transparent, Stats.FireTraceWidth));
+        
+        var bounds = new OrientedBoundingBox2D(
+            (GameObject.Position + fireEnd) / 2, 
+            fireDirection, 
+            new Vector2(fireDirection.Y, fireDirection.X), 
+            new Vector2(Stats.FireDistance/2, Stats.FireWidth/2));
+        foreach (var actor in Collision.World.QueryCandidates(BoundingBox2D.CreateFromPoints(bounds.GetCorners()), Collision.LayerName.Enemy))
+        {
+            var shape = new CollisionShape2D(bounds);
+            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            {
+                var affect = new Affect(
+                    GameObject,
+                    collider.GameObject,
+                    AffectType.Damage,
+                    new DamageArgs(1));
+                AffectResolver.Affect(affect);
+            }
+        }
     }
 }
