@@ -123,7 +123,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 break;
         }
         
-        var bounds = new BoundingCircle2D(GameObject.Position, Stats.Radius);
+        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Radius, Stats.Radius));
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
@@ -259,7 +259,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         {
             var polygon = BoundingPolygon2D.CreateFromVertices(bladeVertices);
             var shape = new CollisionShape2D(polygon);
-            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            if (shape.TryGetCollision(actor.Shape, out _) && actor is Collider collider)
             {
                 var affect = new Affect(
                     GameObject,

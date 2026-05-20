@@ -104,7 +104,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
             GameObject.Position += shift * MoveDirection;
         }
         
-        var bounds = new BoundingCircle2D(GameObject.Position, Stats.Radius);
+        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Position, new Vector2(Stats.Radius, Stats.Radius));
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
@@ -247,7 +247,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         var shape = new CollisionShape2D(polygon);
         foreach (var actor in Collision.World.QueryCandidates(bounds, Collision.LayerName.Enemy))
         {
-            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            if (shape.TryGetCollision(actor.Shape, out _)  && actor is Collider collider)
             {
                 var affect = new Affect(
                     GameObject,
@@ -260,7 +260,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         
         foreach (var actor in Collision.World.QueryCandidates(bounds, Collision.LayerName.Parry))
         {
-            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            if (shape.TryGetCollision(actor.Shape, out _)  && actor is Collider collider)
             {
                 var parry = collider.GameObject.GetComponent<Parry>();
                 if (parry is null)
@@ -292,7 +292,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
         foreach (var actor in Collision.World.QueryCandidates(BoundingBox2D.CreateFromPoints(bounds.GetCorners()), Collision.LayerName.Enemy))
         {
             var shape = new CollisionShape2D(bounds);
-            if (actor.Shape.Intersects(shape) && actor is Collider collider)
+            if (shape.TryGetCollision(actor.Shape, out _)  && actor is Collider collider)
             {
                 var affect = new Affect(
                     GameObject,

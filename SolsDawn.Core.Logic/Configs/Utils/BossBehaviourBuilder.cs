@@ -9,6 +9,12 @@ public record BossBehaviourContext(Boss Boss, Player Player, ScreenLayout Layout
 public class BossBehaviourBuilder
 {
     private readonly List<Action<BossBehaviourContext>> _actions = new();
+
+    public BossBehaviourBuilder Then(BossBehaviourBuilder other)
+    {
+        _actions.AddRange(other._actions);
+        return this;
+    }
     
     public BossBehaviourBuilder Wait(float seconds)
     {
@@ -27,11 +33,15 @@ public class BossBehaviourBuilder
         _actions.Add(ctx => ctx.Boss.Blade(lookPosition.Evaluate(ctx)));
         return this;
     }
-    
+
     public IReadOnlyList<Action<BossBehaviourContext>> Build() => _actions;
 
     public static VectorExpression Units(float x, float y) => new UnitsVectorExpression(x, y);
     public static VectorExpression Player => new PlayerPositionExpression();
     public static VectorExpression Boss => new BossPositionExpression();
     public static VectorExpression CameraCenter => new CameraCenterPositionExpression();
+    public static VectorExpression CameraTopLeft => new CameraTopLeftPositionExpression();
+    public static VectorExpression CameraTopRight => new CameraTopRightPositionExpression();
+    public static VectorExpression CameraBottomLeft => new CameraBottomLeftPositionExpression();
+    public static VectorExpression CameraBottomRight => new CameraBottomRightPositionExpression();
 }

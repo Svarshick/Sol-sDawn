@@ -62,6 +62,26 @@ public class CameraCenterPositionExpression : VectorExpression
     public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraCenter();
 }
 
+public class CameraTopLeftPositionExpression : VectorExpression
+{
+    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraTopLeft();
+}
+
+public class CameraTopRightPositionExpression : VectorExpression
+{
+    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraTopRight();
+}
+
+public class CameraBottomLeftPositionExpression : VectorExpression
+{
+    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraBottomLeft();
+}
+
+public class CameraBottomRightPositionExpression : VectorExpression
+{
+    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraBottomRight();
+}
+
 public class AddVectorExpression(VectorExpression left, VectorExpression right) : VectorExpression
 {
     public override Vector2 Evaluate(BossBehaviourContext context) 

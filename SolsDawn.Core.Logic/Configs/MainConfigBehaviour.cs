@@ -5,12 +5,25 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static readonly BossBehaviourBuilder BossBehaviourBuilder = new BossBehaviourBuilder()
+    public static BossBehaviourBuilder BossBehaviourBuilder => B3;
+    
+    private static readonly BossBehaviourBuilder B1 = new BossBehaviourBuilder()
+        .Teleport(CameraBottomLeft)
+        .Teleport(CameraBottomRight)
         .Wait(1)
-        .Teleport(Units(2, 2))
+        .Teleport(Player + Units(0, -1));
+    
+    private static readonly BossBehaviourBuilder B2 = new BossBehaviourBuilder()
+        .Teleport(Units(3, 3))
         .Wait(1)
-        .Teleport(Units(-2, -2))
-        .Blade(Player)
-        .Wait(1)
-        .Teleport(Units(-2, 2));
+        .Teleport(Units(3, -3))
+        .Teleport(Units(-3, -3))
+        .Wait(2.5f)
+        .Blade(Units(-3, 3))
+        .Wait(1);
+
+    private static readonly BossBehaviourBuilder B3 = new BossBehaviourBuilder()
+        .Wait(2)
+        .Teleport(Units(3, 3))
+        .Blade(Units(0, 0));
 }
