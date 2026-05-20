@@ -2,6 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Effects;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Core.Logic.Gameplay.Animations;
@@ -40,6 +41,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         var playerGo = new GameObject();
         new Collider(playerGo, 1, Collision.LayerName.Player);
+        new Hp(playerGo, 10);
         _player = new Player(playerGo, _spriteBatch, _effectsPool, _screenLayout, _input);
         var bossGo = new GameObject();
         new Collider(bossGo, 2, Collision.LayerName.Enemy);
@@ -47,7 +49,9 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator(bossGo, new BossAnimations(_spriteBatch, _screenLayout));
         var boss = new Boss(bossGo, _spriteBatch, _effectsPool, _screenLayout);
 
-        _bossAI = new(boss);
+        var context = new BossBehaviourContext(boss, _player, _screenLayout);
+        _bossAI = new(MainConfig.BossBehaviourBuilder, context);
+        DoStuff();
         return;
 
         void InitSystems()
@@ -55,7 +59,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             _input = new Input();
             _effectsPool = new EffectsPool();
         }
-
+        
         void InitScreen()
         {
             IsMouseVisible = false;
@@ -66,6 +70,12 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             _graphicsDeviceManager.IsFullScreen = true;
             _graphicsDeviceManager.ApplyChanges();
             Window.AllowUserResizing = false;
+        }
+
+        void DoStuff()
+        {
+            _player.damaged += _ => Console.WriteLine("player damaged");
+            boss.damaged += _ => Console.WriteLine("boss damaged");
         }
     }
 

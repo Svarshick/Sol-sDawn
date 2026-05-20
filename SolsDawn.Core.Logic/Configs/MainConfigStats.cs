@@ -11,10 +11,11 @@ public class DebugStats
     [Units] public float ParryColliderWidth;
 }
 
-public static class MainConfig
+//length in units
+//time in seconds
+public static partial class MainConfig
 {
-    //length in units
-    //time in seconds
+    
     public static readonly PlayerStats PlayerStats = new()
     {
         Color = Color.Blue,

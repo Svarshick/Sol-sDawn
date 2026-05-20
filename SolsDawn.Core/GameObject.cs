@@ -36,6 +36,53 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable
 
         return null;
     }
+
+    public bool TryGetComponents<T1, T2>(out T1? component1, out T2? component2) 
+        where T1 : Component<T1>
+        where T2 : Component<T2>
+    {
+        component1 = null;
+        component2 = null;
+        foreach (var component in _components)
+        {
+            if (component is T1 match1)
+                component1 = match1;
+            if (component is T2 match2)
+                component2 = match2;
+
+            if (component1 is not null && 
+                component2 is not null)
+                return true;
+        }
+
+        return false;
+    }
+    
+    public bool TryGetComponents<T1, T2, T3>(out T1? component1, out T2? component2, out T3? component3) 
+        where T1 : Component<T1>
+        where T2 : Component<T2>
+        where T3 : Component<T3>
+    {
+        component1 = null;
+        component2 = null;
+        component3 = null;
+        foreach (var component in _components)
+        {
+            if (component is T1 match1)
+                component1 = match1;
+            if (component is T2 match2)
+                component2 = match2;
+            if (component is T3 match3)
+                component3 = match3;
+
+            if (component1 is not null && 
+                component2 is not null &&
+                component3 is not null)
+                return true;
+        }
+
+        return false;
+    }
     
     internal void AddComponent<T>(T component) where T : Component<T>
     {

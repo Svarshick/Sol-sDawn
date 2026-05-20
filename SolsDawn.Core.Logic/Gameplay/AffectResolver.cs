@@ -55,7 +55,6 @@ public static class AffectResolver
                 var boss = target.GetComponent<Boss>();
                 if (parried || boss is null)
                     continue;
-                
                 boss.Parry();
                 parried = true;
             }
@@ -68,10 +67,19 @@ public static class AffectResolver
                 if (affect.Type != AffectType.Damage)
                     continue;
                 var args = affect.Args as DamageArgs;
-                //...
+                var hp = target.GetComponent<Hp>();
+                if (hp is null)
+                    continue;
+                
+                var player = target.GetComponent<Player>();
+                if (player is not null)
+                    player.Damage(args.Value);
+                var boss = target.GetComponent<Boss>();
+                if (boss is not null)
+                    boss.Damage(args.Value);
             }
         }
-        
+
         (_queue, _nextQueue) = (_nextQueue, _queue);
         _nextQueue.Clear();
         _resolving = false;

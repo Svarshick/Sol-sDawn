@@ -121,6 +121,9 @@ public sealed class Boss : Component<Boss>, IUpdatable
                     _machine.Fire(Trigger.ExecuteBladeAttack);
                 break;
         }
+        
+        var bounds = new BoundingCircle2D(GameObject.Position, Stats.Radius);
+        _collider.Shape = new CollisionShape2D(bounds);
     }
 
     public void LateUpdate(GameTime gameTime)
@@ -257,18 +260,22 @@ public sealed class Boss : Component<Boss>, IUpdatable
             var shape = new CollisionShape2D(polygon);
             if (actor.Shape.Intersects(shape) && actor is Collider collider)
             {
-                var hp = collider.GameObject.GetComponent<Hp>();
-                if (hp is null)
-                    break;
-                hp.Damage(1);
+                var affect = new Affect(
+                    GameObject,
+                    collider.GameObject,
+                    AffectType.Damage,
+                    new DamageArgs(1));
+                AffectResolver.Affect(affect);
             }
         }
         
         _machine.Fire(Trigger.ActionFinished);
     }
-    
-    private void Damaged(int value)
+
+    //TODO TEMPORARY
+    public event Action<int> damaged;
+    public void Damage(int value)
     {
-        Console.WriteLine($"outch: {value}");
+        damaged?.Invoke(value);
     }
 }

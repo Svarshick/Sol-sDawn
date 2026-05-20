@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
@@ -300,5 +301,12 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
                 AffectResolver.Affect(affect);
             }
         }
+    }
+    
+    //TODO TEMPORARY
+    public event Action<int> damaged;
+    public void Damage(int value)
+    {
+        damaged?.Invoke(value);
     }
 }
