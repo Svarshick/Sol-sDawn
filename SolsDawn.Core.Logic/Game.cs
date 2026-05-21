@@ -45,6 +45,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Hp(playerGo, 10);
         new Animator(playerGo, new PlayerAnimations(_spriteBatch, _screenLayout), PlayerAnimations.Idle);
         _player = new Player(playerGo, _spriteBatch, _effectsPool, _screenLayout, _input);
+        new HUD(playerGo, _player, _spriteBatch, _screenLayout);
         
         var bossGo = new GameObject();
         new Collider(bossGo, 2, Collision.LayerName.Enemy);

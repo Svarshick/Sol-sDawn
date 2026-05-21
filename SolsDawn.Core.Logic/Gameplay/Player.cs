@@ -1,14 +1,12 @@
-using System;
-using System.Net.Sockets;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
-using MonoGame.Extended.Input;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Effects;
 using SolsDawn.Core.Logic.Gameplay.Animations;
+using Stateless;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -57,18 +55,23 @@ public class PlayerStats
     public Color TeleportTraceEndColor;
 }
 
-public sealed class Player : Component<Player>, IUpdatable, IDrawable
+public sealed class Player : Component<Player>, IUpdatable 
 {
     public readonly PlayerStats Stats;
     public readonly DebugStats DebugStats;
     
+    public enum State { Idle, Moving, TeleportAiming, Attacking }
+    private enum Trigger { Move, Stop, StartTeleport, ExecuteTeleport, Attack }
+    private readonly StateMachine<State, Trigger> _machine;
+    public State CurrentState => _machine.State;
+    
     public Vector2 MoveDirection { get; private set; } = Vector2.Zero;
-    private bool _moveDirectionUpdated;
-    private bool _moveLock;
-    private bool _teleportLock;
     private double _lastTeleportUsage;
     private double _lastBladeUsage;
     private double _lastFireUsage;
+    public bool TeleportCharged => Time.TotalGameTime.TotalSeconds - _lastTeleportUsage > Stats.TeleportRechargeDuration;
+    public bool BladeCharged => Time.TotalGameTime.TotalSeconds - _lastBladeUsage > Stats.BladeRechargeDuration;
+    public bool FireCharged => Time.TotalGameTime.TotalSeconds - _lastFireUsage > Stats.FireRechargeDuration;
 
     private Line _teleportLine;
     
@@ -78,24 +81,44 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     private readonly ScreenLayout _layout;
     private readonly Input _input;
     private readonly Animator _animator;
-    
+
     public Player(
         GameObject go,
-        SpriteBatch spriteBatch, 
+        SpriteBatch spriteBatch,
         EffectsPool effectsPool,
-        ScreenLayout layout, 
+        ScreenLayout layout,
         Input input) : base(go)
     {
         _spriteBatch = spriteBatch;
         _effectsPool = effectsPool;
         _layout = layout;
         _input = input;
-        
+
         Stats = ConfigReader.Read(MainConfig.PlayerStats, _layout);
         DebugStats = ConfigReader.Read(MainConfig.DebugStats, _layout);
-        
+
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
         _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
+
+        _machine = new StateMachine<State, Trigger>(State.Idle);
+
+        _machine.Configure(State.Idle)
+            .Permit(Trigger.Move, State.Moving)
+            .Permit(Trigger.StartTeleport, State.TeleportAiming)
+            .Permit(Trigger.Attack, State.Attacking);
+
+        _machine.Configure(State.Moving)
+            .Permit(Trigger.Stop, State.Idle)
+            .Permit(Trigger.StartTeleport, State.TeleportAiming)
+            .Permit(Trigger.Attack, State.Attacking);
+
+        _machine.Configure(State.TeleportAiming)
+            .Permit(Trigger.ExecuteTeleport, State.Idle);
+
+        _machine.Configure(State.Attacking)
+            .Permit(Trigger.Stop, State.Idle)
+            .Permit(Trigger.Move, State.Moving)
+            .Permit(Trigger.StartTeleport, State.TeleportAiming);
 
         _input.Move += Move;
         _input.TeleportStarted += TeleportStarted;
@@ -117,11 +140,23 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
     public void Update(GameTime gameTime)
     {
-        if (_moveDirectionUpdated)
+        switch (_machine.State)
         {
-            var velocity = Stats.Velocity;
-            var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            GameObject.Transform.Position += shift * MoveDirection;
+            case (State.Idle):
+                if (MoveDirection != Vector2.Zero)
+                    _machine.Fire(Trigger.Move);
+                break;
+            case (State.Moving):
+                if (MoveDirection == Vector2.Zero)
+                {
+                    _machine.Fire(Trigger.Stop);
+                    break;
+                }
+
+                var velocity = Stats.Velocity;
+                var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                GameObject.Transform.Position += shift * MoveDirection;
+                break;
         }
         
         var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Transform.Position, new Vector2(Stats.Width/2, Stats.Height/2));
@@ -130,78 +165,15 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
     public void LateUpdate(GameTime gameTime)
     {
-        _moveDirectionUpdated = false;
-    }
-    
-    public void Draw(GameTime gameTime)
-    {
-        var mouseState = MouseExtended.GetState();
-        var mousePosition = _layout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        var bladeDirection = mousePosition - GameObject.Transform.Position;
-        bladeDirection.Normalize();
-        _spriteBatch.DrawCircle(
-            GameObject.Transform.Position + bladeDirection * Stats.BladeAimDistance,
-            Stats.BladeAimRadius,
-            20,
-            Stats.BladeAimColor,
-            Stats.BladeAimRadius);
-
-        var indicatorRadius = _layout.ToPixels(0.5f);
-        var indicatorPadding = _layout.ToPixels(0.3f);
-        var indicatorY = _layout.CameraTopLeft().Y + indicatorRadius + indicatorPadding;
-        var indicatorX = _layout.CameraTopLeft().X + indicatorRadius + indicatorPadding;
-        var teleportAllowed = Time.TotalGameTime.TotalSeconds - _lastTeleportUsage > Stats.TeleportRechargeDuration;
-        var bladeAllowed = Time.TotalGameTime.TotalSeconds - _lastBladeUsage > Stats.BladeRechargeDuration;
-        var fireAllowed = Time.TotalGameTime.TotalSeconds - _lastFireUsage > Stats.FireRechargeDuration;
-        
-        if (teleportAllowed)
-        {
-            _spriteBatch.DrawCircle(
-                indicatorX,
-                indicatorY,
-                indicatorRadius,
-                20,
-                Stats.TeleportTraceStartColor,
-                indicatorRadius,
-                0.9f
-            );
-        }
-
-        indicatorX += (indicatorRadius * 2 + indicatorPadding);
-        if (bladeAllowed)
-        {
-            _spriteBatch.DrawCircle(
-                indicatorX,
-                indicatorY,
-                indicatorRadius,
-                20,
-                Stats.BladeTraceStartColor,
-                indicatorRadius,
-                0.9f
-            );
-        }
-        
-        indicatorX += (indicatorRadius * 2 + indicatorPadding);
-        if (fireAllowed)
-        {
-            _spriteBatch.DrawCircle(
-                indicatorX,
-                indicatorY,
-                indicatorRadius,
-                20,
-                Stats.FireTraceStartColor,
-                indicatorRadius,
-                0.9f
-            );
-        }
     }
     
     private void TeleportStarted(Vector2 screenPosition)
     {
-        _teleportLock = Time.TotalGameTime.TotalSeconds - _lastTeleportUsage < Stats.TeleportRechargeDuration;
-        if (_teleportLock)
+        bool teleportLock = Time.TotalGameTime.TotalSeconds - _lastTeleportUsage < Stats.TeleportRechargeDuration;
+        if (teleportLock)
             return;
-        _moveLock = true;
+        
+        _machine.Fire(Trigger.StartTeleport);
         var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
         var endPosition = TeleportPosition(mousePosition, 0);
         _teleportLine = new(_spriteBatch, GameObject.Transform.Position, endPosition, Stats.TeleportStartColor, Stats.TeleportWidth);
@@ -210,7 +182,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
     private void TeleportUpdated(Vector2 screenPosition, double elapsedTime)
     {
-        if (_teleportLock)
+        if (_machine.State != State.TeleportAiming)
             return;
         _teleportLine.Start = GameObject.Transform.Position;
         var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
@@ -221,8 +193,9 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
 
     private void TeleportReleased(Vector2 screenPosition, double elapsedTime)
     {
-        if (_teleportLock)
+        if (_machine.State != State.TeleportAiming)
             return;
+        
         _teleportLine.IsFinished = true;
         _teleportLine = null;
         
@@ -241,8 +214,8 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
             ));
         
         GameObject.Transform.Position = endPosition;
-        _moveLock = false;
         _lastTeleportUsage = Time.TotalGameTime.TotalSeconds;
+        _machine.Fire(Trigger.ExecuteTeleport);
     }
     
     private float TeleportLerp(double elapsedTime)
@@ -260,10 +233,7 @@ public sealed class Player : Component<Player>, IUpdatable, IDrawable
     
     private void Move(Vector2 moveDirection)
     {
-        if (_moveLock)
-            return;
         MoveDirection = moveDirection;
-        _moveDirectionUpdated = true;
     }
 
     private void Blade(Vector2 screenPosition)
