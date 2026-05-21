@@ -56,6 +56,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     private double _actionDuration;
     private Vector2 _actionLookPosition;
     private GameObject _parryGO;
+    private IEffect _parryEffect;
     
     private readonly SpriteBatch _spriteBatch;
     private readonly EffectsPool _effectsPool;
@@ -300,5 +301,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         _parryGO.Dispose();
         _parryGO = null;
+        _parryEffect.Cancel();
+        _parryEffect = null;
     }
 }
