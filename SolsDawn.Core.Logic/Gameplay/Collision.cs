@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MonoGame.Extended;
 using MonoGame.Extended.Collisions;
 using MonoGame.Extended.Collisions.Layers;
@@ -27,6 +28,17 @@ public static class Collision
         World.AddLayer(LayerName.Enemy, EnemyLayer);
         World.AddLayer(LayerName.Parry, ParryLayer);
     }
+
+    public static void Overlap(CollisionShape2D shape, string layerName, IList<GameObject> gameObject)
+    {
+        foreach (var actor in World.QueryCandidates(shape.BoundingBox, layerName))
+        {
+            if (shape.TryGetCollision(actor.Shape, out _)  && actor is Collider collider)
+            {
+                gameObject.Add(collider.GameObject);
+            }
+        }
+    }
 }
 
 public sealed class Collider : Component<Collider>, ICollisionActor
@@ -45,8 +57,4 @@ public sealed class Collider : Component<Collider>, ICollisionActor
     {
         Collision.World.Remove(this);
     }
-}
-
-public static class CollisionExtensions
-{
 }

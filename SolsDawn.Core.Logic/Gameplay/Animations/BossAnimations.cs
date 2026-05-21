@@ -41,7 +41,7 @@ public class BossAnimations : IAnimationPlayer
             case Telegraph:
                 _overlayAnimation = null;
                 _baseAnimation = new RectangleBlinkAnimation(
-                    false,
+                    true,
                     _spriteBatch,
                     Stats.BladeTelegraphDuration,
                     Transform,

@@ -7,6 +7,7 @@ using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Effects;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Core.Logic.Gameplay.Animations;
+using SolsDawn.Core.Logic.Gameplay.Interaction;
 
 namespace SolsDawn.Core.Logic;
 
@@ -87,7 +88,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _input.Update(gameTime);
         _bossAI.Update(gameTime);
         GameObjectPool.Update(gameTime);
-        AffectResolver.Resolve();
+        IntentionsPool.Resolve();
+        AffectsPool.Resolve();
         
         base.Update(gameTime);
         LateUpdate(gameTime);
