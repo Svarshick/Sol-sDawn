@@ -56,7 +56,7 @@ public class BossAnimations : IAnimationPlayer
                     Transform,
                     Stats.Width,
                     Stats.Height,
-                    Stats.ParryColor);
+                    Stats.BladeParriedColor);
                 break;
             case Hit:
                 _overlayAnimation = new RectangleBlinkAnimation(

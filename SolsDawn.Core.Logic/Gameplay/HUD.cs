@@ -47,7 +47,7 @@ public sealed class HUD : Component<HUD>, IDrawable
                 indicatorY,
                 indicatorRadius,
                 20,
-                _player.Stats.TeleportTraceStartColor,
+                _player.Stats.TeleportEndColor,
                 indicatorRadius,
                 0.9f
             );

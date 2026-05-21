@@ -16,7 +16,6 @@ public class DebugStats
 //time in seconds
 public static partial class MainConfig
 {
-    
     public static readonly PlayerStats PlayerStats = new()
     {
         Color = Color.Blue,
@@ -37,12 +36,16 @@ public static partial class MainConfig
         BladeAttackEdgeWidth = 0.5f,
         BladeDashDistance = 2,
         BladeDashWidth = 1f,
-        BladeTraceDuration = 1f,
-        BladeTraceStartColor = Color.White,
+        BladeTraceDuration = 0.4f,
+        BladeTraceStartColor = Color.Aquamarine,
         BladeTraceEndColor = Color.Transparent,
         BladeAimDistance = 3f,
         BladeAimRadius = 0.2f,
         BladeAimColor = new Color(0, 255, 255, 122),
+        
+        BladeParryTraceDuration = 0.7f,
+        BladeParryTraceStartColor = Color.White,
+        BladeParryTraceEndColor = Color.Transparent,
         
         FireDistance = 10f,
         FireWidth = 0.3f,
@@ -80,12 +83,15 @@ public static partial class MainConfig
         BladeAttackEdgeWidth = 0.7f,
         BladeDashDistance = 2.5f,
         BladeDashWidth = 1.2f,
-        BladeTraceDuration = 1.2f,
-        BladeTraceStartColor = Color.White,
+        BladeTraceDuration = 0.4f,
+        BladeTraceStartColor = Color.DeepPink,
         BladeTraceEndColor = Color.Transparent,
 
-        ParryDuration = 1f,
-        ParryColor = Color.White,
+        BladeParriedDuration = 1.5f,
+        BladeParriedColor = Color.White,
+        BladeParryTraceDuration = 0.7f,
+        BladeParryTraceStartColor = Color.White,
+        BladeParryTraceEndColor = Color.Transparent,
 
         TeleportTraceWidth = 1f,
         TeleportTraceStartColor = Color.Red,

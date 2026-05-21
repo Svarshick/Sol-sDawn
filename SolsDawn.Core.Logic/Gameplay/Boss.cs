@@ -35,8 +35,11 @@ public class BossStats
     public Color BladeTraceEndColor;
     public Color BladeTraceStartColor;
 
-    public float ParryDuration;
-    public Color ParryColor;
+    public float BladeParriedDuration;
+    public Color BladeParriedColor;
+    public float BladeParryTraceDuration;
+    public Color BladeParryTraceStartColor;
+    public Color BladeParryTraceEndColor;
     
     [Units] public float TeleportTraceWidth;
     public Color TeleportTraceStartColor;
@@ -56,7 +59,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     private double _actionDuration;
     private Vector2 _actionLookPosition;
     private GameObject _parryGO;
-    private IEffect _parryEffect;
+    private IEffect _parryDebug;
     
     private readonly SpriteBatch _spriteBatch;
     private readonly EffectsPool _effectsPool;
@@ -136,6 +139,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     
     public void BeDamaged(int value)
     {
+        Console.WriteLine($"[Boss] Damaged : {value}");
         _animator.TryPlay(BossAnimations.Hit);
     }
     
@@ -180,18 +184,13 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         var bladeDirection = lookPosition - GameObject.Transform.Position;
         bladeDirection.Normalize();
-        var attackPosition = GameObject.Transform.Position + bladeDirection * (Stats.BladeDashDistance + Stats.BladeAttackDistance);
-        var blade = new Vector2(0, -Stats.BladeAttackEdgeLength);
-        Vector2[] bladeVertices =
-        [
-            GameObject.Transform.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
-            attackPosition + Vector2.Rotate(blade,
-                MathHelper.Pi - Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
-            attackPosition,
-            attackPosition + Vector2.Rotate(blade,
-                MathHelper.Pi + Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Transform.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2
-        ];
+        var bladeVertices = Helper.ArchVertices(
+            GameObject.Transform.Position,
+            bladeDirection,
+            Stats.BladeDashDistance + Stats.BladeAttackDistance,
+            Stats.Width,
+            Stats.BladeAttackEdgeAngle,
+            Stats.BladeAttackEdgeLength);
         
         var polygon = BoundingPolygon2D.CreateFromVertices(bladeVertices);
         var shape = new CollisionShape2D(polygon);
@@ -204,41 +203,53 @@ public sealed class Boss : Component<Boss>, IUpdatable
     
     public void BeParried()
     {
+        var direction = _actionLookPosition - GameObject.Transform.Position;
+        direction.Normalize();
+         
+        Helper.DrawDashAttack(
+            _effectsPool,
+            _spriteBatch,
+            GameObject.Transform.Position,
+            direction,
+            Stats.BladeDashDistance,
+            Stats.BladeDashWidth,
+            Stats.BladeAttackDistance,
+            Stats.BladeAttackEdgeAngle,
+            Stats.BladeAttackEdgeLength,
+            Stats.BladeAttackEdgeWidth,
+            Stats.BladeParryTraceDuration,
+            Stats.BladeParryTraceStartColor,
+            Stats.BladeParryTraceEndColor);
+       
+        GameObject.Transform.Position += direction * Stats.BladeDashDistance;
+        
         _actionStartTime = Time.TotalGameTime.TotalSeconds;
-        _actionDuration = Stats.ParryDuration;
+        _actionDuration = Stats.BladeParriedDuration;
         _machine.Fire(Trigger.Parry);
     }
 
     public void DoBlade(Vector2 lookPosition, IReadOnlyList<GameObject> targets)
     {
         _machine.Fire(Trigger.ExecuteBladeAttack);
-        var bladeDirection = lookPosition - GameObject.Transform.Position;
-        bladeDirection.Normalize();
-
-        var nextPosition = GameObject.Transform.Position + bladeDirection * Stats.BladeDashDistance;
-        _effectsPool.Add(new LineTrace(
+        var direction = lookPosition - GameObject.Transform.Position;
+        direction.Normalize();
+        
+        Helper.DrawDashAttack(
+            _effectsPool,
             _spriteBatch,
+            GameObject.Transform.Position,
+            direction,
+            Stats.BladeDashDistance,
+            Stats.BladeDashWidth,
+            Stats.BladeAttackDistance,
+            Stats.BladeAttackEdgeAngle,
+            Stats.BladeAttackEdgeLength,
+            Stats.BladeAttackEdgeWidth,
             Stats.BladeTraceDuration,
-           GameObject.Transform.Position,
-            nextPosition,
             Stats.BladeTraceStartColor,
-            Stats.BladeTraceEndColor,
-            Stats.BladeDashWidth
-            ));
+            Stats.BladeTraceEndColor);
         
-        var attackPosition = nextPosition + bladeDirection * Stats.BladeAttackDistance;
-        var blade = new Vector2(0, -Stats.BladeAttackEdgeLength);
-        Vector2[] bladeVertices =
-        [
-            GameObject.Transform.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
-            attackPosition + Vector2.Rotate(blade, MathHelper.Pi - Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
-            attackPosition,
-            attackPosition + Vector2.Rotate(blade, MathHelper.Pi + Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Transform.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2
-        ];
-        GameObject.Transform.Position = nextPosition;
-        
-        #if DEBUG
+        /*
         _effectsPool.Add(new PolygonTrace(
             _spriteBatch, 
             Stats.BladeTraceDuration, 
@@ -247,11 +258,10 @@ public sealed class Boss : Component<Boss>, IUpdatable
             DebugStats.HitColliderColor, 
             DebugStats.HitColliderColor, 
             DebugStats.HitColliderWidth));
-        #else
-        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[1], Stats.BladeTraceStartColor, Stats.BladeTraceEndColor, Stats.BladeAttackEdgeWidth, 1));
-        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.BladeTraceDuration, bladeVertices[2], bladeVertices[3], Stats.BladeTraceStartColor, Stats.BladeTraceEndColor, Stats.BladeAttackEdgeWidth, 1));
-        #endif
+            */
 
+        GameObject.Transform.Position += direction * Stats.BladeDashDistance;
+        
         if (targets.Count > 0)
         {
             AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
@@ -266,30 +276,13 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         var bladeDirection = lookPosition - GameObject.Transform.Position;
         bladeDirection.Normalize();
-        var attackPosition = GameObject.Transform.Position +
-                             bladeDirection * (Stats.BladeDashDistance + Stats.BladeAttackDistance);
-        var blade = new Vector2(0, -Stats.BladeAttackEdgeLength);
-        Vector2[] bladeVertices =
-        [
-            GameObject.Transform.Position + bladeDirection.PerpendicularCounterClockwise() * Stats.Width / 2,
-            attackPosition + Vector2.Rotate(blade,
-                MathHelper.Pi - Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
-            attackPosition,
-            attackPosition + Vector2.Rotate(blade,
-                MathHelper.Pi + Stats.BladeAttackEdgeAngle / 2 + bladeDirection.ToAngle()),
-            GameObject.Transform.Position + bladeDirection.PerpendicularClockwise() * Stats.Width / 2
-        ];
-#if DEBUG
-        _parryEffect = new PolygonTrace(
-            _spriteBatch, 
-            Stats.BladeTraceDuration, 
-            Vector2.Zero, 
-            bladeVertices, 
-            DebugStats.ParryColliderColor, 
-            DebugStats.ParryColliderColor, 
-            DebugStats.HitColliderWidth);
-        _effectsPool.Add(_parryEffect);
-#endif
+        var bladeVertices = Helper.ArchVertices(
+            GameObject.Transform.Position,
+            bladeDirection,
+            Stats.BladeDashDistance + Stats.BladeAttackDistance,
+            Stats.Width,
+            Stats.BladeAttackEdgeAngle,
+            Stats.BladeAttackEdgeLength);
 
         _parryGO = new GameObject();
         var parryPolygon = BoundingPolygon2D.CreateFromVertices(bladeVertices);
@@ -301,7 +294,9 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         _parryGO.Dispose();
         _parryGO = null;
-        _parryEffect.Cancel();
-        _parryEffect = null;
+#if DEBUG
+        _parryDebug.Cancel();
+        _parryDebug = null;
+#endif
     }
 }

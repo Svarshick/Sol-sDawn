@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 
 namespace SolsDawn.Core.Logic.Gameplay.Interaction;
@@ -31,6 +32,8 @@ public class IntentionsPool
         _resolving = false;
     }
 
+    private static readonly HashSet<GameObject> Parried = new();
+    
     private static void ResolveLogic()
     {
         foreach (var intention in _queue)
@@ -46,9 +49,8 @@ public class IntentionsPool
                 var boss = parry.Target.GetComponent<Boss>();
                 if (boss is null)
                     continue;
-                if (boss.CurrentState == Boss.State.Parried)
-                    continue;
-                boss.BeParried();
+                Parried.Add(parry.Target);
+                Parried.Add(bladeAttack.Source);
             }
         }
 
@@ -58,7 +60,7 @@ public class IntentionsPool
                 continue;
             
             var boss = bladeAttack.Source.GetComponent<Boss>();
-            if (boss is not null && boss.CurrentState != Boss.State.Parried)
+            if (boss is not null && !Parried.Contains(bladeAttack.Source))
             {
                 boss.DoBlade(bladeAttack.LookPosition, bladeAttack.Targets);
             }
@@ -66,15 +68,7 @@ public class IntentionsPool
             var player = bladeAttack.Source.GetComponent<Player>();
             if (player is not null)
             {
-                var doParry = false;
-                foreach (var go in bladeAttack.Targets)
-                {
-                    boss = go.GetComponent<Boss>();
-                    if (boss is not null && boss.CurrentState == Boss.State.Parried)
-                        doParry = true;
-                }
-
-                if (doParry)
+                if (Parried.Contains(bladeAttack.Source))
                 {
                     player.DoParry(bladeAttack.LookPosition);
                 }
@@ -84,5 +78,14 @@ public class IntentionsPool
                 }
             }
         }
+
+        foreach (var parried in Parried)
+        {
+            var boss = parried.GetComponent<Boss>();
+            if (boss is not null)
+                boss.BeParried();
+        }
+        
+        Parried.Clear();
     }
 }
