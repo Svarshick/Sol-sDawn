@@ -5,7 +5,6 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Animations;
 
 public class RectangleIdleAnimation(
-    SpriteBatch spriteBatch,
     Transform transform,
     float width,
     float height,
@@ -17,7 +16,7 @@ public class RectangleIdleAnimation(
 
     public void Draw(GameTime time)
     {
-        spriteBatch.FillRectangle(
+        Game.SpriteBatch.FillRectangle(
             transform.Position.X - width / 2,
             transform.Position.Y - height / 2,
             width,

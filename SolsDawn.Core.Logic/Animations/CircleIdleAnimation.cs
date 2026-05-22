@@ -5,7 +5,6 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Animations;
 
 public class CircleIdleAnimation(
-    SpriteBatch spriteBatch,
     Transform transform,
     float radius,
     int sides,
@@ -18,7 +17,7 @@ public class CircleIdleAnimation(
 
     public void Draw(GameTime gameTime)
     {
-        spriteBatch.DrawCircle(
+        Game.SpriteBatch.DrawCircle(
             transform.Position,
             radius,
             sides,

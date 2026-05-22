@@ -5,7 +5,6 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Effects;
 
 public class LineTrace(
-    SpriteBatch spriteBatch,
     float duration,
     Vector2 start,
     Vector2 end,
@@ -27,7 +26,7 @@ public class LineTrace(
         
         var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
-        spriteBatch.DrawLine(
+        Game.SpriteBatch.DrawLine(
             start,
             end,
             Color.Lerp(startColor, endColor, t),

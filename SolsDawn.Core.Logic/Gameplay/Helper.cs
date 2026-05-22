@@ -1,7 +1,5 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
-using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Effects;
 
 namespace SolsDawn.Core.Logic.Gameplay;
@@ -29,8 +27,6 @@ public static class Helper
     }
 
     public static void DrawDashAttack(
-        EffectsPool effectsPool,
-        SpriteBatch spriteBatch,
         Vector2 from,
         Vector2 direction,
         float dashDistance,
@@ -52,8 +48,7 @@ public static class Helper
             attackEdgeLength);
 
         var nextPosition = from + direction * dashDistance;
-        effectsPool.Add(new LineTrace(
-            spriteBatch,
+        Game.EffectsPool.Add(new LineTrace(
             traceDuration,
             from,
             nextPosition,
@@ -61,7 +56,7 @@ public static class Helper
             traceEndColor,
             dashWidth));
        
-        effectsPool.Add(new LineTrace(spriteBatch, traceDuration, bladeVertices[2], bladeVertices[1], traceStartColor, traceEndColor, attackEdgeWidth, 1));
-        effectsPool.Add(new LineTrace(spriteBatch, traceDuration, bladeVertices[2], bladeVertices[3], traceStartColor, traceEndColor, attackEdgeWidth, 1));
+        Game.EffectsPool.Add(new LineTrace(traceDuration, bladeVertices[2], bladeVertices[1], traceStartColor, traceEndColor, attackEdgeWidth, 1));
+        Game.EffectsPool.Add(new LineTrace(traceDuration, bladeVertices[2], bladeVertices[3], traceStartColor, traceEndColor, attackEdgeWidth, 1));
     }
 }

@@ -1,8 +1,6 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
-using SolsDawn.Core.Logic.Configs.Utils;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
@@ -19,14 +17,7 @@ public class BossAnimations : IAnimationPlayer
     
     private IAnimation _baseAnimation;
     private IAnimation _overlayAnimation;
-    private readonly SpriteBatch _spriteBatch;
-    private readonly BossStats Stats;
-
-    public BossAnimations(SpriteBatch spriteBatch, ScreenLayout layout)
-    {
-        _spriteBatch = spriteBatch;
-        Stats = ConfigReader.Read(MainConfig.BossStats, layout);
-    }
+    private readonly BossStats _stats = MainConfig.BossStats;
 
     public void TryPlay(string animationName)
     {
@@ -34,62 +25,56 @@ public class BossAnimations : IAnimationPlayer
         {
             case Idle:
                 _baseAnimation = new RectangleIdleAnimation(
-                    _spriteBatch,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.Color);
                 break;
             case BladeTelegraph:
                 _overlayAnimation = null;
                 _baseAnimation = new RectangleBlinkAnimation(
                     true,
-                    _spriteBatch,
-                    Stats.BladeTelegraphDuration,
+                    _stats.BladeTelegraphDuration,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color,
-                    Stats.BladeTelegraphBlinkColor);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.Color,
+                    _stats.BladeTelegraphBlinkColor);
                 break;
             case BladeParried:
                 _baseAnimation = new RectangleIdleAnimation(
-                    _spriteBatch,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.BladeParriedColor);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.BladeParriedColor);
                 break;
             case FireTelegraph:
                 _overlayAnimation = null;
                 _baseAnimation = new RectangleBlinkAnimation(
                     true,
-                    _spriteBatch,
-                    Stats.FireTelegraphDuration,
+                    _stats.FireTelegraphDuration,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color,
-                    Stats.FireTelegraphBlinkColor);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.Color,
+                    _stats.FireTelegraphBlinkColor);
                 break;
             case FireParried:
                 _baseAnimation = new RectangleIdleAnimation(
-                    _spriteBatch,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.FireParriedColor);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.FireParriedColor);
                 break;
             case Hit:
                 _overlayAnimation = new RectangleBlinkAnimation(
                     true,
-                    _spriteBatch,
-                    Stats.HitDuration,
+                    _stats.HitDuration,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color,
-                    Stats.HitBlinkColor);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.Color,
+                    _stats.HitBlinkColor);
                 break;
         }
     }

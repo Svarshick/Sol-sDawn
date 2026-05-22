@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
@@ -69,11 +68,9 @@ public class PlayerStats
 public sealed class Player : Component<Player>, IUpdatable 
 {
     public readonly PlayerStats Stats;
-    public readonly DebugStats DebugStats;
     
-    public enum State { Idle, Moving, TeleportAiming }
-    private enum Trigger { Move, Stop, StartTeleport, ExecuteTeleport }
-    private readonly StateMachine<State, Trigger> _machine;
+    public enum State { Idling, Moving, TeleportAiming }
+    private readonly StateMachine<State, State> _machine;
     public State CurrentState => _machine.State;
     
     public Vector2 MoveDirection { get; private set; } = Vector2.Zero;
@@ -87,42 +84,30 @@ public sealed class Player : Component<Player>, IUpdatable
     private Line _teleportLine;
     
     private readonly Collider _collider;
-    private readonly SpriteBatch _spriteBatch;
-    private readonly EffectsPool _effectsPool;
-    private readonly ScreenLayout _layout;
     private readonly Input _input;
     private readonly Animator _animator;
 
-    public Player(
-        GameObject go,
-        SpriteBatch spriteBatch,
-        EffectsPool effectsPool,
-        ScreenLayout layout,
-        Input input) : base(go)
+    public Player(GameObject go, Input input) : base(go)
     {
-        _spriteBatch = spriteBatch;
-        _effectsPool = effectsPool;
-        _layout = layout;
         _input = input;
 
-        Stats = ConfigReader.Read(MainConfig.PlayerStats, _layout);
-        DebugStats = ConfigReader.Read(MainConfig.DebugStats, _layout);
-
+        Stats = MainConfig.PlayerStats;
+        
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
         _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
 
-        _machine = new StateMachine<State, Trigger>(State.Idle);
+        _machine = new StateMachine<State, State>(State.Idling);
 
-        _machine.Configure(State.Idle)
-            .Permit(Trigger.Move, State.Moving)
-            .Permit(Trigger.StartTeleport, State.TeleportAiming);
+        _machine.Configure(State.Idling)
+            .Permit(State.Moving)
+            .Permit(State.TeleportAiming);
 
         _machine.Configure(State.Moving)
-            .Permit(Trigger.Stop, State.Idle)
-            .Permit(Trigger.StartTeleport, State.TeleportAiming);
+            .Permit(State.Idling)
+            .Permit(State.TeleportAiming);
 
         _machine.Configure(State.TeleportAiming)
-            .Permit(Trigger.ExecuteTeleport, State.Idle);
+            .Permit(State.Idling);
 
         _input.Move += Move;
         _input.TeleportStarted += TeleportStarted;
@@ -146,14 +131,14 @@ public sealed class Player : Component<Player>, IUpdatable
     {
         switch (_machine.State)
         {
-            case (State.Idle):
+            case (State.Idling):
                 if (MoveDirection != Vector2.Zero)
-                    _machine.Fire(Trigger.Move);
+                    _machine.Fire(State.Moving);
                 break;
             case (State.Moving):
                 if (MoveDirection == Vector2.Zero)
                 {
-                    _machine.Fire(Trigger.Stop);
+                    _machine.Fire(State.Idling);
                     break;
                 }
 
@@ -182,11 +167,11 @@ public sealed class Player : Component<Player>, IUpdatable
         if (!TeleportCharged)
             return;
         
-        _machine.Fire(Trigger.StartTeleport);
-        var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
+        _machine.Fire(State.TeleportAiming);
+        var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var endPosition = TeleportPosition(mousePosition, 0);
-        _teleportLine = new(_spriteBatch, GameObject.Transform.Position, endPosition, Stats.TeleportStartColor, Stats.TeleportWidth);
-        _effectsPool.Add(_teleportLine);
+        _teleportLine = new(GameObject.Transform.Position, endPosition, Stats.TeleportStartColor, Stats.TeleportWidth);
+        Game.EffectsPool.Add(_teleportLine);
     }
 
     private void TeleportUpdated(Vector2 screenPosition, double elapsedTime)
@@ -194,7 +179,7 @@ public sealed class Player : Component<Player>, IUpdatable
         if (_machine.State != State.TeleportAiming)
             return;
         _teleportLine.Start = GameObject.Transform.Position;
-        var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var lerp = TeleportLerp(elapsedTime);
         _teleportLine.End = TeleportPosition(mousePosition, lerp);
         _teleportLine.Color = Color.Lerp(Stats.TeleportStartColor, Stats.TeleportEndColor, lerp);
@@ -208,12 +193,11 @@ public sealed class Player : Component<Player>, IUpdatable
         _teleportLine.IsFinished = true;
         _teleportLine = null;
         
-        var mousePosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var lerp = TeleportLerp(elapsedTime);
         var endPosition = TeleportPosition(mousePosition, lerp);
         
-        _effectsPool.Add(new LineTrace(
-            _spriteBatch,
+        Game.EffectsPool.Add(new LineTrace(
             2,
             GameObject.Transform.Position,
             endPosition,
@@ -224,7 +208,7 @@ public sealed class Player : Component<Player>, IUpdatable
         
         GameObject.Transform.Position = endPosition;
         _lastTeleportUsage = Time.TotalGameTime.TotalSeconds;
-        _machine.Fire(Trigger.ExecuteTeleport);
+        _machine.Fire(State.Idling);
     }
     
     private float TeleportLerp(double elapsedTime)
@@ -251,7 +235,7 @@ public sealed class Player : Component<Player>, IUpdatable
             return;
         _lastBladeUsage = Time.TotalGameTime.TotalSeconds;
         
-        var lookPosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var lookPosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var bladeDirection = lookPosition - GameObject.Transform.Position;
         bladeDirection.Normalize();
         var bladeVertices = Helper.ArchVertices(
@@ -276,8 +260,6 @@ public sealed class Player : Component<Player>, IUpdatable
         direction.Normalize();
              
         Helper.DrawDashAttack(
-            _effectsPool,
-            _spriteBatch,
             GameObject.Transform.Position,
             direction,
             Stats.BladeDashDistance,
@@ -304,8 +286,6 @@ public sealed class Player : Component<Player>, IUpdatable
         direction.Normalize();
 
         Helper.DrawDashAttack(
-            _effectsPool,
-            _spriteBatch,
             GameObject.Transform.Position,
             direction,
             Stats.BladeDashDistance,
@@ -326,7 +306,7 @@ public sealed class Player : Component<Player>, IUpdatable
         if (!FireCharged)
             return;
         
-        var lookPosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var lookPosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var direction = lookPosition - GameObject.Transform.Position;
         direction.Normalize();
         var fireEnd = GameObject.Transform.Position + direction * Stats.FireDistance;
@@ -348,8 +328,7 @@ public sealed class Player : Component<Player>, IUpdatable
         direction.Normalize();
         var fireEnd = GameObject.Transform.Position + direction * Stats.FireDistance;
 
-        _effectsPool.Add(new LineTrace(
-            _spriteBatch, 
+        Game.EffectsPool.Add(new LineTrace(
             Stats.FireTraceDuration, 
             GameObject.Transform.Position, 
             fireEnd, 
@@ -367,8 +346,7 @@ public sealed class Player : Component<Player>, IUpdatable
     
     public void ParryFire(Vector2 parryPosition)
     {
-        _effectsPool.Add(new LineTrace(
-            _spriteBatch,
+        Game.EffectsPool.Add(new LineTrace(
             Stats.FireParryTraceDuration,
             GameObject.Transform.Position,
             parryPosition,

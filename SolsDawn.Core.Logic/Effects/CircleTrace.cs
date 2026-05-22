@@ -5,7 +5,6 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Effects;
 
 public class CircleTrace(
-    SpriteBatch spriteBatch,
     float duration,
     Vector2 center,
     float radius,
@@ -28,7 +27,7 @@ public class CircleTrace(
         
         var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
-        spriteBatch.DrawCircle(
+        Game.SpriteBatch.DrawCircle(
             center,
             radius,
             sides,

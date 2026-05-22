@@ -13,20 +13,18 @@ namespace SolsDawn.Core.Logic;
 
 public sealed class Game : Microsoft.Xna.Framework.Game
 {
-    private ScreenLayout _screenLayout;
-
     public readonly static bool IsMobile = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
 
     public readonly static bool IsDesktop =
         OperatingSystem.IsMacOS() || OperatingSystem.IsLinux() || OperatingSystem.IsWindows();
 
+    public static EffectsPool EffectsPool { get; private set; }
+    public static ScreenLayout ScreenLayout { get; private set; }
+    public static SpriteBatch SpriteBatch { get; private set; }
+
     private GraphicsDeviceManager _graphicsDeviceManager;
-    private SpriteBatch _spriteBatch;
-
-    private Input _input;
-    private EffectsPool _effectsPool;
-
     private Player _player;
+    private Input _input;
     private BossAI _bossAI;
 
     public Game()
@@ -38,42 +36,40 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     {
         base.Initialize();
         InitScreen();
-        _spriteBatch = new SpriteBatch(GraphicsDevice);
+        SpriteBatch = new SpriteBatch(GraphicsDevice);
         InitSystems();
 
         var playerGo = new GameObject();
         new Collider(playerGo, 1, Collision.LayerName.Player);
         new Hp(playerGo, 10);
-        new Animator(playerGo, new PlayerAnimations(_spriteBatch, _screenLayout), PlayerAnimations.Idle);
-        _player = new Player(playerGo, _spriteBatch, _effectsPool, _screenLayout, _input);
-        new HUD(playerGo, _player, _spriteBatch, _screenLayout);
+        new Animator(playerGo, new PlayerAnimations(), PlayerAnimations.Idle);
+        _player = new Player(playerGo, _input);
+        new HUD(playerGo, _player);
         
         var bossGo = new GameObject();
         new Collider(bossGo, 2, Collision.LayerName.Enemy);
         new Hp(bossGo, 10);
-        new Animator(bossGo, new BossAnimations(_spriteBatch, _screenLayout), BossAnimations.Idle);
-        var boss = new Boss(bossGo, _spriteBatch, _effectsPool, _screenLayout);
+        new Animator(bossGo, new BossAnimations(), BossAnimations.Idle);
+        var boss = new Boss(bossGo);
 
         IntentionsPool.PlayerGO = playerGo;
         IntentionsPool.BossGO = bossGo;
-        IntentionsPool.SpriteBatch = _spriteBatch;
-        IntentionsPool.EffectsPool = _effectsPool;
-        var context = new BossBehaviourContext(boss, _player, _screenLayout);
+        var context = new BossBehaviourContext(boss, _player, ScreenLayout);
         _bossAI = new(MainConfig.BossBehaviourBuilder, context);
         return;
 
         void InitSystems()
         {
+            EffectsPool = new EffectsPool();
             _input = new Input();
-            _effectsPool = new EffectsPool();
         }
         
         void InitScreen()
         {
             IsMouseVisible = false;
-            _screenLayout = new ScreenLayout(Window, GraphicsDevice);
-            _graphicsDeviceManager.PreferredBackBufferWidth = _screenLayout.WidthResolution;
-            _graphicsDeviceManager.PreferredBackBufferHeight = _screenLayout.HeightResolution;
+            ScreenLayout = new ScreenLayout(Window, GraphicsDevice);
+            _graphicsDeviceManager.PreferredBackBufferWidth = ScreenLayout.WidthResolution;
+            _graphicsDeviceManager.PreferredBackBufferHeight = ScreenLayout.HeightResolution;
             _graphicsDeviceManager.HardwareModeSwitch = false;
             _graphicsDeviceManager.IsFullScreen = true;
             _graphicsDeviceManager.ApplyChanges();
@@ -86,8 +82,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         Time.Update(gameTime);
         MonoTask.Update(gameTime);
         
-        _effectsPool.Update(gameTime);
-        _screenLayout.FollowPosition(_player.GameObject.Transform.Position);
+        EffectsPool.Update(gameTime);
+        ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
         
         _input.Update(gameTime);
         _bossAI.Update(gameTime);
@@ -102,7 +98,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private void LateUpdate(GameTime gameTime)
     {
         _input.LateUpdate(gameTime);
-        _effectsPool.LateUpdate(gameTime);
+        EffectsPool.LateUpdate(gameTime);
 
         GameObjectPool.LateUpdate(gameTime);
         Collision.World.RebuildDynamicLayers();
@@ -112,17 +108,16 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     {
         GraphicsDevice.Clear(Color.Gray);
         
-
-        _spriteBatch.Begin(
+        SpriteBatch.Begin(
             sortMode: SpriteSortMode.FrontToBack,
             rasterizerState: RasterizerState.CullNone,
-            transformMatrix: _screenLayout.Camera.GetViewMatrix()
+            transformMatrix: ScreenLayout.Camera.GetViewMatrix()
         );
         
-        _effectsPool.Draw(gameTime);
+        EffectsPool.Draw(gameTime);
         GameObjectPool.Draw(gameTime);
         
-        _spriteBatch.End();
+        SpriteBatch.End();
 
         base.Draw(gameTime);
     }

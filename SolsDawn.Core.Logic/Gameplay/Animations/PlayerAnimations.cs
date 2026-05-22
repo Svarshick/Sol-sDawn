@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
@@ -15,14 +14,7 @@ public class PlayerAnimations : IAnimationPlayer
 
     private IAnimation _baseAnimation;
     private IAnimation? _overlayAnimation;
-    private readonly SpriteBatch _spriteBatch;
-    private readonly PlayerStats Stats;
-
-    public PlayerAnimations(SpriteBatch spriteBatch, ScreenLayout layout)
-    {
-        _spriteBatch = spriteBatch;
-        Stats = ConfigReader.Read(MainConfig.PlayerStats, layout);
-    }
+    private readonly PlayerStats _stats = MainConfig.PlayerStats;
 
     public void TryPlay(string animationName)
     {
@@ -30,22 +22,20 @@ public class PlayerAnimations : IAnimationPlayer
         {
             case Idle:
                 _baseAnimation = new RectangleIdleAnimation(
-                    _spriteBatch,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.Color);
                 break;
             case Hit:
                 _overlayAnimation = new RectangleBlinkAnimation(
                     true,
-                    _spriteBatch,
-                    Stats.HitInvulnerabilityDuration,
+                    _stats.HitInvulnerabilityDuration,
                     Transform,
-                    Stats.Width,
-                    Stats.Height,
-                    Stats.Color,
-                    Stats.HitBlinkColor);
+                    _stats.Width,
+                    _stats.Height,
+                    _stats.Color,
+                    _stats.HitBlinkColor);
                 break;
         }
     }

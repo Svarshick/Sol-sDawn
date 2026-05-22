@@ -5,7 +5,6 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Effects;
 
 public class PolygonTrace(
-    SpriteBatch spriteBatch,
     float duration,
     Vector2 center,
     Vector2[] vertices,
@@ -27,7 +26,7 @@ public class PolygonTrace(
         
         var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
-        spriteBatch.DrawPolygon(
+        Game.SpriteBatch.DrawPolygon(
             center,
             vertices,
             Color.Lerp(startColor, endColor, t),

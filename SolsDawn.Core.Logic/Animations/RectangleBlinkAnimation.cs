@@ -6,7 +6,6 @@ namespace SolsDawn.Core.Logic.Animations;
 
 public class RectangleBlinkAnimation(
     bool isOneShot,
-    SpriteBatch spriteBatch,
     float duration,
     Transform transform,
     float width,
@@ -46,7 +45,7 @@ public class RectangleBlinkAnimation(
             color = Color.Lerp(trueColor, blickColor, t);
         }
 
-        spriteBatch.FillRectangle(
+        Game.SpriteBatch.FillRectangle(
             transform.Position.X - width / 2,
             transform.Position.Y - height / 2,
             width,

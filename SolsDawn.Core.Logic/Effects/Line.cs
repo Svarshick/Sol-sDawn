@@ -12,18 +12,13 @@ public class Line : IPassiveEffect
     public float Thickness;
     public float LayerDepth;
 
-    private SpriteBatch _spriteBatch;
-
     public Line(
-        SpriteBatch spriteBatch,
         Vector2 start,
         Vector2 end,
         Color color,
         float thickness,
         float layerDepth = 0.0f)
     {
-        _spriteBatch = spriteBatch;
-
         Start = start;
         End = end;
         Color = color;
@@ -35,7 +30,7 @@ public class Line : IPassiveEffect
 
     public void Draw(GameTime gameTime)
     {
-        _spriteBatch.DrawLine(
+        Game.SpriteBatch.DrawLine(
             Start,
             End,
             Color,

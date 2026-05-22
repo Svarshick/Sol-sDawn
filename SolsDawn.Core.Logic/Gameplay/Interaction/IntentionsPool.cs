@@ -34,11 +34,8 @@ public class IntentionsPool
         _resolving = false;
     }
 
-
     public static GameObject PlayerGO;
     public static GameObject BossGO;
-    public static EffectsPool EffectsPool;
-    public static SpriteBatch SpriteBatch;
     private static void ResolveLogic()
     {
         var intentionGroups = _queue.GroupBy(intention => intention.Source).ToArray();
@@ -97,8 +94,7 @@ public class IntentionsPool
             
             player!.ParryFire(collapsePoint);
             boss!.ParryFire(collapsePoint);
-            EffectsPool.Add(new CircleTrace(
-                SpriteBatch,
+            Game.EffectsPool.Add(new CircleTrace(
                 Math.Max(player.Stats.FireParryTraceDuration, boss.Stats.FireTraceDuration),
                 collapsePoint,
                 150,

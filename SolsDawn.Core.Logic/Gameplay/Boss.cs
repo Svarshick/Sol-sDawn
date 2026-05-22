@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
@@ -64,7 +63,6 @@ public class BossStats
 public sealed class Boss : Component<Boss>, IUpdatable 
 {
     public readonly BossStats Stats;
-    public readonly DebugStats DebugStats;
     
     public State CurrentState => _machine.State;
     public enum State 
@@ -75,78 +73,58 @@ public sealed class Boss : Component<Boss>, IUpdatable
         BladeTelegraphing, BladeAttacking, BladeParried, 
         FireTelegraphing, FireAttacking, FireParried 
     }
-
-    private enum Trigger
-    {
-        ActionFinished, Wait, 
-        Teleport, 
-        TelegraphBladeAttack, ExecuteBladeAttack, ParryBlade,
-        TelegraphFireAttack, ExecuteFireAttack, ParryFire
-    }
-    private readonly StateMachine<State, Trigger> _machine;
+    private readonly StateMachine<State, State> _machine;
     private double _actionStartTime;
     private double _actionDuration;
     private Vector2 _actionLookPosition;
     private GameObject _parryGO;
     
-    private readonly SpriteBatch _spriteBatch;
-    private readonly EffectsPool _effectsPool;
-    private readonly ScreenLayout _layout;
     private readonly Collider _collider;
     private readonly Hp _hp;
     private readonly Animator _animator;
     
-    public Boss(
-        GameObject go,
-        SpriteBatch spriteBatch,
-        EffectsPool effectsPool,
-        ScreenLayout layout) : base(go)
+    public Boss(GameObject go) : base(go)
     {
-        _spriteBatch = spriteBatch;
-        _effectsPool = effectsPool;
-        _layout = layout;
-        
-        Stats = ConfigReader.Read(MainConfig.BossStats, _layout);
-        DebugStats = ConfigReader.Read(MainConfig.DebugStats, _layout);
+        Stats = MainConfig.BossStats; 
             
         _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();     
         _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
         _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
         
-        _machine = new StateMachine<State, Trigger>(State.Pending);
+        _machine = new StateMachine<State, State>(State.Pending);
         _machine.Configure(State.Pending)
-            .Permit(Trigger.Wait, State.Idling)
-            .Permit(Trigger.TelegraphBladeAttack, State.BladeTelegraphing)
-            .Permit(Trigger.TelegraphFireAttack, State.FireTelegraphing)
-            .Permit(Trigger.Teleport, State.Teleporting);
+            .Permit(State.Idling)
+            .Permit(State.BladeTelegraphing)
+            .Permit(State.FireTelegraphing)
+            .Permit(State.Teleporting);
         _machine.Configure(State.Idling)
             .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
-            .Permit(Trigger.ActionFinished, State.Pending);
+            .Permit(State.Pending);
         _machine.Configure(State.Teleporting)
             .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
-            .Permit(Trigger.ActionFinished, State.Pending);
+            .Permit(State.Pending);
         
         _machine.Configure(State.BladeTelegraphing)
             .OnEntry(_ => _animator.TryPlay(BossAnimations.BladeTelegraph))
             .OnExit(RemoveTelegraphBladeCollider)
-            .Permit(Trigger.ExecuteBladeAttack, State.BladeAttacking)
-            .Permit(Trigger.ParryBlade, State.BladeParried);
+            .Permit(State.BladeAttacking)
+            .Permit(State.BladeParried);
         _machine.Configure(State.BladeAttacking)
-            .Permit(Trigger.ActionFinished, State.Pending);
+            .Permit(State.Pending);
         _machine.Configure(State.BladeParried)
             .OnEntry(_ => _animator.TryPlay(BossAnimations.BladeParried))
-            .Permit(Trigger.ActionFinished, State.Pending);
+            .Permit(State.Pending);
         
         _machine.Configure(State.FireTelegraphing)
             .OnEntry(_ => _animator.TryPlay(BossAnimations.FireTelegraph))
             .OnExit(_ => GameObject.RemoveComponent<Parry>())
-            .Permit(Trigger.ExecuteFireAttack, State.FireAttacking)
-            .Permit(Trigger.ParryFire, State.FireParried);
+            .Permit(State.FireAttacking)
+            .Permit(State.FireParried);
         _machine.Configure(State.FireAttacking)
-            .Permit(Trigger.ActionFinished, State.Pending);
+            .Permit(State.Pending);
         _machine.Configure(State.FireParried)
             .OnEntry(_ => _animator.TryPlay(BossAnimations.FireParried))
-            .Permit(Trigger.ActionFinished, State.Pending);
+            .Permit(State.Pending);
     }
 
     public override void Dispose()
@@ -162,7 +140,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             case State.BladeParried:
             case State.FireParried:
                 if (timeExpired)
-                    _machine.Fire(Trigger.ActionFinished);
+                    _machine.Fire(State.Pending);
                 break;
             
             case State.BladeTelegraphing:
@@ -196,14 +174,13 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         _actionDuration = time;
         _actionStartTime = Time.TotalGameTime.TotalSeconds; //TODO it is bad, because long game time has less accuracy
-        _machine.Fire(Trigger.Wait);
+        _machine.Fire(State.Idling);
     }
     
     public void Teleport(Vector2 position)
     {
-        _machine.Fire(Trigger.Teleport);
-        _effectsPool.Add(new LineTrace(
-            _spriteBatch,
+        _machine.Fire(State.Teleporting);
+        Game.EffectsPool.Add(new LineTrace(
             2,
             GameObject.Transform.Position,
             position,
@@ -213,7 +190,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             ));
         
         GameObject.Transform.Position = position;
-        _machine.Fire(Trigger.ActionFinished);
+        _machine.Fire(State.Pending);
     }
 
     public void Blade(Vector2 lookPosition)
@@ -222,7 +199,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _actionStartTime = Time.TotalGameTime.TotalSeconds; //TODO it is bad, because long game time has less accuracy
         _actionDuration = Stats.BladeTelegraphDuration;
         CreateTelegraphBladeCollider(lookPosition);
-        _machine.Fire(Trigger.TelegraphBladeAttack);
+        _machine.Fire(State.BladeTelegraphing);
     }
 
     public void Fire(Vector2 lookPosition)
@@ -231,7 +208,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _actionStartTime = Time.TotalGameTime.TotalSeconds;
         _actionDuration = Stats.FireTelegraphDuration;
         new Parry(GameObject, GameObject, ParryType.Fire);
-        _machine.Fire(Trigger.TelegraphFireAttack);
+        _machine.Fire(State.FireTelegraphing);
     }
     
     // CREATES INTENTION
@@ -276,13 +253,11 @@ public sealed class Boss : Component<Boss>, IUpdatable
  
     public void DoBlade(Vector2 lookPosition, IReadOnlyList<GameObject> targets)
     {
-        _machine.Fire(Trigger.ExecuteBladeAttack);
+        _machine.Fire(State.BladeAttacking);
         var direction = lookPosition - GameObject.Transform.Position;
         direction.Normalize();
         
         Helper.DrawDashAttack(
-            _effectsPool,
-            _spriteBatch,
             GameObject.Transform.Position,
             direction,
             Stats.BladeDashDistance,
@@ -302,7 +277,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
         }
 
-        _machine.Fire(Trigger.ActionFinished);
+        _machine.Fire(State.Pending);
     }   
     
     public void ParryBlade()
@@ -311,8 +286,6 @@ public sealed class Boss : Component<Boss>, IUpdatable
         direction.Normalize();
          
         Helper.DrawDashAttack(
-            _effectsPool,
-            _spriteBatch,
             GameObject.Transform.Position,
             direction,
             Stats.BladeDashDistance,
@@ -329,18 +302,17 @@ public sealed class Boss : Component<Boss>, IUpdatable
         
         _actionStartTime = Time.TotalGameTime.TotalSeconds;
         _actionDuration = Stats.BladeParriedDuration;
-        _machine.Fire(Trigger.ParryBlade);
+        _machine.Fire(State.BladeParried);
     }
 
     public void DoFire(Vector2 lookPosition, IReadOnlyList<GameObject> targets)
     {
-        _machine.Fire(Trigger.ExecuteFireAttack);
+        _machine.Fire(State.FireAttacking);
         var direction = _actionLookPosition - GameObject.Transform.Position;
         direction.Normalize();
          
         
-        _effectsPool.Add(new LineTrace(
-            _spriteBatch,
+        Game.EffectsPool.Add(new LineTrace(
             Stats.FireTraceDuration,
             GameObject.Transform.Position,
             GameObject.Transform.Position + direction * Stats.FireDistance,
@@ -353,13 +325,12 @@ public sealed class Boss : Component<Boss>, IUpdatable
             AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
         }
         
-        _machine.Fire(Trigger.ActionFinished);
+        _machine.Fire(State.Pending);
     }
 
     public void ParryFire(Vector2 parryPosition)
     {
-        _effectsPool.Add(new LineTrace(
-            _spriteBatch,
+        Game.EffectsPool.Add(new LineTrace(
             Stats.FireParryTraceDuration,
             GameObject.Transform.Position,
             parryPosition,
@@ -369,7 +340,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         
         _actionStartTime = Time.TotalGameTime.TotalSeconds;
         _actionDuration = Stats.FireParriedDuration;
-        _machine.Fire(Trigger.ParryFire);
+        _machine.Fire(State.FireParried);
     }
     
     // INTERNAL

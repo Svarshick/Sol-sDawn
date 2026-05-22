@@ -6,7 +6,6 @@ namespace SolsDawn.Core.Logic.Animations;
 
 public class CircleBlickAnimation(
     bool isOneShot,
-    SpriteBatch spriteBatch,
     float duration,
     Transform transform,
     float radius,
@@ -47,7 +46,7 @@ public class CircleBlickAnimation(
             color = Color.Lerp(trueColor, blickColor, t);
         }
 
-        spriteBatch.DrawCircle(
+        Game.SpriteBatch.DrawCircle(
             transform.Position,
             radius,
             sides,
