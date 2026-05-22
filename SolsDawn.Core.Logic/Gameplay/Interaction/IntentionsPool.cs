@@ -2,21 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using SolsDawn.Core.Logic.Effects;
 
 namespace SolsDawn.Core.Logic.Gameplay.Interaction;
 
-public interface IIntention { }
-public record BladeAttackIntention(GameObject Source, IReadOnlyList<GameObject> Targets, int Damage, Vector2 LookPosition) : IIntention;
-public record FireAttackIntention(GameObject Source, IReadOnlyList<GameObject> Targets, int Damage, Vector2 LookPosition) : IIntention;
+public record Intention(GameObject Source);
+public record BladeAttackIntention(GameObject Source, IReadOnlyList<GameObject> Targets, int Damage, Vector2 LookPosition) : Intention(Source);
+public record FireAttackIntention(GameObject Source, IReadOnlyList<GameObject> Targets, int Damage, Vector2 LookPosition) : Intention(Source);
 
 public class IntentionsPool
 {
-    private static List<IIntention> _queue = new();
-    private static List<IIntention> _nextQueue = new();
+    private static List<Intention> _queue = new();
+    private static List<Intention> _nextQueue = new();
 
     private static bool _resolving;
 
-    public static void Add(IIntention intention)
+    public static void Add(Intention intention)
     {
         if (_resolving)
             throw new Exception("Can't affect externally while resolving");
@@ -32,60 +34,117 @@ public class IntentionsPool
         _resolving = false;
     }
 
-    private static readonly HashSet<GameObject> Parried = new();
-    
+
+    public static GameObject PlayerGO;
+    public static GameObject BossGO;
+    public static EffectsPool EffectsPool;
+    public static SpriteBatch SpriteBatch;
     private static void ResolveLogic()
     {
-        foreach (var intention in _queue)
+        var intentionGroups = _queue.GroupBy(intention => intention.Source).ToArray();
+        var playerGroup = intentionGroups.FirstOrDefault(group => group.Key.GetComponent<Player>() is not null);
+        var bossGroup = intentionGroups.FirstOrDefault(group => group.Key.GetComponent<Boss>() is not null);
+        
+        var playerBladeAttack = playerGroup?.FirstOrDefault(intention => intention.GetType() == typeof(BladeAttackIntention)) as BladeAttackIntention;
+        var playerFireAttack = playerGroup?.FirstOrDefault(intention => intention.GetType() == typeof(FireAttackIntention)) as FireAttackIntention;
+        var bossBladeAttack = bossGroup?.FirstOrDefault(intention => intention.GetType() == typeof(BladeAttackIntention)) as BladeAttackIntention;
+        var bossFireAttack = bossGroup?.FirstOrDefault(intention => intention.GetType() == typeof(FireAttackIntention)) as FireAttackIntention;
+        var player = PlayerGO.GetComponent<Player>();
+        var boss = BossGO.GetComponent<Boss>();
+        if (PlayerGO is not null &&
+            BossGO is not null &&
+            PlayerGO == BossGO)
         {
-            if (intention is not BladeAttackIntention bladeAttack)
-                continue;
-            
-            foreach (var go in bladeAttack.Targets)
+            throw new LogicException("player and boss on the same GameObject");
+        }
+
+        if (bossBladeAttack is not null &&
+            bossFireAttack is not null &&
+            bossBladeAttack == bossFireAttack)
+        {
+            throw new LogicException("boss can't fire and blade at the same time");
+        }
+
+        var bladeParry = false;
+        if (playerBladeAttack is not null)
+        {
+            bladeParry = playerBladeAttack.Targets.Any(go =>
             {
                 var parry = go.GetComponent<Parry>();
-                if (parry is null)
-                    continue;
-                var boss = parry.Target.GetComponent<Boss>();
-                if (boss is null)
-                    continue;
-                Parried.Add(parry.Target);
-                Parried.Add(bladeAttack.Source);
+                return parry is not null && 
+                       parry.Target == BossGO &&
+                       parry.Type == ParryType.Blade;
+            });
+        }
+
+        var fireParry = false;
+        if (playerFireAttack is not null && playerFireAttack.Targets.Contains(BossGO))
+        {
+            var parry = BossGO.GetComponent<Parry>();
+            fireParry = parry is not null && parry.Type == ParryType.Fire;
+            if (parry is not null && parry.Target != BossGO)
+            {
+                throw new LogicException("boss GameObject parry must point itself");
             }
         }
 
-        foreach (var intention in _queue)
+        if (fireParry)
         {
-            if (intention is not BladeAttackIntention bladeAttack)
-                continue;
+            var distance = (PlayerGO.Transform.Position - BossGO.Transform.Position).Length()/2;
+            var direction = playerFireAttack.LookPosition - PlayerGO.Transform.Position;
+            direction.Normalize();
+            var collapsePoint = PlayerGO.Transform.Position + direction * distance;
             
-            var boss = bladeAttack.Source.GetComponent<Boss>();
-            if (boss is not null && !Parried.Contains(bladeAttack.Source))
-            {
-                boss.DoBlade(bladeAttack.LookPosition, bladeAttack.Targets);
-            }
+            player!.ParryFire(collapsePoint);
+            boss!.ParryFire(collapsePoint);
+            EffectsPool.Add(new CircleTrace(
+                SpriteBatch,
+                Math.Max(player.Stats.FireParryTraceDuration, boss.Stats.FireTraceDuration),
+                collapsePoint,
+                150,
+                20,
+                Color.Lerp(player.Stats.FireParryTraceStartColor, boss.Stats.FireParryTraceStartColor, 0.5f),
+                Color.Transparent,
+                150));
 
-            var player = bladeAttack.Source.GetComponent<Player>();
-            if (player is not null)
+            if (playerBladeAttack is not null)
             {
-                if (Parried.Contains(bladeAttack.Source))
-                {
-                    player.DoParry(bladeAttack.LookPosition);
-                }
-                else 
-                {
-                    player.DoBlade(bladeAttack.LookPosition, bladeAttack.Targets);
-                }
+                player.DoBlade(playerBladeAttack.LookPosition, playerBladeAttack.Targets);
             }
-        }
-
-        foreach (var parried in Parried)
-        {
-            var boss = parried.GetComponent<Boss>();
-            if (boss is not null)
-                boss.BeParried();
         }
         
-        Parried.Clear();
+        else if (bladeParry)
+        {
+            player!.ParryBlade(playerBladeAttack.LookPosition);
+            boss!.ParryBlade();
+            
+            if (playerFireAttack is not null)
+            {
+                player.DoFire(playerFireAttack.LookPosition, playerFireAttack.Targets);
+            }
+        }
+
+        else
+        {
+            if (playerBladeAttack is not null)
+            {
+                player!.DoBlade(playerBladeAttack.LookPosition, playerBladeAttack.Targets);
+            }
+
+            if (bossBladeAttack is not null)
+            {
+                boss!.DoBlade(bossBladeAttack.LookPosition, bossBladeAttack.Targets);
+            }
+            
+            if (playerFireAttack is not null)
+            {
+                player!.DoFire(playerFireAttack.LookPosition, playerFireAttack.Targets);
+            }
+
+            if (bossFireAttack is not null)
+            {
+                boss!.DoFire(bossFireAttack.LookPosition, bossFireAttack.Targets);
+            }
+        }
     }
 }

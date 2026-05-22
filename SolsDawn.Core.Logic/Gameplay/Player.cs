@@ -51,6 +51,10 @@ public class PlayerStats
     public Color FireTraceStartColor;
     public Color FireTraceEndColor;
     
+    public float FireParryTraceDuration;
+    public Color FireParryTraceStartColor;
+    public Color FireParryTraceEndColor;
+    
     [Units] public float TeleportMinDistance;
     [Units] public float TeleportMaxDistance;
     public float TeleportHoldDuration;
@@ -67,8 +71,8 @@ public sealed class Player : Component<Player>, IUpdatable
     public readonly PlayerStats Stats;
     public readonly DebugStats DebugStats;
     
-    public enum State { Idle, Moving, TeleportAiming, Attacking }
-    private enum Trigger { Move, Stop, StartTeleport, ExecuteTeleport, Attack }
+    public enum State { Idle, Moving, TeleportAiming }
+    private enum Trigger { Move, Stop, StartTeleport, ExecuteTeleport }
     private readonly StateMachine<State, Trigger> _machine;
     public State CurrentState => _machine.State;
     
@@ -111,28 +115,21 @@ public sealed class Player : Component<Player>, IUpdatable
 
         _machine.Configure(State.Idle)
             .Permit(Trigger.Move, State.Moving)
-            .Permit(Trigger.StartTeleport, State.TeleportAiming)
-            .Permit(Trigger.Attack, State.Attacking);
+            .Permit(Trigger.StartTeleport, State.TeleportAiming);
 
         _machine.Configure(State.Moving)
             .Permit(Trigger.Stop, State.Idle)
-            .Permit(Trigger.StartTeleport, State.TeleportAiming)
-            .Permit(Trigger.Attack, State.Attacking);
+            .Permit(Trigger.StartTeleport, State.TeleportAiming);
 
         _machine.Configure(State.TeleportAiming)
             .Permit(Trigger.ExecuteTeleport, State.Idle);
-
-        _machine.Configure(State.Attacking)
-            .Permit(Trigger.Stop, State.Idle)
-            .Permit(Trigger.Move, State.Moving)
-            .Permit(Trigger.StartTeleport, State.TeleportAiming);
 
         _input.Move += Move;
         _input.TeleportStarted += TeleportStarted;
         _input.TeleportUpdated += TeleportUpdated;
         _input.TeleportReleased += TeleportReleased;
         _input.Blade += IntendBlade;
-        _input.Fire += Fire;
+        _input.Fire += IntendFire;
     }
 
     public override void Dispose()
@@ -142,7 +139,7 @@ public sealed class Player : Component<Player>, IUpdatable
         _input.TeleportUpdated -= TeleportUpdated;
         _input.TeleportReleased -= TeleportReleased;
         _input.Blade -= IntendBlade;
-        _input.Fire -= Fire;
+        _input.Fire -= IntendFire;
     }
 
     public void Update(GameTime gameTime)
@@ -301,7 +298,7 @@ public sealed class Player : Component<Player>, IUpdatable
         }
     }
 
-    public void DoParry(Vector2 lookPosition)
+    public void ParryBlade(Vector2 lookPosition)
     {
         var direction = lookPosition - GameObject.Transform.Position;
         direction.Normalize();
@@ -324,30 +321,59 @@ public sealed class Player : Component<Player>, IUpdatable
         GameObject.Transform.Position += direction * Stats.BladeDashDistance;
     }
 
-    private void Fire(Vector2 screenPosition)
+    private void IntendFire(Vector2 screenPosition)
     {
-        if (Time.TotalGameTime.TotalSeconds - _lastFireUsage < Stats.FireRechargeDuration)
+        if (!FireCharged)
             return;
-        var worldPosition = _layout.Camera.ScreenToWorld(screenPosition);
-        var fireDirection = worldPosition - GameObject.Transform.Position;
-        fireDirection.Normalize();
-        var fireEnd = GameObject.Transform.Position + fireDirection * Stats.FireDistance;
-
-        _effectsPool.Add(new LineTrace(_spriteBatch, Stats.FireTraceDuration, GameObject.Transform.Position, fireEnd, Stats.FireTraceStartColor, Stats.FireTraceEndColor, Stats.FireTraceWidth));
+        
+        var lookPosition = _layout.Camera.ScreenToWorld(screenPosition);
+        var direction = lookPosition - GameObject.Transform.Position;
+        direction.Normalize();
+        var fireEnd = GameObject.Transform.Position + direction * Stats.FireDistance;
         
         var bounds = new OrientedBoundingBox2D(
             (GameObject.Transform.Position + fireEnd) / 2, 
-            fireDirection, 
-            new Vector2(fireDirection.Y, fireDirection.X), 
+            direction, 
+            direction.PerpendicularClockwise(), 
             new Vector2(Stats.FireDistance/2, Stats.FireWidth/2));
         var shape = new CollisionShape2D(bounds);
         var targets = new List<GameObject>();
         Collision.Overlap(shape, Collision.LayerName.Enemy, targets);
+        IntentionsPool.Add(new FireAttackIntention(GameObject, targets, 1, lookPosition));
+    }
+    
+    public void DoFire(Vector2 lookPosition, IReadOnlyList<GameObject> targets)
+    {
+        var direction = lookPosition - GameObject.Transform.Position;
+        direction.Normalize();
+        var fireEnd = GameObject.Transform.Position + direction * Stats.FireDistance;
+
+        _effectsPool.Add(new LineTrace(
+            _spriteBatch, 
+            Stats.FireTraceDuration, 
+            GameObject.Transform.Position, 
+            fireEnd, 
+            Stats.FireTraceStartColor, 
+            Stats.FireTraceEndColor, 
+            Stats.FireTraceWidth));
+
         if (targets.Count > 0)
         {
             AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
         }
-
+        
         _lastFireUsage = Time.TotalGameTime.TotalSeconds;
+    }
+    
+    public void ParryFire(Vector2 parryPosition)
+    {
+        _effectsPool.Add(new LineTrace(
+            _spriteBatch,
+            Stats.FireParryTraceDuration,
+            GameObject.Transform.Position,
+            parryPosition,
+            Stats.FireParryTraceStartColor,
+            Stats.FireParryTraceEndColor,
+            Stats.FireWidth));
     }
 }

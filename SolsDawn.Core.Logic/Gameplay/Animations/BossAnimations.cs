@@ -9,8 +9,10 @@ namespace SolsDawn.Core.Logic.Gameplay.Animations;
 public class BossAnimations : IAnimationPlayer
 {
     public const string Idle = "Idle";
-    public const string Telegraph = "Telegraph";
-    public const string Parried = "Parried";
+    public const string BladeTelegraph = "Telegraph";
+    public const string BladeParried = "BladeParried";
+    public const string FireTelegraph = "FireTelegraph";
+    public const string FireParried = "FireParried";
     public const string Hit = "Hit";
 
     public Transform Transform { get; set; }
@@ -38,7 +40,7 @@ public class BossAnimations : IAnimationPlayer
                     Stats.Height,
                     Stats.Color);
                 break;
-            case Telegraph:
+            case BladeTelegraph:
                 _overlayAnimation = null;
                 _baseAnimation = new RectangleBlinkAnimation(
                     true,
@@ -50,13 +52,33 @@ public class BossAnimations : IAnimationPlayer
                     Stats.Color,
                     Stats.BladeTelegraphBlinkColor);
                 break;
-            case Parried:
+            case BladeParried:
                 _baseAnimation = new RectangleIdleAnimation(
                     _spriteBatch,
                     Transform,
                     Stats.Width,
                     Stats.Height,
                     Stats.BladeParriedColor);
+                break;
+            case FireTelegraph:
+                _overlayAnimation = null;
+                _baseAnimation = new RectangleBlinkAnimation(
+                    true,
+                    _spriteBatch,
+                    Stats.FireTelegraphDuration,
+                    Transform,
+                    Stats.Width,
+                    Stats.Height,
+                    Stats.Color,
+                    Stats.FireTelegraphBlinkColor);
+                break;
+            case FireParried:
+                _baseAnimation = new RectangleIdleAnimation(
+                    _spriteBatch,
+                    Transform,
+                    Stats.Width,
+                    Stats.Height,
+                    Stats.FireParriedColor);
                 break;
             case Hit:
                 _overlayAnimation = new RectangleBlinkAnimation(

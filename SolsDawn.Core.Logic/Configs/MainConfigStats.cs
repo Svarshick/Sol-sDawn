@@ -47,12 +47,17 @@ public static partial class MainConfig
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
         
-        FireDistance = 10f,
+        FireDistance = 12f,
         FireWidth = 0.3f,
-        FireTraceDuration = 1,
+        FireTraceDuration = 1f,
         FireTraceWidth = 0.3f,
-        FireTraceStartColor = Color.Red,
+        FireTraceStartColor = Color.Coral,
         FireTraceEndColor = Color.Transparent,
+        
+        FireParryTraceDuration = 1.5f,
+        FireParryTraceStartColor = Color.Gold,
+        FireParryTraceEndColor = Color.Transparent,
+    
         
         TeleportMinDistance = 3,
         TeleportMaxDistance = 7,
@@ -74,7 +79,7 @@ public static partial class MainConfig
         HitDuration = 0.5f,
         HitBlinkColor = Color.Red,
         
-        BladeTelegraphDuration = 0.5f,
+        BladeTelegraphDuration = 0.4f,
         BladeTelegraphBlinkColor = Color.White,
 
         BladeAttackDistance = 1.5f,
@@ -93,8 +98,23 @@ public static partial class MainConfig
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
 
+        FireTelegraphDuration = 0.4f,
+        FireTelegraphBlinkColor = Color.MediumSpringGreen,
+
+        FireDistance = 15,
+        FireWidth = 0.3f,
+        FireTraceDuration = 1f,
+        FireTraceStartColor = Color.MediumTurquoise,
+        FireTraceEndColor = Color.Transparent,
+    
+        FireParriedDuration = 1f,
+        FireParriedColor = Color.MediumSpringGreen,
+        FireParryTraceDuration = 1.5f,
+        FireParryTraceStartColor = Color.MediumSpringGreen,
+        FireParryTraceEndColor = Color.Transparent,
+        
         TeleportTraceWidth = 1f,
-        TeleportTraceStartColor = Color.Red,
+        TeleportTraceStartColor = Color.DeepSkyBlue,
         TeleportTraceEndColor = Color.Transparent
     };
 

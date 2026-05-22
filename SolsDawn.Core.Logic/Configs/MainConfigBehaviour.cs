@@ -25,7 +25,10 @@ public static partial class MainConfig
     private static BossBehaviourBuilder B3 => Create()
         .Wait(2)
         .Teleport(Units(3, 3))
-        .Blade(Units(0, 0));
+        .Blade(Units(0, 0))
+        .Wait(0.5f)
+        .Teleport(Units(0, -5))
+        .Fire(Player);
 
     private static readonly BossBehaviourBuilder B4 = Create()
         .Teleport(Units(0, 0))

@@ -39,6 +39,12 @@ public class BossBehaviourBuilder
         return this;
     }
 
+    public BossBehaviourBuilder Fire(VectorExpression lookPosition)
+    {
+        _actions.Add(ctx => ctx.Boss.Fire(lookPosition.Evaluate(ctx)));
+        return this;
+    }
+
     public static VectorExpression Units(float x, float y) => new UnitsVectorExpression(x, y);
     public static VectorExpression Player => new PlayerPositionExpression();
     public static VectorExpression Boss => new BossPositionExpression();

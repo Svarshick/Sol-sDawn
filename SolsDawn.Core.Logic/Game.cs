@@ -54,6 +54,10 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator(bossGo, new BossAnimations(_spriteBatch, _screenLayout), BossAnimations.Idle);
         var boss = new Boss(bossGo, _spriteBatch, _effectsPool, _screenLayout);
 
+        IntentionsPool.PlayerGO = playerGo;
+        IntentionsPool.BossGO = bossGo;
+        IntentionsPool.SpriteBatch = _spriteBatch;
+        IntentionsPool.EffectsPool = _effectsPool;
         var context = new BossBehaviourContext(boss, _player, _screenLayout);
         _bossAI = new(MainConfig.BossBehaviourBuilder, context);
         return;

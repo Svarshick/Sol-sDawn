@@ -8,9 +8,22 @@ public class ComponentNotFoundException<T> : InvalidOperationException where T :
     {
     }
 
-    public ComponentNotFoundException(Exception innerException) : base(BuildMessage(), innerException)
+    private static string BuildMessage() => $"{typeof(T)} component not found";
+}
+
+public class LogicException : InvalidOperationException
+{
+    public LogicException() : base(FullMessage(string.Empty))
+    {
+    }
+    
+    public LogicException(string message) : base(message)
     {
     }
 
-    private static string BuildMessage() => $"{typeof(T)} component not found";
+    private static string FullMessage(string message)
+    {
+        const string prefix = "Logic violation";
+        return string.IsNullOrEmpty(message) ? $"{prefix}" : $"{prefix}: {message}";
+    }
 }

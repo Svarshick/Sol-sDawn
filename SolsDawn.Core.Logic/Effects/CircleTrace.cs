@@ -4,11 +4,12 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Effects;
 
-public class LineTrace(
+public class CircleTrace(
     SpriteBatch spriteBatch,
     float duration,
-    Vector2 start,
-    Vector2 end,
+    Vector2 center,
+    float radius,
+    int sides,
     Color startColor,
     Color endColor,
     float thickness,
@@ -27,9 +28,10 @@ public class LineTrace(
         
         var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
-        spriteBatch.DrawLine(
-            start,
-            end,
+        spriteBatch.DrawCircle(
+            center,
+            radius,
+            sides,
             Color.Lerp(startColor, endColor, t),
             thickness,
             layerDepth);
