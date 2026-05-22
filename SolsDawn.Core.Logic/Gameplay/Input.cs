@@ -19,21 +19,20 @@ public class Input : IUpdatable
     public event Action<Vector2> Fire; // (ScreenPosition)
     public event Action<Vector2> Blade; // (ScreenPosition)
 
-    public void Update(GameTime gameTime)
+    public void Update()
     {
         KeyboardExtended.Update();
         MouseExtended.Update();
         var keyboardState = KeyboardExtended.GetState();
         var mouseState = MouseExtended.GetState();
-        UpdateMove(gameTime, mouseState, keyboardState);
-        UpdateTeleport(gameTime, mouseState, keyboardState);
-        UpdateAttacks(gameTime, mouseState, keyboardState);
+        UpdateMove(mouseState, keyboardState);
+        UpdateTeleport(mouseState, keyboardState);
+        UpdateAttacks(mouseState, keyboardState);
     }
     
-    public void LateUpdate(GameTime gameTime) { }
+    public void LateUpdate() { }
 
     private void UpdateMove(
-        GameTime gameTime, 
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState)
     {
@@ -68,13 +67,12 @@ public class Input : IUpdatable
     }
 
     private void UpdateTeleport(
-        GameTime gameTime, 
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState)
     {
         var spaceDown = keyboardState.IsKeyDown(Keys.Space); 
         var mousePosition = mouseState.Position.ToVector2();
-        var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _teleportStartTime;
+        var elapsedTime = Time.TotalGameTime.TotalSeconds - _teleportStartTime;
         
         switch (_teleportState)
         {
@@ -82,7 +80,7 @@ public class Input : IUpdatable
                 if (spaceDown)
                 {
                     _teleportState = TeleportState.Started;
-                    _teleportStartTime = gameTime.TotalGameTime.TotalSeconds;
+                    _teleportStartTime = Time.TotalGameTime.TotalSeconds;
                     TeleportStarted?.Invoke(mousePosition);
                 }
                 break;
@@ -109,7 +107,6 @@ public class Input : IUpdatable
     }
 
     private void UpdateAttacks(
-        GameTime gameTime,
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState
     )

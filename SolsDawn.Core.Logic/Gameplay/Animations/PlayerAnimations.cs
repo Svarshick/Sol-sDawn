@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
-using SolsDawn.Core.Logic.Configs.Utils;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
@@ -40,15 +39,15 @@ public class PlayerAnimations : IAnimationPlayer
         }
     }
     
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })
         {
-            _overlayAnimation.Draw(gameTime);
+            _overlayAnimation.Draw();
         }
         else
         {
-            _baseAnimation.Draw(gameTime);
+            _baseAnimation.Draw();
         }
     }
 }

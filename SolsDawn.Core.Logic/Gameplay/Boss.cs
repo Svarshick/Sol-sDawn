@@ -131,9 +131,9 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
     }
     
-    public void Update(GameTime gameTime)
+    public void Update()
     {
-        var timeExpired = gameTime.TotalGameTime.TotalSeconds - _actionStartTime > _actionDuration;
+        var timeExpired = Time.TotalGameTime.TotalSeconds - _actionStartTime > _actionDuration;
         switch (_machine.State)
         {
             case State.Idling:
@@ -158,7 +158,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _collider.Shape = new CollisionShape2D(bounds);
     }
     
-    public void LateUpdate(GameTime gameTime)
+    public void LateUpdate()
     {
     }
     

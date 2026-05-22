@@ -127,7 +127,7 @@ public sealed class Player : Component<Player>, IUpdatable
         _input.Fire -= IntendFire;
     }
 
-    public void Update(GameTime gameTime)
+    public void Update()
     {
         switch (_machine.State)
         {
@@ -143,7 +143,7 @@ public sealed class Player : Component<Player>, IUpdatable
                 }
 
                 var velocity = Stats.Velocity;
-                var shift = velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+                var shift = velocity * (float)Time.ElapsedGameTime.TotalSeconds;
                 GameObject.Transform.Position += shift * MoveDirection;
                 break;
         }
@@ -152,7 +152,7 @@ public sealed class Player : Component<Player>, IUpdatable
         _collider.Shape = new CollisionShape2D(bounds);
     }
 
-    public void LateUpdate(GameTime gameTime)
+    public void LateUpdate()
     {
     }
     

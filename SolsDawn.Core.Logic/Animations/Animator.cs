@@ -16,9 +16,9 @@ public class Animator : Component<Animator>, IDrawable
     {
     }
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
-        _player.Draw(gameTime);   
+        _player.Draw();   
     }
     
     public void TryPlay(string animationName) => _player.TryPlay(animationName);

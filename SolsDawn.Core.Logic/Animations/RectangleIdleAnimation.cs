@@ -14,7 +14,7 @@ public class RectangleIdleAnimation(
 {
     public bool IsFinished { get; } = true;
 
-    public void Draw(GameTime time)
+    public void Draw()
     {
         Game.SpriteBatch.FillRectangle(
             transform.Position.X - width / 2,

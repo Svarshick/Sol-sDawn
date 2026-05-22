@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using MonoGame.Extended;
 using MonoGame.Extended.Input;
 
@@ -17,7 +16,7 @@ public sealed class HUD : Component<HUD>, IDrawable
     {
     }
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         var mouseState = MouseExtended.GetState();
         var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(mouseState.Position.ToVector2());

@@ -28,7 +28,7 @@ public class Line : IPassiveEffect
 
     public bool IsFinished { get; set; }
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         Game.SpriteBatch.DrawLine(
             Start,

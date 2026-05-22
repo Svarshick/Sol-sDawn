@@ -108,30 +108,30 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable
         throw new ArgumentException($"The component {typeof(T).Name} isn't attached");
     }
 
-    public void Update(GameTime gameTime)
+    public void Update()
     {
         foreach (var component in _components)
         {
             if (component is IUpdatable updatable)
-                updatable.Update(gameTime);
+                updatable.Update();
         }
     }
 
-    public void LateUpdate(GameTime gameTime)
+    public void LateUpdate()
     {
         foreach (var component in _components)
         {
             if (component is IUpdatable updatable)
-                updatable.LateUpdate(gameTime);
+                updatable.LateUpdate();
         }
     }
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         foreach (var component in _components)
         {
             if (component is IDrawable drawable)
-                drawable.Draw(gameTime);
+                drawable.Draw();
         }
     }
 

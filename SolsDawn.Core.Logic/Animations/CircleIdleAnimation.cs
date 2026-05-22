@@ -15,7 +15,7 @@ public class CircleIdleAnimation(
 {
     public bool IsFinished { get; } = true;
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         Game.SpriteBatch.DrawCircle(
             transform.Position,

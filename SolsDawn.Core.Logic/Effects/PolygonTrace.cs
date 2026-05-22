@@ -18,13 +18,13 @@ public class PolygonTrace(
 
     private readonly double _startTime = Time.TotalGameTime.TotalSeconds;
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
-        IsFinished = IsFinished || gameTime.TotalGameTime.TotalSeconds - _startTime > duration;
+        IsFinished = IsFinished || Time.TotalGameTime.TotalSeconds - _startTime > duration;
         if (IsFinished)
             return;
         
-        var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
+        var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
         Game.SpriteBatch.DrawPolygon(
             center,

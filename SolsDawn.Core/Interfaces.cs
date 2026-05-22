@@ -1,5 +1,3 @@
-using Microsoft.Xna.Framework;
-
 namespace SolsDawn.Core;
 
 public interface IStartable
@@ -9,11 +7,11 @@ public interface IStartable
 
 public interface IUpdatable 
 {
-    public void Update(GameTime gameTime);
-    public void LateUpdate(GameTime gameTime);
+    public void Update();
+    public void LateUpdate();
 }
 
 public interface IDrawable
 {
-    public void Draw(GameTime gameTime);
+    public void Draw();
 }

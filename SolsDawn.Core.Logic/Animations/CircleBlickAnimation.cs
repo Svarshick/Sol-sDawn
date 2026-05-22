@@ -19,9 +19,9 @@ public class CircleBlickAnimation(
     public bool IsFinished { get; private set; }
     
     private double _startTime = Time.TotalGameTime.TotalSeconds;
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
-        var elapsedTime = gameTime.TotalGameTime.TotalSeconds - _startTime;
+        var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
         var isTimeExpired = elapsedTime > duration;
         var isHalfTimeExpired = elapsedTime * 2 > duration;
 

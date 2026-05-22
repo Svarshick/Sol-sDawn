@@ -80,27 +80,27 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     protected override void Update(GameTime gameTime)
     {
         Time.Update(gameTime);
-        MonoTask.Update(gameTime);
+        MonoTask.Update();
         
-        EffectsPool.Update(gameTime);
+        EffectsPool.Update();
         ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
         
-        _input.Update(gameTime);
-        _bossAI.Update(gameTime);
-        GameObjectPool.Update(gameTime);
+        _input.Update();
+        _bossAI.Update();
+        GameObjectPool.Update();
         IntentionsPool.Resolve();
         AffectsPool.Resolve();
         
         base.Update(gameTime);
-        LateUpdate(gameTime);
+        LateUpdate();
     }
 
-    private void LateUpdate(GameTime gameTime)
+    private void LateUpdate()
     {
-        _input.LateUpdate(gameTime);
-        EffectsPool.LateUpdate(gameTime);
+        _input.LateUpdate();
+        EffectsPool.LateUpdate();
 
-        GameObjectPool.LateUpdate(gameTime);
+        GameObjectPool.LateUpdate();
         Collision.World.RebuildDynamicLayers();
     }
 
@@ -114,8 +114,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             transformMatrix: ScreenLayout.Camera.GetViewMatrix()
         );
         
-        EffectsPool.Draw(gameTime);
-        GameObjectPool.Draw(gameTime);
+        EffectsPool.Draw();
+        GameObjectPool.Draw();
         
         SpriteBatch.End();
 

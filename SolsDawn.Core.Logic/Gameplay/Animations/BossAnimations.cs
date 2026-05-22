@@ -79,15 +79,15 @@ public class BossAnimations : IAnimationPlayer
         }
     }
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })
         {
-            _overlayAnimation.Draw(gameTime);
+            _overlayAnimation.Draw();
         }
         else
         {
-            _baseAnimation.Draw(gameTime);
+            _baseAnimation.Draw();
         }
     }
 }

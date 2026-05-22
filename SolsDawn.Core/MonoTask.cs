@@ -1,5 +1,3 @@
-using Microsoft.Xna.Framework;
-
 namespace SolsDawn.Core;
 
 public static class MonoTask 
@@ -8,7 +6,7 @@ public static class MonoTask
     private static List<(TaskCompletionSource<bool> CompletionSource, int Frames, CancellationToken Token)> _pendingFrameTasksBuff = new();
     private static List<(TaskCompletionSource<bool> CompletionSource, int Frames, CancellationToken Token)> _newFrameTasks = new();
    
-    public static void Update(GameTime gameTime)
+    public static void Update()
     {
         for (int i = 0; i < _pendingFrameTasks.Count; i++)
         {

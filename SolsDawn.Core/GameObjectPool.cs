@@ -6,22 +6,22 @@ public static class GameObjectPool
 {
     private static readonly HashSet<GameObject> GameObjects = new();
 
-    public static void Update(GameTime gameTime)
+    public static void Update()
     {
         foreach (var go in GameObjects)
-            go.Update(gameTime);
+            go.Update();
     }
 
-    public static void LateUpdate(GameTime gameTime)
+    public static void LateUpdate()
     {
         foreach (var go in GameObjects)
-            go.LateUpdate(gameTime);
+            go.LateUpdate();
     }
 
-    public static void Draw(GameTime gameTime)
+    public static void Draw()
     {
         foreach (var go in GameObjects)
-            go.Draw(gameTime);
+            go.Draw();
     }
     
     internal static void Add(GameObject gameObject) => GameObjects.Add(gameObject);

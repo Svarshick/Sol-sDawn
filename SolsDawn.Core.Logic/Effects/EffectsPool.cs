@@ -14,7 +14,7 @@ public class EffectsPool : IUpdatable, IDrawable
     public void Add(IPassiveEffect effect) => _passiveEffects.Add(effect);
     
 
-    public void Update(GameTime gameTime)
+    public void Update()
     {
         foreach (var effect in _effects)
         {
@@ -35,20 +35,20 @@ public class EffectsPool : IUpdatable, IDrawable
         (_passiveEffects, _passiveEffectsBuff) = (_passiveEffectsBuff, _passiveEffects);
     }
     
-    public void LateUpdate(GameTime gameTime)
+    public void LateUpdate()
     {
     }
 
-    public void Draw(GameTime gameTime)
+    public void Draw()
     {
         foreach (var effect in _effects)
         {
-            effect.Draw(gameTime);
+            effect.Draw();
         }
 
         foreach (var effect in _passiveEffects)
         {
-            effect.Draw(gameTime);
+            effect.Draw();
         }
     }
 }
