@@ -23,6 +23,7 @@ public class BossStats
     
     public float BladeTelegraphDuration;
     public Color BladeTelegraphBlinkColor;
+    [Units] public float BladeTelegraphStarDistance;
     public float BladeTelegraphStarDuration;
     public Color BladeTelegraphStarColor;
     [Units] public float BladeTelegraphStarOuterRadius;

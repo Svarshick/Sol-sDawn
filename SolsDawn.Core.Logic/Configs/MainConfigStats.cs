@@ -105,6 +105,7 @@ public static partial class MainConfig
         BladeTelegraphDuration = Var.TelegraphDuration,
         BladeTelegraphBlinkColor = Color.White,
         BladeTelegraphStarDuration = Var.TelegraphDuration/2,
+        BladeTelegraphStarDistance = 0, 
         BladeTelegraphStarColor = Color.Yellow,
         BladeTelegraphStarInnerRadius = 0.2f,
         BladeTelegraphStarOuterRadius = 2,

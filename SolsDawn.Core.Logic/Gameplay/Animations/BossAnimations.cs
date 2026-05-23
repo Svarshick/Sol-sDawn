@@ -32,10 +32,11 @@ public class BossAnimations() : AnimationPlayer(Idle)
                 break;
             case BladeTelegraph:
                 _overlayAnimation = null;
+                var starPosition = Transform.Position + Vector2.Normalize(LookPosition - Transform.Position) * _stats.BladeTelegraphStarDistance;
                 var starBlinkAnimation = new StarBlinkAnimation(
                     true,
                     _stats.BladeTelegraphStarDuration,
-                    new Transform() { Position = LookPosition },
+                    new Transform() { Position = starPosition },
                     _stats.BladeTelegraphStarStartAngle,
                     _stats.BladeTelegraphStarDeltaAngle,
                     _stats.BladeTelegraphStarInnerRadius,
