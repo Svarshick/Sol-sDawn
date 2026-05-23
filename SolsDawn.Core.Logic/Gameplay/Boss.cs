@@ -218,6 +218,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _actionStartTime = Time.TotalGameTime.TotalSeconds;
         _actionDuration = Stats.FireTelegraphDuration;
         new Parry(GameObject, GameObject, ParryType.Fire);
+        _animations.LookPosition = lookPosition;
         _machine.Fire(State.FireTelegraphing);
     }
     

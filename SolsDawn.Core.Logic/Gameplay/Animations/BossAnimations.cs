@@ -32,27 +32,7 @@ public class BossAnimations() : AnimationPlayer(Idle)
                 break;
             case BladeTelegraph:
                 _overlayAnimation = null;
-                var starPosition = Transform.Position + Vector2.Normalize(LookPosition - Transform.Position) * _stats.BladeTelegraphStarDistance;
-                var starBlinkAnimation = new StarBlinkAnimation(
-                    true,
-                    _stats.BladeTelegraphStarDuration,
-                    new Transform() { Position = starPosition },
-                    _stats.BladeTelegraphStarStartAngle,
-                    _stats.BladeTelegraphStarDeltaAngle,
-                    _stats.BladeTelegraphStarInnerRadius,
-                    _stats.BladeTelegraphStarOuterRadius,
-                    _stats.BladeTelegraphStarColor,
-                    _stats.BladeTelegraphBlinkColor,
-                    _stats.BladeTelegraphStarThickness);
-                var bossBlinkAnimation = new RectangleBlinkAnimation(
-                    true,
-                    _stats.BladeTelegraphDuration,
-                    Transform,
-                    _stats.Width,
-                    _stats.Height,
-                    _stats.Color,
-                    _stats.BladeTelegraphBlinkColor);
-                _baseAnimation = new BossTelegraphAnimation(bossBlinkAnimation, starBlinkAnimation);
+                _baseAnimation = new BossBladeTelegraphAnimation(_stats, Transform.Position, LookPosition);
                 break;
             case BladeParried:
                 _baseAnimation = new RectangleIdleAnimation(
@@ -63,14 +43,7 @@ public class BossAnimations() : AnimationPlayer(Idle)
                 break;
             case FireTelegraph:
                 _overlayAnimation = null;
-                _baseAnimation = new RectangleBlinkAnimation(
-                    true,
-                    _stats.FireTelegraphDuration,
-                    Transform,
-                    _stats.Width,
-                    _stats.Height,
-                    _stats.Color,
-                    _stats.FireTelegraphBlinkColor);
+                _baseAnimation = new BossFireTelegraphAnimation(_stats, Transform.Position, LookPosition);
                 break;
             case FireParried:
                 _baseAnimation = new RectangleIdleAnimation(
