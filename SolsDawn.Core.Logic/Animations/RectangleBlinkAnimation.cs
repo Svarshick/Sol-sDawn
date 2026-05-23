@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
@@ -29,8 +28,11 @@ public class RectangleBlinkAnimation(
         if (isTimeExpired)
         {
             color = trueColor;
-            if (!isOneShot)
+            if (isOneShot)
             {
+                IsFinished = true;
+            }
+            else {
                 _startTime = Time.TotalGameTime.TotalSeconds;
             }
         }

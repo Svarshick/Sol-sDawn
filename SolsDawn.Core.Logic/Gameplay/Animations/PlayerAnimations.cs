@@ -1,21 +1,18 @@
-using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class PlayerAnimations : IAnimationPlayer
+public class PlayerAnimations() : AnimationPlayer(Idle)
 {
     public const string Idle = "Idle";
     public const string Hit = "Hit";
 
-    public Transform Transform { get; set; }
-
     private IAnimation _baseAnimation;
-    private IAnimation? _overlayAnimation;
+    private IAnimation _overlayAnimation;
     private readonly PlayerStats _stats = MainConfig.PlayerStats;
 
-    public void TryPlay(string animationName)
+    public override void TryPlay(string animationName)
     {
         switch (animationName)
         {
@@ -39,7 +36,7 @@ public class PlayerAnimations : IAnimationPlayer
         }
     }
     
-    public void Draw()
+    public override void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })
         {
@@ -47,6 +44,8 @@ public class PlayerAnimations : IAnimationPlayer
         }
         else
         {
+            if (_baseAnimation is null)
+                TryPlay(DefaultAnimation);
             _baseAnimation.Draw();
         }
     }

@@ -1,15 +1,21 @@
-using Microsoft.Xna.Framework;
-
 namespace SolsDawn.Core.Logic.Animations;
 
-public class Animator : Component<Animator>, IDrawable
+public abstract class AnimationPlayer(string defaultAnimation) : IDrawable
 {
-    private readonly IAnimationPlayer _player;
-    public Animator(GameObject go, IAnimationPlayer player, string defaultAnimation) : base(go)
+    public readonly string DefaultAnimation = defaultAnimation;
+    public Transform Transform;
+    public abstract void Draw();
+    public abstract void TryPlay(string animationName);
+}
+
+public class Animator<T> : Component<Animator<T>>, IDrawable
+    where T : AnimationPlayer
+{
+    public readonly T Player;
+    public Animator(GameObject go, T player) : base(go)
     {
-        _player = player;
-        _player.Transform = go.Transform;
-        _player.TryPlay(defaultAnimation);
+        Player = player;
+        Player.Transform = GameObject.Transform;
     }
     
     public override void Dispose()
@@ -18,8 +24,6 @@ public class Animator : Component<Animator>, IDrawable
 
     public void Draw()
     {
-        _player.Draw();   
+        Player.Draw();   
     }
-    
-    public void TryPlay(string animationName) => _player.TryPlay(animationName);
 }

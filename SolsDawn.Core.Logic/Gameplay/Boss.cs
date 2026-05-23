@@ -81,7 +81,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     
     private readonly Collider _collider;
     private readonly Hp _hp;
-    private readonly Animator _animator;
+    private readonly BossAnimations _animations;
     
     public Boss(GameObject go) : base(go)
     {
@@ -89,7 +89,8 @@ public sealed class Boss : Component<Boss>, IUpdatable
             
         _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();     
         _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
-        _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
+        var animator = go.GetComponent<Animator<BossAnimations>>() ?? throw new ComponentNotFoundException<Animator<BossAnimations>>();
+        _animations = animator.Player;
         
         _machine = new StateMachine<State, State>(State.Pending);
         _machine.Configure(State.Pending)
@@ -98,32 +99,32 @@ public sealed class Boss : Component<Boss>, IUpdatable
             .Permit(State.FireTelegraphing)
             .Permit(State.Teleporting);
         _machine.Configure(State.Idling)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.Idle))
             .Permit(State.Pending);
         _machine.Configure(State.Teleporting)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.Idle))
             .Permit(State.Pending);
         
         _machine.Configure(State.BladeTelegraphing)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.BladeTelegraph))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.BladeTelegraph))
             .OnExit(RemoveTelegraphBladeCollider)
             .Permit(State.BladeAttacking)
             .Permit(State.BladeParried);
         _machine.Configure(State.BladeAttacking)
             .Permit(State.Pending);
         _machine.Configure(State.BladeParried)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.BladeParried))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.BladeParried))
             .Permit(State.Pending);
         
         _machine.Configure(State.FireTelegraphing)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.FireTelegraph))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.FireTelegraph))
             .OnExit(_ => GameObject.RemoveComponent<Parry>())
             .Permit(State.FireAttacking)
             .Permit(State.FireParried);
         _machine.Configure(State.FireAttacking)
             .Permit(State.Pending);
         _machine.Configure(State.FireParried)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.FireParried))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.FireParried))
             .Permit(State.Pending);
     }
 
@@ -165,7 +166,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     public void BeDamaged(int value)
     {
         Console.WriteLine($"[Boss] Damaged : {value}");
-        _animator.TryPlay(BossAnimations.Hit);
+        _animations.TryPlay(BossAnimations.Hit);
     }
     
     // ACTIONS

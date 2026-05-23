@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using SolsDawn.Core.Logic.Effects;
 
 namespace SolsDawn.Core.Logic.Gameplay.Interaction;

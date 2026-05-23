@@ -27,6 +27,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private Input _input;
     private BossAI _bossAI;
 
+    private GameTests _gameTests;
+
     public Game()
     {
         _graphicsDeviceManager = new GraphicsDeviceManager(this);
@@ -42,20 +44,22 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         var playerGo = new GameObject();
         new Collider(playerGo, 1, Collision.LayerName.Player);
         new Hp(playerGo, 10);
-        new Animator(playerGo, new PlayerAnimations(), PlayerAnimations.Idle);
+        new Animator<PlayerAnimations>(playerGo, new PlayerAnimations());
         _player = new Player(playerGo, _input);
         new HUD(playerGo, _player);
         
         var bossGo = new GameObject();
         new Collider(bossGo, 2, Collision.LayerName.Enemy);
         new Hp(bossGo, 10);
-        new Animator(bossGo, new BossAnimations(), BossAnimations.Idle);
+        new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Boss(bossGo);
 
         IntentionsPool.PlayerGO = playerGo;
         IntentionsPool.BossGO = bossGo;
         var context = new BossBehaviourContext(boss, _player, ScreenLayout);
         _bossAI = new(MainConfig.BossBehaviourBuilder, context);
+
+        _gameTests = new();
         return;
 
         void InitSystems()
@@ -84,7 +88,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         
         EffectsPool.Update();
         ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
-        
+
+        _gameTests.Update();
         _input.Update();
         _bossAI.Update();
         GameObjectPool.Update();
@@ -100,6 +105,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _input.LateUpdate();
         EffectsPool.LateUpdate();
 
+        _gameTests.LateUpdate();
         GameObjectPool.LateUpdate();
         Collision.World.RebuildDynamicLayers();
     }
@@ -115,10 +121,10 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         );
         
         EffectsPool.Draw();
+        _gameTests.Draw();
         GameObjectPool.Draw();
         
         SpriteBatch.End();
-
         base.Draw(gameTime);
     }
 }

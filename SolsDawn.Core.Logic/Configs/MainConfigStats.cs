@@ -7,10 +7,17 @@ namespace SolsDawn.Core.Logic.Configs;
 
 public class DebugStats
 {
-    public Color HitColliderColor;
-    [Units] public float HitColliderWidth;
-    public Color ParryColliderColor;
-    [Units] public float ParryColliderWidth;
+    public Color HitColliderColor = Color.GreenYellow;
+    [Units] public float HitColliderWidth = 0.1f;
+    public Color ParryColliderColor = Color.Orange;
+    [Units] public float ParryColliderWidth = 0.1f;
+}
+
+//length in units
+//time in seconds
+public class Variables
+{
+    public float TelegraphDuration = 0.2f;
 }
 
 //length in units
@@ -29,6 +36,9 @@ public static partial class MainConfig
 
     private static readonly Lazy<DebugStats> DebugStatsLazy
         = new(() => ConfigReader.Read(DesignDebugStats, Game.ScreenLayout));
+
+    private static Variables Var => VariablesLazy.Value;
+    private static readonly Lazy<Variables> VariablesLazy = new();
 
     private static readonly PlayerStats DesignPlayerStats = new()
     {
@@ -93,7 +103,7 @@ public static partial class MainConfig
         HitDuration = 0.5f,
         HitBlinkColor = Color.Red,
 
-        BladeTelegraphDuration = 0.4f,
+        BladeTelegraphDuration = Var.TelegraphDuration,
         BladeTelegraphBlinkColor = Color.White,
 
         BladeAttackDistance = 1.5f,
@@ -112,7 +122,7 @@ public static partial class MainConfig
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
 
-        FireTelegraphDuration = 0.4f,
+        FireTelegraphDuration = Var.TelegraphDuration,
         FireTelegraphBlinkColor = Color.MediumSpringGreen,
 
         FireDistance = 15,
@@ -132,11 +142,5 @@ public static partial class MainConfig
         TeleportTraceEndColor = Color.Transparent
     };
 
-    private static readonly DebugStats DesignDebugStats = new()
-    {
-        HitColliderColor = Color.GreenYellow,
-        HitColliderWidth = 0.1f,
-        ParryColliderColor = Color.Orange,
-        ParryColliderWidth = 0.1f,
-    };
+    private static readonly DebugStats DesignDebugStats = new();
 }

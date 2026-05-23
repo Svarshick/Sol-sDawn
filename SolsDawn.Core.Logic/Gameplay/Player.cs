@@ -85,7 +85,7 @@ public sealed class Player : Component<Player>, IUpdatable
     
     private readonly Collider _collider;
     private readonly Input _input;
-    private readonly Animator _animator;
+    private readonly PlayerAnimations _animations;
 
     public Player(GameObject go, Input input) : base(go)
     {
@@ -94,7 +94,8 @@ public sealed class Player : Component<Player>, IUpdatable
         Stats = MainConfig.PlayerStats;
         
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
+        var animator = go.GetComponent<Animator<PlayerAnimations>>() ?? throw new ComponentNotFoundException<Animator<PlayerAnimations>>();
+        _animations = animator.Player;
 
         _machine = new StateMachine<State, State>(State.Idling);
 
@@ -159,7 +160,7 @@ public sealed class Player : Component<Player>, IUpdatable
     public void BeDamaged(int value)
     {
         Console.WriteLine($"[Player] Damaged : {value}");
-        _animator.TryPlay(PlayerAnimations.Hit);
+        _animations.TryPlay(PlayerAnimations.Hit);
     }
     
     private void TeleportStarted(Vector2 screenPosition)

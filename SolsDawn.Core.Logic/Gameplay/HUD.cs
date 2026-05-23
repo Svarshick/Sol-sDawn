@@ -20,10 +20,8 @@ public sealed class HUD : Component<HUD>, IDrawable
     {
         var mouseState = MouseExtended.GetState();
         var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        var bladeDirection = mousePosition - _player.GameObject.Transform.Position;
-        bladeDirection.Normalize();
         Game.SpriteBatch.DrawCircle(
-            _player.GameObject.Transform.Position + bladeDirection * _player.Stats.BladeAimDistance,
+            mousePosition,
             _player.Stats.BladeAimRadius,
             20,
             _player.Stats.BladeAimColor,

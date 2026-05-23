@@ -1,32 +1,40 @@
-using System;
-
 namespace SolsDawn.Core.Logic.Gameplay;
 
-public sealed class Hp : Component<Hp>
-{
-    public int Max; 
-    public float InvulnerabilityDuration;
-
-    public int Current { get; private set; }
-
-    private double _lastHit;
+public delegate void HpChangedDelegate(int oldValue, int newValue);
     
-    public bool IsDied => Current <= 0;
-    public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
+public sealed class Hp(
+    GameObject go, 
+    int max, 
+    float invulnerabilityDuration = 0) 
+    : Component<Hp>(go)
+{
+    public int Max;
+    public int Current; 
 
-    public Hp(GameObject go, int max) : base(go)
-    {
-        Max = max;
-        Current = max;
-    }
+    public float InvulnerabilityDuration = invulnerabilityDuration;
+    private double _lastHit;
+    public event HpChangedDelegate currentHpChanged;
+    public event HpChangedDelegate maxHpChanged;
 
     public override void Dispose()
     {
     }
+    
+    public bool IsDied => Current <= 0;
+    public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
+    public void UpdateInvulnerability() => _lastHit = Time.TotalGameTime.TotalSeconds;
 
-    public void Hit(int value)
+    public void ChangeCurrent(int newValue)
     {
-        Current = Math.Max(0, Current - value);
-        _lastHit = Time.TotalGameTime.TotalSeconds;
+        var oldValue = Current;
+        Current = newValue;
+        currentHpChanged?.Invoke(oldValue, newValue);
+    }
+
+    public void ChangeMax(int newValue)
+    {
+        var oldValue = Current;
+        Current = newValue;
+        maxHpChanged?.Invoke(oldValue, newValue);
     }
 }

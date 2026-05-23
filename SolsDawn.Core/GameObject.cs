@@ -15,7 +15,7 @@ public abstract class Component<T> : IDisposable where T : Component<T>
     public abstract void Dispose();
 }
 
-public sealed class GameObject : IUpdatable, IDrawable, IDisposable
+public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable<GameObject>
 {
     private readonly List<IDisposable> _components = new();
     
@@ -25,6 +25,8 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable
     {
         GameObjectPool.Add(this);
     }
+    
+    public int CompareTo(GameObject other) => GetHashCode().CompareTo(other.GetHashCode());
 
     public T? GetComponent<T>() where T : Component<T>
     {

@@ -4,7 +4,7 @@ using SolsDawn.Core.Logic.Configs;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class BossAnimations : IAnimationPlayer
+public class BossAnimations() : AnimationPlayer(Idle)
 {
     public const string Idle = "Idle";
     public const string BladeTelegraph = "Telegraph";
@@ -13,13 +13,13 @@ public class BossAnimations : IAnimationPlayer
     public const string FireParried = "FireParried";
     public const string Hit = "Hit";
 
-    public Transform Transform { get; set; }
+    public Vector2 LookPosition;
     
     private IAnimation _baseAnimation;
     private IAnimation _overlayAnimation;
     private readonly BossStats _stats = MainConfig.BossStats;
 
-    public void TryPlay(string animationName)
+    public override void TryPlay(string animationName)
     {
         switch (animationName)
         {
@@ -79,7 +79,7 @@ public class BossAnimations : IAnimationPlayer
         }
     }
 
-    public void Draw()
+    public override void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })
         {
@@ -87,6 +87,8 @@ public class BossAnimations : IAnimationPlayer
         }
         else
         {
+            if (_baseAnimation is null)
+                TryPlay(DefaultAnimation);
             _baseAnimation.Draw();
         }
     }
