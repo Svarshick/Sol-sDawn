@@ -176,6 +176,65 @@ public class LogicException : InvalidOperationException
         return string.IsNullOrEmpty(message) ? $"{prefix}" : $"{prefix}: {message}";
     }
 }
+./SolsDawn.Core.Logic/GameTests.cs
+using System;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+
+namespace SolsDawn.Core.Logic;
+
+public class GameTests : IUpdatable, IDrawable
+{
+    public bool IsActive = false;
+    private StarBlinkAnimation _starBlink;
+
+    public GameTests()
+    {
+        if (!IsActive)
+            return;
+        
+    }
+
+    private double _lastTime;
+    public void Update()
+    {
+         if (!IsActive)
+            return;
+
+         if (Time.TotalGameTime.TotalSeconds - _lastTime > 2)
+         {
+             _lastTime = Time.TotalGameTime.TotalSeconds;
+             var trans = new Transform();
+             trans.Position = new Vector2(-100, -100);
+             _starBlink = new StarBlinkAnimation(
+                 true,
+                 0.3f,
+                 trans,
+                 1,
+                 (float)Math.PI,
+                 20,
+                 200,
+                 Color.Yellow,
+                 Color.White,
+                 5);
+         }
+    }
+
+    public void LateUpdate()
+    {
+        if (!IsActive)
+            return;
+    }
+
+    public void Draw()
+    {
+        if (!IsActive)
+            return;
+        
+        if (_starBlink is not null && !_starBlink.IsFinished)
+            _starBlink.Draw();
+    }
+}
 ./SolsDawn.Core.Logic/Configs/MainConfigBehaviour.cs
 using SolsDawn.Core.Logic.Configs.Utils;
 
@@ -224,10 +283,17 @@ namespace SolsDawn.Core.Logic.Configs;
 
 public class DebugStats
 {
-    public Color HitColliderColor;
-    [Units] public float HitColliderWidth;
-    public Color ParryColliderColor;
-    [Units] public float ParryColliderWidth;
+    public Color HitColliderColor = Color.GreenYellow;
+    [Units] public float HitColliderWidth = 0.1f;
+    public Color ParryColliderColor = Color.Orange;
+    [Units] public float ParryColliderWidth = 0.1f;
+}
+
+//length in units
+//time in seconds
+public class Variables
+{
+    public float TelegraphDuration = 0.4f;
 }
 
 //length in units
@@ -247,12 +313,17 @@ public static partial class MainConfig
     private static readonly Lazy<DebugStats> DebugStatsLazy
         = new(() => ConfigReader.Read(DesignDebugStats, Game.ScreenLayout));
 
+    private static Variables Var => VariablesLazy.Value;
+    private static readonly Lazy<Variables> VariablesLazy = new();
+
     private static readonly PlayerStats DesignPlayerStats = new()
     {
         Color = Color.Blue,
         Width = 0.7f,
         Height = 1.3f,
         Velocity = 5,
+        CursorRadius = 0.2f,
+        CursorColor = new Color(0, 255, 255, 122),
 
         TeleportRechargeDuration = 1.5f,
         BladeRechargeDuration = 1f,
@@ -270,10 +341,7 @@ public static partial class MainConfig
         BladeTraceDuration = 0.4f,
         BladeTraceStartColor = Color.Aquamarine,
         BladeTraceEndColor = Color.Transparent,
-        BladeAimDistance = 3f,
-        BladeAimRadius = 0.2f,
-        BladeAimColor = new Color(0, 255, 255, 122),
-
+        
         BladeParryTraceDuration = 0.7f,
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
@@ -310,8 +378,16 @@ public static partial class MainConfig
         HitDuration = 0.5f,
         HitBlinkColor = Color.Red,
 
-        BladeTelegraphDuration = 0.4f,
+        BladeTelegraphDuration = Var.TelegraphDuration,
         BladeTelegraphBlinkColor = Color.White,
+        BladeTelegraphStarDuration = Var.TelegraphDuration/2,
+        BladeTelegraphStarDistance = 2.5f, 
+        BladeTelegraphStarColor = Color.Yellow,
+        BladeTelegraphStarInnerRadius = 0.2f,
+        BladeTelegraphStarOuterRadius = 2,
+        BladeTelegraphStarStartAngle = 0,
+        BladeTelegraphStarDeltaAngle = 90,
+        BladeTelegraphStarThickness = 0.1f,
 
         BladeAttackDistance = 1.5f,
         BladeAttackEdgeAngle = 45f,
@@ -329,7 +405,7 @@ public static partial class MainConfig
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
 
-        FireTelegraphDuration = 0.4f,
+        FireTelegraphDuration = Var.TelegraphDuration,
         FireTelegraphBlinkColor = Color.MediumSpringGreen,
 
         FireDistance = 15,
@@ -349,13 +425,7 @@ public static partial class MainConfig
         TeleportTraceEndColor = Color.Transparent
     };
 
-    private static readonly DebugStats DesignDebugStats = new()
-    {
-        HitColliderColor = Color.GreenYellow,
-        HitColliderWidth = 0.1f,
-        ParryColliderColor = Color.Orange,
-        ParryColliderWidth = 0.1f,
-    };
+    private static readonly DebugStats DesignDebugStats = new();
 }
 ./SolsDawn.Core.Logic/Configs/Utils/BossBehaviourBuilder.cs
 using System;
@@ -609,6 +679,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private Input _input;
     private BossAI _bossAI;
 
+    private GameTests _gameTests;
+
     public Game()
     {
         _graphicsDeviceManager = new GraphicsDeviceManager(this);
@@ -624,20 +696,22 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         var playerGo = new GameObject();
         new Collider(playerGo, 1, Collision.LayerName.Player);
         new Hp(playerGo, 10);
-        new Animator(playerGo, new PlayerAnimations(), PlayerAnimations.Idle);
+        new Animator<PlayerAnimations>(playerGo, new PlayerAnimations());
         _player = new Player(playerGo, _input);
         new HUD(playerGo, _player);
         
         var bossGo = new GameObject();
         new Collider(bossGo, 2, Collision.LayerName.Enemy);
         new Hp(bossGo, 10);
-        new Animator(bossGo, new BossAnimations(), BossAnimations.Idle);
+        new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Boss(bossGo);
 
         IntentionsPool.PlayerGO = playerGo;
         IntentionsPool.BossGO = bossGo;
         var context = new BossBehaviourContext(boss, _player, ScreenLayout);
         _bossAI = new(MainConfig.BossBehaviourBuilder, context);
+
+        _gameTests = new();
         return;
 
         void InitSystems()
@@ -666,7 +740,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         
         EffectsPool.Update();
         ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
-        
+
+        _gameTests.Update();
         _input.Update();
         _bossAI.Update();
         GameObjectPool.Update();
@@ -682,6 +757,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _input.LateUpdate();
         EffectsPool.LateUpdate();
 
+        _gameTests.LateUpdate();
         GameObjectPool.LateUpdate();
         Collision.World.RebuildDynamicLayers();
     }
@@ -697,10 +773,10 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         );
         
         EffectsPool.Draw();
+        _gameTests.Draw();
         GameObjectPool.Draw();
         
         SpriteBatch.End();
-
         base.Draw(gameTime);
     }
 }
@@ -753,18 +829,24 @@ public class ScreenLayout
     public void FollowPosition(Vector2 position) => Camera.LookAt(position);
 }
 ./SolsDawn.Core.Logic/Animations/Animator.cs
-using Microsoft.Xna.Framework;
-
 namespace SolsDawn.Core.Logic.Animations;
 
-public class Animator : Component<Animator>, IDrawable
+public abstract class AnimationPlayer(string defaultAnimation) : IDrawable
 {
-    private readonly IAnimationPlayer _player;
-    public Animator(GameObject go, IAnimationPlayer player, string defaultAnimation) : base(go)
+    public readonly string DefaultAnimation = defaultAnimation;
+    public Transform Transform;
+    public abstract void Draw();
+    public abstract void TryPlay(string animationName);
+}
+
+public class Animator<T> : Component<Animator<T>>, IDrawable
+    where T : AnimationPlayer
+{
+    public readonly T Player;
+    public Animator(GameObject go, T player) : base(go)
     {
-        _player = player;
-        _player.Transform = go.Transform;
-        _player.TryPlay(defaultAnimation);
+        Player = player;
+        Player.Transform = GameObject.Transform;
     }
     
     public override void Dispose()
@@ -773,14 +855,164 @@ public class Animator : Component<Animator>, IDrawable
 
     public void Draw()
     {
-        _player.Draw();   
+        Player.Draw();   
     }
+}
+./SolsDawn.Core.Logic/Animations/LineBlinkAnimation.cs
+using Microsoft.Xna.Framework;
+using MonoGame.Extended;
+
+namespace SolsDawn.Core.Logic.Animations;
+
+public class LineBlinkAnimation (
+    bool isOneShot,
+    float duration,
+    Vector2 start,
+    Vector2 end,
+    Color trueColor,
+    Color blickColor,
+    float thickness,
+    float layerDepth = 0.0f)
+    : IAnimation
+{
+    public bool IsFinished { get; private set; }
+
+    private double _startTime = Time.TotalGameTime.TotalSeconds;
+
+    public void Draw()
+    {
+        var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
+        var isTimeExpired = elapsedTime > duration;
+        var isHalfTimeExpired = elapsedTime * 2 > duration;
+
+        Color color;
+
+        if (isTimeExpired)
+        {
+            color = trueColor;
+            if (isOneShot)
+            {
+                IsFinished = true;
+            }
+            else {
+                _startTime = Time.TotalGameTime.TotalSeconds;
+            }
+        }
+        else if (isHalfTimeExpired)
+        {
+            var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration - 1), 0f, 1f);
+            color = Color.Lerp(blickColor, trueColor, t);
+        }
+        else
+        {
+            var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration), 0f, 1f);
+            color = Color.Lerp(trueColor, blickColor, t);
+        }
+        
+        Game.SpriteBatch.DrawLine(
+            start,
+            end,
+            color,
+            thickness,
+            layerDepth);
+    }
+
+    public void Cancel()
+    {
+        IsFinished = true;
+    }
+}
+./SolsDawn.Core.Logic/Animations/StarBlinkAnimation.cs
+using System;
+using Microsoft.Xna.Framework;
+using MonoGame.Extended;
+
+namespace SolsDawn.Core.Logic.Animations;
+
+public class StarBlinkAnimation(
+    bool isOneShot,
+    float duration,
+    Transform transform,
+    float startAngle,
+    float deltaAngle,
+    float maxInnerRadius,
+    float maxOuterRadius,
+    Color trueColor,
+    Color blickColor,
+    float thickness,
+    float layerDepth = 0.0f) 
+    : IAnimation
+{
+    public bool IsFinished { get; private set; }
     
-    public void TryPlay(string animationName) => _player.TryPlay(animationName);
+    private double _startTime = Time.TotalGameTime.TotalSeconds;
+    private readonly Vector2[] _vertices = new Vector2[9];
+
+    public void Draw()
+    {
+        var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
+        var isTimeExpired = elapsedTime > duration;
+        var isHalfTimeExpired = elapsedTime * 2 > duration;
+
+        Color color;
+        float currentAngle;
+        float currentSize;
+
+        if (isTimeExpired)
+        {
+            color = trueColor;
+            currentAngle = startAngle + deltaAngle;
+            currentSize = 0f;
+            if (isOneShot)
+            {
+                IsFinished = true;
+            }
+            else {
+                _startTime = Time.TotalGameTime.TotalSeconds;
+            }
+        }
+        else if (isHalfTimeExpired)
+        {
+            var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration - 1), 0f, 1f);
+            color = Color.Lerp(blickColor, trueColor, t);
+            currentAngle = startAngle + (float)(elapsedTime / duration) * deltaAngle;
+            currentSize = MathHelper.Lerp(maxOuterRadius, 0f, t);
+        }
+        else
+        {
+            var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration), 0f, 1f);
+            color = Color.Lerp(trueColor, blickColor, t);
+            currentAngle = startAngle + (float)(elapsedTime / duration) * deltaAngle;
+            currentSize = MathHelper.Lerp(0f, maxOuterRadius, t);
+        }
+
+        float outerRadius = currentSize;
+        float innerRadius = currentSize * (maxInnerRadius / maxOuterRadius);
+
+        for (int i = 0; i < 8; i++)
+        {
+            float angle = i * MathHelper.PiOver4 + currentAngle;
+            float r = (i % 2 == 0) ? outerRadius : innerRadius;
+            
+            _vertices[i] = new Vector2(
+                (float)Math.Cos(angle) * r,
+                (float)Math.Sin(angle) * r
+            );
+        }
+        _vertices[8] = _vertices[0];
+
+        Game.SpriteBatch.DrawPolygon(
+            transform.Position,
+            _vertices,
+            color,
+            thickness,
+            layerDepth);
+    }
+
+    public void Cancel() => IsFinished = true;
 }
 ./SolsDawn.Core.Logic/Animations/RectangleBlinkAnimation.cs
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
@@ -810,8 +1042,11 @@ public class RectangleBlinkAnimation(
         if (isTimeExpired)
         {
             color = trueColor;
-            if (!isOneShot)
+            if (isOneShot)
             {
+                IsFinished = true;
+            }
+            else {
                 _startTime = Time.TotalGameTime.TotalSeconds;
             }
         }
@@ -839,7 +1074,6 @@ public class RectangleBlinkAnimation(
 }
 ./SolsDawn.Core.Logic/Animations/CircleIdleAnimation.cs
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
@@ -871,8 +1105,6 @@ public class CircleIdleAnimation(
     }
 }
 ./SolsDawn.Core.Logic/Animations/IAnimation.cs
-using Microsoft.Xna.Framework;
-
 namespace SolsDawn.Core.Logic.Animations;
 
 public interface IAnimation : IDrawable
@@ -880,16 +1112,8 @@ public interface IAnimation : IDrawable
     public bool IsFinished { get; }
     public void Cancel();
 }
-
-public interface IAnimationPlayer : IDrawable
-{
-    public void TryPlay(string animationName);
-    public Transform Transform { get; set; }
-}
-
 ./SolsDawn.Core.Logic/Animations/CircleBlickAnimation.cs
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
@@ -920,7 +1144,11 @@ public class CircleBlickAnimation(
         if (isTimeExpired)
         {
             color = trueColor;
-            if (!isOneShot)
+            if (isOneShot)
+            {
+                IsFinished = true;
+            }
+            else 
             {
                 _startTime = Time.TotalGameTime.TotalSeconds;
             }
@@ -949,7 +1177,6 @@ public class CircleBlickAnimation(
 }
 ./SolsDawn.Core.Logic/Animations/RectangleIdleAnimation.cs
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
@@ -1326,36 +1553,44 @@ public class Input : IUpdatable
     }
 }
 ./SolsDawn.Core.Logic/Gameplay/Hp.cs
-using System;
-
 namespace SolsDawn.Core.Logic.Gameplay;
 
-public sealed class Hp : Component<Hp>
-{
-    public int Max; 
-    public float InvulnerabilityDuration;
-
-    public int Current { get; private set; }
-
-    private double _lastHit;
+public delegate void HpChangedDelegate(int oldValue, int newValue);
     
-    public bool IsDied => Current <= 0;
-    public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
+public sealed class Hp(
+    GameObject go, 
+    int max, 
+    float invulnerabilityDuration = 0) 
+    : Component<Hp>(go)
+{
+    public int Max;
+    public int Current; 
 
-    public Hp(GameObject go, int max) : base(go)
-    {
-        Max = max;
-        Current = max;
-    }
+    public float InvulnerabilityDuration = invulnerabilityDuration;
+    private double _lastHit;
+    public event HpChangedDelegate currentHpChanged;
+    public event HpChangedDelegate maxHpChanged;
 
     public override void Dispose()
     {
     }
+    
+    public bool IsDied => Current <= 0;
+    public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
+    public void UpdateInvulnerability() => _lastHit = Time.TotalGameTime.TotalSeconds;
 
-    public void Hit(int value)
+    public void ChangeCurrent(int newValue)
     {
-        Current = Math.Max(0, Current - value);
-        _lastHit = Time.TotalGameTime.TotalSeconds;
+        var oldValue = Current;
+        Current = newValue;
+        currentHpChanged?.Invoke(oldValue, newValue);
+    }
+
+    public void ChangeMax(int newValue)
+    {
+        var oldValue = Current;
+        Current = newValue;
+        maxHpChanged?.Invoke(oldValue, newValue);
     }
 }
 ./SolsDawn.Core.Logic/Gameplay/Collision.cs
@@ -1482,25 +1717,71 @@ public static class Helper
         Game.EffectsPool.Add(new LineTrace(traceDuration, bladeVertices[2], bladeVertices[3], traceStartColor, traceEndColor, attackEdgeWidth, 1));
     }
 }
-./SolsDawn.Core.Logic/Gameplay/Animations/PlayerAnimations.cs
+./SolsDawn.Core.Logic/Gameplay/Animations/BossBladeTelegraphAnimation.cs
 using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+
+namespace SolsDawn.Core.Logic.Gameplay.Animations;
+
+public class BossBladeTelegraphAnimation : IAnimation
+{
+    public bool IsFinished { get; private set; }
+    private StarBlinkAnimation _starBlinkAnimation;
+    private RectangleBlinkAnimation _bossBlinkAnimation;
+
+    public BossBladeTelegraphAnimation(BossStats stats, Vector2 position, Vector2 lookPosition)
+    {
+        var starPosition = position + Vector2.Normalize(lookPosition - position) * stats.BladeTelegraphStarDistance;
+        _starBlinkAnimation = new StarBlinkAnimation(
+            true,
+            stats.BladeTelegraphStarDuration,
+            new Transform() { Position = starPosition },
+            stats.BladeTelegraphStarStartAngle,
+            stats.BladeTelegraphStarDeltaAngle,
+            stats.BladeTelegraphStarInnerRadius,
+            stats.BladeTelegraphStarOuterRadius,
+            stats.BladeTelegraphStarColor,
+            stats.BladeTelegraphBlinkColor,
+            stats.BladeTelegraphStarThickness);
+        _bossBlinkAnimation = new RectangleBlinkAnimation(
+            true,
+            stats.BladeTelegraphDuration,
+            new Transform() { Position = position },
+            stats.Width,
+            stats.Height,
+            stats.Color,
+            stats.BladeTelegraphBlinkColor);
+    }
+
+    public void Draw()
+    {
+        _bossBlinkAnimation.Draw();
+        _starBlinkAnimation.Draw();
+        IsFinished = _bossBlinkAnimation.IsFinished || _starBlinkAnimation.IsFinished;
+    }
+
+    public void Cancel()
+    {
+        _bossBlinkAnimation.Cancel();
+        _starBlinkAnimation.Cancel();
+    }
+}
+./SolsDawn.Core.Logic/Gameplay/Animations/PlayerAnimations.cs
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class PlayerAnimations : IAnimationPlayer
+public class PlayerAnimations() : AnimationPlayer(Idle)
 {
     public const string Idle = "Idle";
     public const string Hit = "Hit";
 
-    public Transform Transform { get; set; }
-
     private IAnimation _baseAnimation;
-    private IAnimation? _overlayAnimation;
+    private IAnimation _overlayAnimation;
     private readonly PlayerStats _stats = MainConfig.PlayerStats;
 
-    public void TryPlay(string animationName)
+    public override void TryPlay(string animationName)
     {
         switch (animationName)
         {
@@ -1524,7 +1805,7 @@ public class PlayerAnimations : IAnimationPlayer
         }
     }
     
-    public void Draw()
+    public override void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })
         {
@@ -1532,8 +1813,57 @@ public class PlayerAnimations : IAnimationPlayer
         }
         else
         {
+            if (_baseAnimation is null)
+                TryPlay(DefaultAnimation);
             _baseAnimation.Draw();
         }
+    }
+}
+./SolsDawn.Core.Logic/Gameplay/Animations/BossFireTelegraphAnimation.cs
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+
+namespace SolsDawn.Core.Logic.Gameplay.Animations;
+
+public class BossFireTelegraphAnimation : IAnimation
+{
+    public bool IsFinished { get; private set; }
+    private RectangleBlinkAnimation _bossBlinkAnimation;
+    private LineBlinkAnimation _fireBlinkAnimation;
+
+    public BossFireTelegraphAnimation(BossStats stats, Vector2 position, Vector2 lookPosition)
+    {
+        _bossBlinkAnimation = new RectangleBlinkAnimation(
+            true,
+            stats.FireTelegraphDuration,
+            new Transform() { Position = position },
+            stats.Width,
+            stats.Height,
+            stats.Color,
+            stats.FireTelegraphBlinkColor);
+
+        var fireEnd = position + Vector2.Normalize(lookPosition - position) * stats.FireDistance;
+        _fireBlinkAnimation = new LineBlinkAnimation(
+            true,
+            stats.FireTelegraphDuration,
+            position,
+            fireEnd,
+            stats.FireTraceEndColor,
+            stats.FireParryTraceStartColor,
+            stats.FireWidth);
+    }
+
+    public void Draw()
+    {
+        _bossBlinkAnimation.Draw();
+        _fireBlinkAnimation.Draw();
+        IsFinished = _bossBlinkAnimation.IsFinished || _fireBlinkAnimation.IsFinished;
+    }
+
+    public void Cancel()
+    {
+        _bossBlinkAnimation.Cancel();
+        _fireBlinkAnimation.Cancel();
     }
 }
 ./SolsDawn.Core.Logic/Gameplay/Animations/BossAnimations.cs
@@ -1543,7 +1873,7 @@ using SolsDawn.Core.Logic.Configs;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class BossAnimations : IAnimationPlayer
+public class BossAnimations() : AnimationPlayer(Idle)
 {
     public const string Idle = "Idle";
     public const string BladeTelegraph = "Telegraph";
@@ -1552,13 +1882,13 @@ public class BossAnimations : IAnimationPlayer
     public const string FireParried = "FireParried";
     public const string Hit = "Hit";
 
-    public Transform Transform { get; set; }
+    public Vector2 LookPosition;
     
     private IAnimation _baseAnimation;
     private IAnimation _overlayAnimation;
     private readonly BossStats _stats = MainConfig.BossStats;
 
-    public void TryPlay(string animationName)
+    public override void TryPlay(string animationName)
     {
         switch (animationName)
         {
@@ -1571,14 +1901,7 @@ public class BossAnimations : IAnimationPlayer
                 break;
             case BladeTelegraph:
                 _overlayAnimation = null;
-                _baseAnimation = new RectangleBlinkAnimation(
-                    true,
-                    _stats.BladeTelegraphDuration,
-                    Transform,
-                    _stats.Width,
-                    _stats.Height,
-                    _stats.Color,
-                    _stats.BladeTelegraphBlinkColor);
+                _baseAnimation = new BossBladeTelegraphAnimation(_stats, Transform.Position, LookPosition);
                 break;
             case BladeParried:
                 _baseAnimation = new RectangleIdleAnimation(
@@ -1589,14 +1912,7 @@ public class BossAnimations : IAnimationPlayer
                 break;
             case FireTelegraph:
                 _overlayAnimation = null;
-                _baseAnimation = new RectangleBlinkAnimation(
-                    true,
-                    _stats.FireTelegraphDuration,
-                    Transform,
-                    _stats.Width,
-                    _stats.Height,
-                    _stats.Color,
-                    _stats.FireTelegraphBlinkColor);
+                _baseAnimation = new BossFireTelegraphAnimation(_stats, Transform.Position, LookPosition);
                 break;
             case FireParried:
                 _baseAnimation = new RectangleIdleAnimation(
@@ -1618,7 +1934,7 @@ public class BossAnimations : IAnimationPlayer
         }
     }
 
-    public void Draw()
+    public override void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })
         {
@@ -1626,6 +1942,8 @@ public class BossAnimations : IAnimationPlayer
         }
         else
         {
+            if (_baseAnimation is null)
+                TryPlay(DefaultAnimation);
             _baseAnimation.Draw();
         }
     }
@@ -1656,6 +1974,14 @@ public class BossStats
     
     public float BladeTelegraphDuration;
     public Color BladeTelegraphBlinkColor;
+    [Units] public float BladeTelegraphStarDistance;
+    public float BladeTelegraphStarDuration;
+    public Color BladeTelegraphStarColor;
+    [Units] public float BladeTelegraphStarOuterRadius;
+    [Units] public float BladeTelegraphStarInnerRadius;
+    [Euler] public float BladeTelegraphStarStartAngle;
+    [Euler] public float BladeTelegraphStarDeltaAngle;
+    [Units] public float BladeTelegraphStarThickness;
     
     [Units] public float BladeAttackDistance;
     [Euler] public float BladeAttackEdgeAngle;
@@ -1714,7 +2040,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     
     private readonly Collider _collider;
     private readonly Hp _hp;
-    private readonly Animator _animator;
+    private readonly BossAnimations _animations;
     
     public Boss(GameObject go) : base(go)
     {
@@ -1722,7 +2048,8 @@ public sealed class Boss : Component<Boss>, IUpdatable
             
         _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();     
         _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
-        _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
+        var animator = go.GetComponent<Animator<BossAnimations>>() ?? throw new ComponentNotFoundException<Animator<BossAnimations>>();
+        _animations = animator.Player;
         
         _machine = new StateMachine<State, State>(State.Pending);
         _machine.Configure(State.Pending)
@@ -1731,32 +2058,32 @@ public sealed class Boss : Component<Boss>, IUpdatable
             .Permit(State.FireTelegraphing)
             .Permit(State.Teleporting);
         _machine.Configure(State.Idling)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.Idle))
             .Permit(State.Pending);
         _machine.Configure(State.Teleporting)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.Idle))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.Idle))
             .Permit(State.Pending);
         
         _machine.Configure(State.BladeTelegraphing)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.BladeTelegraph))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.BladeTelegraph))
             .OnExit(RemoveTelegraphBladeCollider)
             .Permit(State.BladeAttacking)
             .Permit(State.BladeParried);
         _machine.Configure(State.BladeAttacking)
             .Permit(State.Pending);
         _machine.Configure(State.BladeParried)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.BladeParried))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.BladeParried))
             .Permit(State.Pending);
         
         _machine.Configure(State.FireTelegraphing)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.FireTelegraph))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.FireTelegraph))
             .OnExit(_ => GameObject.RemoveComponent<Parry>())
             .Permit(State.FireAttacking)
             .Permit(State.FireParried);
         _machine.Configure(State.FireAttacking)
             .Permit(State.Pending);
         _machine.Configure(State.FireParried)
-            .OnEntry(_ => _animator.TryPlay(BossAnimations.FireParried))
+            .OnEntry(_ => _animations.TryPlay(BossAnimations.FireParried))
             .Permit(State.Pending);
     }
 
@@ -1798,7 +2125,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     public void BeDamaged(int value)
     {
         Console.WriteLine($"[Boss] Damaged : {value}");
-        _animator.TryPlay(BossAnimations.Hit);
+        _animations.TryPlay(BossAnimations.Hit);
     }
     
     // ACTIONS
@@ -1832,6 +2159,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _actionStartTime = Time.TotalGameTime.TotalSeconds; //TODO it is bad, because long game time has less accuracy
         _actionDuration = Stats.BladeTelegraphDuration;
         CreateTelegraphBladeCollider(lookPosition);
+        _animations.LookPosition = lookPosition;
         _machine.Fire(State.BladeTelegraphing);
     }
 
@@ -1841,6 +2169,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _actionStartTime = Time.TotalGameTime.TotalSeconds;
         _actionDuration = Stats.FireTelegraphDuration;
         new Parry(GameObject, GameObject, ParryType.Fire);
+        _animations.LookPosition = lookPosition;
         _machine.Fire(State.FireTelegraphing);
     }
     
@@ -2047,6 +2376,8 @@ public class PlayerStats
     [Units] public float Width;
     [Units] public float Height;
     [Units] public float Velocity;
+    [Units] public float CursorRadius;
+    public Color CursorColor;
 
     public float TeleportRechargeDuration;
     public float BladeRechargeDuration;
@@ -2064,9 +2395,6 @@ public class PlayerStats
     public float BladeTraceDuration;
     public Color BladeTraceStartColor;
     public Color BladeTraceEndColor;
-    [Units] public float BladeAimDistance;
-    [Units] public float BladeAimRadius;
-    public Color BladeAimColor;
     
     public float BladeParryTraceDuration;
     public Color BladeParryTraceStartColor;
@@ -2114,7 +2442,7 @@ public sealed class Player : Component<Player>, IUpdatable
     
     private readonly Collider _collider;
     private readonly Input _input;
-    private readonly Animator _animator;
+    private readonly PlayerAnimations _animations;
 
     public Player(GameObject go, Input input) : base(go)
     {
@@ -2123,7 +2451,8 @@ public sealed class Player : Component<Player>, IUpdatable
         Stats = MainConfig.PlayerStats;
         
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _animator = go.GetComponent<Animator>() ?? throw new ComponentNotFoundException<Animator>();
+        var animator = go.GetComponent<Animator<PlayerAnimations>>() ?? throw new ComponentNotFoundException<Animator<PlayerAnimations>>();
+        _animations = animator.Player;
 
         _machine = new StateMachine<State, State>(State.Idling);
 
@@ -2188,7 +2517,7 @@ public sealed class Player : Component<Player>, IUpdatable
     public void BeDamaged(int value)
     {
         Console.WriteLine($"[Player] Damaged : {value}");
-        _animator.TryPlay(PlayerAnimations.Hit);
+        _animations.TryPlay(PlayerAnimations.Hit);
     }
     
     private void TeleportStarted(Vector2 screenPosition)
@@ -2334,6 +2663,7 @@ public sealed class Player : Component<Player>, IUpdatable
     {
         if (!FireCharged)
             return;
+        _lastFireUsage = Time.TotalGameTime.TotalSeconds;
         
         var lookPosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var direction = lookPosition - GameObject.Transform.Position;
@@ -2369,8 +2699,6 @@ public sealed class Player : Component<Player>, IUpdatable
         {
             AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
         }
-        
-        _lastFireUsage = Time.TotalGameTime.TotalSeconds;
     }
     
     public void ParryFire(Vector2 parryPosition)
@@ -2407,14 +2735,12 @@ public sealed class HUD : Component<HUD>, IDrawable
     {
         var mouseState = MouseExtended.GetState();
         var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        var bladeDirection = mousePosition - _player.GameObject.Transform.Position;
-        bladeDirection.Normalize();
         Game.SpriteBatch.DrawCircle(
-            _player.GameObject.Transform.Position + bladeDirection * _player.Stats.BladeAimDistance,
-            _player.Stats.BladeAimRadius,
+            mousePosition,
+            _player.Stats.CursorRadius,
             20,
-            _player.Stats.BladeAimColor,
-            _player.Stats.BladeAimRadius);
+            _player.Stats.CursorColor,
+            _player.Stats.CursorRadius);
 
         var indicatorRadius = Game.ScreenLayout.ToPixels(0.5f);
         var indicatorPadding = Game.ScreenLayout.ToPixels(0.3f);
@@ -2717,7 +3043,6 @@ public class EffectsPool : IUpdatable, IDrawable
 }
 ./SolsDawn.Core.Logic/Effects/LineTrace.cs
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Effects;

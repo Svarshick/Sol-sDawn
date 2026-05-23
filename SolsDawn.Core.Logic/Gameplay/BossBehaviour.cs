@@ -6,15 +6,16 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public class BossAI(BossBehaviourBuilder builder, BossBehaviourContext context) 
 {
-    private IReadOnlyList<Action<BossBehaviourContext>> _actions = builder.Build();
+    private IReadOnlyList<IBossInstruction> _instructions = builder.Build();
     private int _actionIndex = 0;
     
     public void Update()
     {
         if (context.Boss.CurrentState == Boss.State.Pending)
         {
-            _actions[_actionIndex](context);
-            _actionIndex = (_actionIndex + 1) % _actions.Count;
+            var instruction = _instructions[_actionIndex];
+            _actionIndex = instruction.Execute(context, _actionIndex);
+            _actionIndex %= _instructions.Count;
         }
     }
 }

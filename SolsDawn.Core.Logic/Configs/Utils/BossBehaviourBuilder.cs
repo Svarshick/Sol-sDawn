@@ -1,47 +1,146 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using SolsDawn.Core.Logic.Gameplay;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-public record BossBehaviourContext(Boss Boss, Player Player, ScreenLayout Layout);
+public struct BossBehaviourContext(Boss boss, Player player, ScreenLayout layout)
+{
+    public readonly Boss Boss = boss;
+    public readonly Player Player = player;
+    public readonly ScreenLayout Layout = layout;
+    public bool BossLastAttackSucceeded;
+
+    public void Forget()
+    {
+        BossLastAttackSucceeded = false;
+    }
+}
 
 public class BossBehaviourBuilder
 {
-    private readonly List<Action<BossBehaviourContext>> _actions = new();
+    private readonly List<IBossInstruction> _instructions = new();
+    private readonly Stack<IfGroup> _ifStack = new();
+    private class IfGroup
+    {
+        public ConditionalJumpInstruction CurrentBranch;
+        public readonly List<JumpInstruction> BranchExits = new();
+    }
+        
     
     private BossBehaviourBuilder() { }
     public static BossBehaviourBuilder Create() => new();
-    
-    public IReadOnlyList<Action<BossBehaviourContext>> Build() => _actions;
+
+    public IReadOnlyList<IBossInstruction> Build()
+    {
+        if (_ifStack.Count > 0)
+            throw new InvalidOperationException("Unclosed If block detected. Make sure to call EndIf.");
+
+        return _instructions;
+    }
 
     public BossBehaviourBuilder Then(Func<BossBehaviourBuilder> nextFactory)
     {
-        _actions.AddRange(nextFactory()._actions);
+        _instructions.AddRange(nextFactory()._instructions);
         return this;
     }
     
     public BossBehaviourBuilder Wait(float seconds)
     {
-        _actions.Add(ctx => ctx.Boss.Wait(seconds));
+        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Wait(seconds)));
         return this;
     }
 
     public BossBehaviourBuilder Teleport(VectorExpression position)
     {
-        _actions.Add(ctx => ctx.Boss.Teleport(position.Evaluate(ctx)));
+        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Teleport(position.Evaluate(ctx))));
         return this;
     }
 
     public BossBehaviourBuilder Blade(VectorExpression lookPosition)
     {
-        _actions.Add(ctx => ctx.Boss.Blade(lookPosition.Evaluate(ctx)));
+        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Blade(lookPosition.Evaluate(ctx))));
         return this;
     }
 
     public BossBehaviourBuilder Fire(VectorExpression lookPosition)
     {
-        _actions.Add(ctx => ctx.Boss.Fire(lookPosition.Evaluate(ctx)));
+        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Fire(lookPosition.Evaluate(ctx))));
+        return this;
+    }
+    
+    public BossBehaviourBuilder If(BoolExpression condition, bool forget = true)
+    {
+        var branch = new ConditionalJumpInstruction(condition);
+        _instructions.Add(branch);
+        if (forget)
+        {
+            _instructions.Add(new ForgetInstruction());
+        }
+        var ifGroup = new IfGroup { CurrentBranch = branch };
+        _ifStack.Push(ifGroup);
+        return this;
+    }
+
+    public BossBehaviourBuilder ElseIf(BoolExpression condition, bool forget = true)
+    {
+        if (_ifStack.Count == 0)
+        {
+            throw new InvalidOperationException("ElseIf must be called inside an If block.");
+        }
+        var exit = new JumpInstruction();
+        _instructions.Add(exit);
+        var branch = new ConditionalJumpInstruction(condition);
+        var ifGroup = _ifStack.Peek();
+        ifGroup.CurrentBranch.Destination = _instructions.Count;
+        ifGroup.CurrentBranch = branch;
+        ifGroup.BranchExits.Add(exit);
+        _instructions.Add(branch);
+        if (forget)
+        {
+            _instructions.Add(new ForgetInstruction());
+        }
+        return this;
+    }
+
+    public BossBehaviourBuilder Else(bool forget = true)
+    {
+        if (_ifStack.Count == 0)
+        {
+            throw new InvalidOperationException("Else must be called inside an If block.");
+        }
+        var exit = new JumpInstruction();
+        _instructions.Add(exit);
+        var ifGroup = _ifStack.Peek();
+        ifGroup.CurrentBranch.Destination = _instructions.Count;
+        ifGroup.CurrentBranch = null;
+        ifGroup.BranchExits.Add(exit);
+        if (forget)
+        {
+            _instructions.Add(new ForgetInstruction());
+        }
+        return this;
+    }
+
+    public BossBehaviourBuilder EndIf()
+    {
+        if (_ifStack.Count == 0)
+        {
+            throw new InvalidOperationException("EndIf outside If block.");
+        }
+        
+        var ifGroup = _ifStack.Pop();
+        if (ifGroup.CurrentBranch is not null)
+        {
+            ifGroup.CurrentBranch.Destination = _instructions.Count;
+        }
+
+        foreach (var branchExit in ifGroup.BranchExits)
+        {
+            branchExit.Destination = _instructions.Count;
+        }
+
         return this;
     }
 
@@ -53,4 +152,6 @@ public class BossBehaviourBuilder
     public static VectorExpression CameraTopRight => new CameraTopRightPositionExpression();
     public static VectorExpression CameraBottomLeft => new CameraBottomLeftPositionExpression();
     public static VectorExpression CameraBottomRight => new CameraBottomRightPositionExpression();
+    public static FloatExpression Units(float units) => new UnitsFloatExpression(units);
+    public static BoolExpression LastAttack => new LastAttackSucceededExpression();
 }

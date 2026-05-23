@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-
 public abstract class VectorExpression
 {
     public abstract Vector2 Evaluate(BossBehaviourContext context);
@@ -33,6 +32,8 @@ public abstract class VectorExpression
     
     public static VectorExpression operator /(VectorExpression left, float scalar)
         => new ScaleVectorExpression(left, 1/scalar);
+
+    public VectorMagnitudeExpression Magnitude() => new VectorMagnitudeExpression(this);
 }
 
 public class ConstantVectorExpression(float x, float y) : VectorExpression
@@ -98,4 +99,10 @@ public class ScaleVectorExpression(VectorExpression operand, float scalar) : Vec
 {
     public override Vector2 Evaluate(BossBehaviourContext context) 
         => operand.Evaluate(context) * scalar;
+}
+
+public class VectorMagnitudeExpression(VectorExpression vector) : FloatExpression
+{
+    public override float Evaluate(BossBehaviourContext context)
+        => vector.Evaluate(context).Length();
 }
