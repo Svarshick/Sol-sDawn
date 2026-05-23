@@ -22,10 +22,10 @@ public sealed class HUD : Component<HUD>, IDrawable
         var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
         Game.SpriteBatch.DrawCircle(
             mousePosition,
-            _player.Stats.BladeAimRadius,
+            _player.Stats.CursorRadius,
             20,
-            _player.Stats.BladeAimColor,
-            _player.Stats.BladeAimRadius);
+            _player.Stats.CursorColor,
+            _player.Stats.CursorRadius);
 
         var indicatorRadius = Game.ScreenLayout.ToPixels(0.5f);
         var indicatorPadding = Game.ScreenLayout.ToPixels(0.3f);

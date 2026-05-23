@@ -18,6 +18,8 @@ public class PlayerStats
     [Units] public float Width;
     [Units] public float Height;
     [Units] public float Velocity;
+    [Units] public float CursorRadius;
+    public Color CursorColor;
 
     public float TeleportRechargeDuration;
     public float BladeRechargeDuration;
@@ -35,9 +37,6 @@ public class PlayerStats
     public float BladeTraceDuration;
     public Color BladeTraceStartColor;
     public Color BladeTraceEndColor;
-    [Units] public float BladeAimDistance;
-    [Units] public float BladeAimRadius;
-    public Color BladeAimColor;
     
     public float BladeParryTraceDuration;
     public Color BladeParryTraceStartColor;
@@ -306,6 +305,7 @@ public sealed class Player : Component<Player>, IUpdatable
     {
         if (!FireCharged)
             return;
+        _lastFireUsage = Time.TotalGameTime.TotalSeconds;
         
         var lookPosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
         var direction = lookPosition - GameObject.Transform.Position;
@@ -341,8 +341,6 @@ public sealed class Player : Component<Player>, IUpdatable
         {
             AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
         }
-        
-        _lastFireUsage = Time.TotalGameTime.TotalSeconds;
     }
     
     public void ParryFire(Vector2 parryPosition)

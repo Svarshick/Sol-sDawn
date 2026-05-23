@@ -32,7 +32,18 @@ public class BossAnimations() : AnimationPlayer(Idle)
                 break;
             case BladeTelegraph:
                 _overlayAnimation = null;
-                _baseAnimation = new RectangleBlinkAnimation(
+                var starBlinkAnimation = new StarBlinkAnimation(
+                    true,
+                    _stats.BladeTelegraphStarDuration,
+                    new Transform() { Position = LookPosition },
+                    _stats.BladeTelegraphStarStartAngle,
+                    _stats.BladeTelegraphStarDeltaAngle,
+                    _stats.BladeTelegraphStarInnerRadius,
+                    _stats.BladeTelegraphStarOuterRadius,
+                    _stats.BladeTelegraphStarColor,
+                    _stats.BladeTelegraphBlinkColor,
+                    _stats.BladeTelegraphStarThickness);
+                var bossBlinkAnimation = new RectangleBlinkAnimation(
                     true,
                     _stats.BladeTelegraphDuration,
                     Transform,
@@ -40,6 +51,7 @@ public class BossAnimations() : AnimationPlayer(Idle)
                     _stats.Height,
                     _stats.Color,
                     _stats.BladeTelegraphBlinkColor);
+                _baseAnimation = new BossTelegraphAnimation(bossBlinkAnimation, starBlinkAnimation);
                 break;
             case BladeParried:
                 _baseAnimation = new RectangleIdleAnimation(

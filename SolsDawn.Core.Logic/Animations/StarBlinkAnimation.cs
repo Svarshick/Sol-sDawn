@@ -8,13 +8,13 @@ public class StarBlinkAnimation(
     bool isOneShot,
     float duration,
     Transform transform,
-    float startRotation,
-    float deltaRotation,
+    float startAngle,
+    float deltaAngle,
     float maxInnerRadius,
     float maxOuterRadius,
     Color trueColor,
     Color blickColor,
-    float thickness = 1.0f,
+    float thickness,
     float layerDepth = 0.0f) 
     : IAnimation
 {
@@ -30,13 +30,13 @@ public class StarBlinkAnimation(
         var isHalfTimeExpired = elapsedTime * 2 > duration;
 
         Color color;
-        float currentRotation;
+        float currentAngle;
         float currentSize;
 
         if (isTimeExpired)
         {
             color = trueColor;
-            currentRotation = startRotation + deltaRotation;
+            currentAngle = startAngle + deltaAngle;
             currentSize = 0f;
             if (isOneShot)
             {
@@ -50,14 +50,14 @@ public class StarBlinkAnimation(
         {
             var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration - 1), 0f, 1f);
             color = Color.Lerp(blickColor, trueColor, t);
-            currentRotation = startRotation + (float)(elapsedTime / duration) * deltaRotation;
+            currentAngle = startAngle + (float)(elapsedTime / duration) * deltaAngle;
             currentSize = MathHelper.Lerp(maxOuterRadius, 0f, t);
         }
         else
         {
             var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration), 0f, 1f);
             color = Color.Lerp(trueColor, blickColor, t);
-            currentRotation = startRotation + (float)(elapsedTime / duration) * deltaRotation;
+            currentAngle = startAngle + (float)(elapsedTime / duration) * deltaAngle;
             currentSize = MathHelper.Lerp(0f, maxOuterRadius, t);
         }
 
@@ -66,7 +66,7 @@ public class StarBlinkAnimation(
 
         for (int i = 0; i < 8; i++)
         {
-            float angle = i * MathHelper.PiOver4 + currentRotation;
+            float angle = i * MathHelper.PiOver4 + currentAngle;
             float r = (i % 2 == 0) ? outerRadius : innerRadius;
             
             _vertices[i] = new Vector2(

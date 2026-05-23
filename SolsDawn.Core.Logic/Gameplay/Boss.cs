@@ -23,6 +23,13 @@ public class BossStats
     
     public float BladeTelegraphDuration;
     public Color BladeTelegraphBlinkColor;
+    public float BladeTelegraphStarDuration;
+    public Color BladeTelegraphStarColor;
+    [Units] public float BladeTelegraphStarOuterRadius;
+    [Units] public float BladeTelegraphStarInnerRadius;
+    [Euler] public float BladeTelegraphStarStartAngle;
+    [Euler] public float BladeTelegraphStarDeltaAngle;
+    [Units] public float BladeTelegraphStarThickness;
     
     [Units] public float BladeAttackDistance;
     [Euler] public float BladeAttackEdgeAngle;
@@ -200,6 +207,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         _actionStartTime = Time.TotalGameTime.TotalSeconds; //TODO it is bad, because long game time has less accuracy
         _actionDuration = Stats.BladeTelegraphDuration;
         CreateTelegraphBladeCollider(lookPosition);
+        _animations.LookPosition = lookPosition;
         _machine.Fire(State.BladeTelegraphing);
     }
 

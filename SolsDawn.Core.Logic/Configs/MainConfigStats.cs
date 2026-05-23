@@ -17,7 +17,7 @@ public class DebugStats
 //time in seconds
 public class Variables
 {
-    public float TelegraphDuration = 0.2f;
+    public float TelegraphDuration = 0.4f;
 }
 
 //length in units
@@ -46,6 +46,8 @@ public static partial class MainConfig
         Width = 0.7f,
         Height = 1.3f,
         Velocity = 5,
+        CursorRadius = 0.2f,
+        CursorColor = new Color(0, 255, 255, 122),
 
         TeleportRechargeDuration = 1.5f,
         BladeRechargeDuration = 1f,
@@ -63,10 +65,7 @@ public static partial class MainConfig
         BladeTraceDuration = 0.4f,
         BladeTraceStartColor = Color.Aquamarine,
         BladeTraceEndColor = Color.Transparent,
-        BladeAimDistance = 3f,
-        BladeAimRadius = 0.2f,
-        BladeAimColor = new Color(0, 255, 255, 122),
-
+        
         BladeParryTraceDuration = 0.7f,
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
@@ -105,6 +104,13 @@ public static partial class MainConfig
 
         BladeTelegraphDuration = Var.TelegraphDuration,
         BladeTelegraphBlinkColor = Color.White,
+        BladeTelegraphStarDuration = Var.TelegraphDuration/2,
+        BladeTelegraphStarColor = Color.Yellow,
+        BladeTelegraphStarInnerRadius = 0.2f,
+        BladeTelegraphStarOuterRadius = 2,
+        BladeTelegraphStarStartAngle = 0,
+        BladeTelegraphStarDeltaAngle = 90,
+        BladeTelegraphStarThickness = 0.1f,
 
         BladeAttackDistance = 1.5f,
         BladeAttackEdgeAngle = 45f,
