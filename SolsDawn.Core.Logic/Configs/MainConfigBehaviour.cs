@@ -5,7 +5,7 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => BladeTest;
+    public static BossBehaviourBuilder BossBehaviourBuilder => AlnoraV;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))

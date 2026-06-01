@@ -1,8 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Configs.Utils;
-using SolsDawn.Core.Logic.Gameplay;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs;

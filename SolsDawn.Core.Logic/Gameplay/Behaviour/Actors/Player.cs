@@ -35,7 +35,7 @@ public class PlayerStats
     public Color BladeTraceStartColor;
     public Color BladeTraceEndColor;
 
-    [Euler] public float BladeParryAngle;
+    //[Euler] public float BladeParryAngle;
     [Units] public float BladeParryPushDistance;
     [Units] public float BladeParryPushVelocity;
     public float BladeParryTraceDuration;
@@ -357,7 +357,7 @@ public sealed class Player : Component<Player>, IUpdatable
         Vector2 parryPosition)
         : State
     {
-        public void OnEnter(State from)
+        public override void Enter(State from)
         {
             Game.AnimationsPool.Add(new LineTrace(
                 new Transform { Position = player.GameObject.Transform.Position },
