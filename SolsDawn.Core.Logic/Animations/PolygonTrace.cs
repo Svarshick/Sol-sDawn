@@ -1,19 +1,17 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 
-namespace SolsDawn.Core.Logic.Effects;
+namespace SolsDawn.Core.Logic.Animations;
 
-public class CircleTrace(
+public class PolygonTrace(
+    Transform transform,
+    Vector2[] vertices,
+    float thickness,
     float duration,
-    Vector2 center,
-    float radius,
-    int sides,
     Color startColor,
     Color endColor,
-    float thickness,
     float layerDepth = 0.0f)
-    : IEffect
+    : IAnimation
 {
     public bool IsFinished { get; private set; }
 
@@ -27,15 +25,15 @@ public class CircleTrace(
         
         var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
-        Game.SpriteBatch.DrawCircle(
-            center,
-            radius,
-            sides,
+        Game.SpriteBatch.DrawPolygon(
+            transform.Position,
+            vertices,
             Color.Lerp(startColor, endColor, t),
             thickness,
-            layerDepth);
+            layerDepth
+        );
     }
-
+    
     public void Cancel()
     {
         IsFinished = true;

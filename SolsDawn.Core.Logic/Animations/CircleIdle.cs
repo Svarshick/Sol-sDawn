@@ -3,16 +3,16 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public class CircleIdleAnimation(
+public class CircleIdle(
     Transform transform,
     float radius,
     int sides,
-    Color color,
     float thickness,
+    Color color,
     float layerDepth = 0.0f)
     : IAnimation
 {
-    public bool IsFinished { get; } = true;
+    public bool IsFinished { get; set; } = false;
 
     public void Draw()
     {
@@ -25,7 +25,5 @@ public class CircleIdleAnimation(
             layerDepth);
     }
 
-    public void Cancel()
-    {
-    }
+    public void Cancel() => IsFinished = true;
 }

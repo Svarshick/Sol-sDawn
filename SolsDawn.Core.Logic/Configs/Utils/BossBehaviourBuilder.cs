@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using SolsDawn.Core.Logic.Gameplay;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-public struct BossBehaviourContext(Boss boss, Player player, ScreenLayout layout)
+public struct FightBlackboard(Boss boss, Player player, ScreenLayout layout)
 {
     public readonly Boss Boss = boss;
     public readonly Player Player = player;
@@ -48,25 +48,41 @@ public class BossBehaviourBuilder
     
     public BossBehaviourBuilder Wait(float seconds)
     {
-        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Wait(seconds)));
+        _instructions.Add(new ActionInstruction(ctx =>
+        {
+            var state = new Boss.IdleState(ctx.Boss, seconds);
+            IntentionsPool.Add(State.Intend(ctx.Boss.GameObject, state));
+        }));
         return this;
     }
 
     public BossBehaviourBuilder Teleport(VectorExpression position)
     {
-        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Teleport(position.Evaluate(ctx))));
+        _instructions.Add(new ActionInstruction(ctx =>
+        {
+            var state = new Boss.TeleportState(ctx.Boss, position.Evaluate(ctx));
+            IntentionsPool.Add(State.Intend(ctx.Boss.GameObject, state));
+        }));
         return this;
     }
 
     public BossBehaviourBuilder Blade(VectorExpression lookPosition)
     {
-        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Blade(lookPosition.Evaluate(ctx))));
+        _instructions.Add(new ActionInstruction(ctx =>
+        {
+            var state = new Boss.BladeTelegraphState(ctx.Boss, ctx, lookPosition.Evaluate(ctx));
+            IntentionsPool.Add(State.Intend(ctx.Boss.GameObject, state));
+        }));
         return this;
     }
 
     public BossBehaviourBuilder Fire(VectorExpression lookPosition)
     {
-        _instructions.Add(new ActionInstruction(ctx => ctx.Boss.Fire(lookPosition.Evaluate(ctx))));
+        _instructions.Add(new ActionInstruction(ctx =>
+        {
+            var state = new Boss.FireTelegraphState(ctx.Boss, ctx, lookPosition.Evaluate(ctx));
+            IntentionsPool.Add(State.Intend(ctx.Boss.GameObject, state));
+        }));
         return this;
     }
     

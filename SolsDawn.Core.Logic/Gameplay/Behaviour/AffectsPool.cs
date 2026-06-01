@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
-namespace SolsDawn.Core.Logic.Gameplay.Interaction;
+namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 public interface IAffect { }
 public record DamageAffect(GameObject Source, IReadOnlyList<GameObject> Targets, int Value) : IAffect;

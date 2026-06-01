@@ -2,7 +2,7 @@ namespace SolsDawn.Core.Logic.Configs.Utils;
 
 public abstract class FloatExpression
 {
-    public abstract float Evaluate(BossBehaviourContext context);
+    public abstract float Evaluate(FightBlackboard context);
 
     public static BoolExpression operator >(FloatExpression left, FloatExpression right)
         => new GreaterThanBoolExpression(left, right);
@@ -40,35 +40,35 @@ public abstract class FloatExpression
 
 public class ConstantFloatExpression(float value) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context) => value;
+    public override float Evaluate(FightBlackboard context) => value;
 }
 
 public class UnitsFloatExpression(float units) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context) => context.Layout.ToPixels(units);
+    public override float Evaluate(FightBlackboard context) => context.Layout.ToPixels(units);
 }
 
 public class AddFloatExpression(FloatExpression left, FloatExpression right) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context) 
+    public override float Evaluate(FightBlackboard context) 
         => left.Evaluate(context) + right.Evaluate(context);
 }
 
 public class SubtractFloatExpression(FloatExpression left, FloatExpression right) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context) 
+    public override float Evaluate(FightBlackboard context) 
         => left.Evaluate(context) - right.Evaluate(context);
 }
 
 public class MultiplyFloatExpression(FloatExpression left, FloatExpression right) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context) 
+    public override float Evaluate(FightBlackboard context) 
         => left.Evaluate(context) * right.Evaluate(context);
 }
 
 public class DivideFloatExpression(FloatExpression left, FloatExpression right) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context) 
+    public override float Evaluate(FightBlackboard context) 
     {
         float denom = right.Evaluate(context);
         return denom == 0 ? 0 : left.Evaluate(context) / denom;

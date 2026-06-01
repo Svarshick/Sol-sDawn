@@ -3,7 +3,7 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public class RectangleIdleAnimation(
+public class RectangleIdle(
     Transform transform,
     float width,
     float height,

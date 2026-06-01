@@ -4,22 +4,22 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public class StarBlinkAnimation(
-    bool isOneShot,
-    float duration,
+public class StarBlink(
     Transform transform,
     float startAngle,
     float deltaAngle,
     float maxInnerRadius,
     float maxOuterRadius,
+    float thickness,
+    float duration,
+    bool isOneShot,
     Color trueColor,
     Color blickColor,
-    float thickness,
-    float layerDepth = 0.0f) 
+    float layerDepth = 0.0f)
     : IAnimation
 {
     public bool IsFinished { get; private set; }
-    
+
     private double _startTime = Time.TotalGameTime.TotalSeconds;
     private readonly Vector2[] _vertices = new Vector2[9];
 
@@ -42,7 +42,8 @@ public class StarBlinkAnimation(
             {
                 IsFinished = true;
             }
-            else {
+            else
+            {
                 _startTime = Time.TotalGameTime.TotalSeconds;
             }
         }
@@ -68,12 +69,13 @@ public class StarBlinkAnimation(
         {
             float angle = i * MathHelper.PiOver4 + currentAngle;
             float r = (i % 2 == 0) ? outerRadius : innerRadius;
-            
+
             _vertices[i] = new Vector2(
                 (float)Math.Cos(angle) * r,
                 (float)Math.Sin(angle) * r
             );
         }
+
         _vertices[8] = _vertices[0];
 
         Game.SpriteBatch.DrawPolygon(

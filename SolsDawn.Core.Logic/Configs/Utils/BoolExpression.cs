@@ -4,7 +4,7 @@ namespace SolsDawn.Core.Logic.Configs.Utils;
 
 public abstract class BoolExpression
 {
-    public abstract bool Evaluate(BossBehaviourContext context);
+    public abstract bool Evaluate(FightBlackboard context);
 
     public static BoolExpression operator &(BoolExpression left, BoolExpression right)
         => new AndBoolExpression(left, right);
@@ -27,55 +27,55 @@ public abstract class BoolExpression
 
 public class AndBoolExpression(BoolExpression left, BoolExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => left.Evaluate(context) && right.Evaluate(context);
 }
 
 public class OrBoolExpression(BoolExpression left, BoolExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => left.Evaluate(context) || right.Evaluate(context);
 }
 
 public class NotBoolExpression(BoolExpression operand) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => !operand.Evaluate(context);
 }
 
 public class GreaterThanBoolExpression(FloatExpression left, FloatExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => left.Evaluate(context) > right.Evaluate(context);
 }
 
 public class LessThanBoolExpression(FloatExpression left, FloatExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => left.Evaluate(context) < right.Evaluate(context);
 }
 
 public class GreaterThanOrEqualBoolExpression(FloatExpression left, FloatExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => left.Evaluate(context) >= right.Evaluate(context);
 }
 
 public class LessThanOrEqualBoolExpression(FloatExpression left, FloatExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => left.Evaluate(context) <= right.Evaluate(context);
 }
 
 public class EqualBoolExpression(FloatExpression left, FloatExpression right) : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context) 
+    public override bool Evaluate(FightBlackboard context) 
         => Math.Abs(left.Evaluate(context) - right.Evaluate(context)) < float.Epsilon;
 }
 
 public class LastAttackSucceededExpression : BoolExpression
 {
-    public override bool Evaluate(BossBehaviourContext context)
+    public override bool Evaluate(FightBlackboard context)
     {
         return context.BossLastAttackSucceeded;
     }

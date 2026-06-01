@@ -5,19 +5,24 @@ using MonoGame.Extended.Input;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
+
 public class Input : IUpdatable
 {
-    public event Action<Vector2> Move; // (Direction)
+    public Vector2 Move { get; private set; } 
+    public enum TeleportState { None, Started, Updated, Released }
+    public (Vector2 ScreenPosition, double ElapsedTime, TeleportState State) Teleport { get; private set; }
+    public (Vector2 ScreenPosition, bool IsPressed) Fire { get; private set; }
+    public (Vector2 ScreenPosition, bool IsPressed) Blade { get; private set; }
     
-    public event Action<Vector2> TeleportStarted; // (ScreenPoint)
-    public event Action<Vector2, double> TeleportUpdated; // (ScreenPoint, ElapsedTime)
-    public event Action<Vector2, double> TeleportReleased; // (ScreenPoint, ElapsedTime)
-    private enum TeleportState { None, Started, Updated, Released }
-    private TeleportState _teleportState;
+    public event Action<Vector2> OnMove; // (Direction)
+    
+    public event Action<Vector2> OnTeleportStarted; // (ScreenPoint)
+    public event Action<Vector2, double> OnTeleportUpdated; // (ScreenPoint, ElapsedTime)
+    public event Action<Vector2, double> OnTeleportReleased; // (ScreenPoint, ElapsedTime)
     private double _teleportStartTime;
     
-    public event Action<Vector2> Fire; // (ScreenPosition)
-    public event Action<Vector2> Blade; // (ScreenPosition)
+    public event Action<Vector2> OnFire; // (ScreenPosition)
+    public event Action<Vector2> OnBlade; // (ScreenPosition)
 
     public void Update()
     {
@@ -63,7 +68,8 @@ public class Input : IUpdatable
 
         if (moveDirection != Vector2.Zero)
             moveDirection.Normalize();
-        Move?.Invoke(moveDirection);
+        Move = moveDirection;
+        OnMove?.Invoke(moveDirection);
     }
 
     private void UpdateTeleport(
@@ -72,16 +78,15 @@ public class Input : IUpdatable
     {
         var spaceDown = keyboardState.IsKeyDown(Keys.Space); 
         var mousePosition = mouseState.Position.ToVector2();
-        var elapsedTime = Time.TotalGameTime.TotalSeconds - _teleportStartTime;
+        var elapsedTime = Teleport.ElapsedTime + Time.ElapsedGameTime.TotalSeconds;
         
-        switch (_teleportState)
+        switch (Teleport.State)
         {
             case TeleportState.None:
                 if (spaceDown)
                 {
-                    _teleportState = TeleportState.Started;
-                    _teleportStartTime = Time.TotalGameTime.TotalSeconds;
-                    TeleportStarted?.Invoke(mousePosition);
+                    Teleport = (mousePosition, 0, TeleportState.Started);
+                    OnTeleportStarted?.Invoke(mousePosition);
                 }
                 break;
             
@@ -89,19 +94,18 @@ public class Input : IUpdatable
             case TeleportState.Updated:
                 if (spaceDown)
                 {
-                    _teleportState = TeleportState.Updated;
-                    TeleportUpdated?.Invoke(mousePosition, elapsedTime);
+                    Teleport = (mousePosition, elapsedTime, TeleportState.Updated);
+                    OnTeleportUpdated?.Invoke(mousePosition, elapsedTime);
                 }
                 else
                 {
-                    _teleportState = TeleportState.Released;
-                    TeleportReleased?.Invoke(mousePosition, elapsedTime);
+                    Teleport = (mousePosition, elapsedTime, TeleportState.Released);
+                    OnTeleportReleased?.Invoke(mousePosition, elapsedTime);
                 }
                 break;
             
             case TeleportState.Released:
-                _teleportState = TeleportState.None;
-                _teleportStartTime = 0;
+                Teleport = (Vector2.Zero, 0, TeleportState.None);
                 break;
         }
     }
@@ -114,12 +118,22 @@ public class Input : IUpdatable
         var mousePosition = new Vector2(mouseState.Position.X, mouseState.Position.Y);
         if (mouseState.WasButtonPressed(MouseButton.Left))
         {
-            Blade?.Invoke(mousePosition);
+            Blade = (mousePosition, true);
+            OnBlade?.Invoke(mousePosition);
+        }
+        else
+        {
+            Blade = (Vector2.Zero, false);
         }
 
         if (mouseState.WasButtonPressed(MouseButton.Right))
         {
-            Fire?.Invoke(mousePosition);
+            Fire = (mousePosition, true);
+            OnFire?.Invoke(mousePosition);
+        }
+        else
+        {
+            Fire = (Vector2.Zero, false);
         }
     }
 }

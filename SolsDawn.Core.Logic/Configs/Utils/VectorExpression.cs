@@ -4,7 +4,7 @@ namespace SolsDawn.Core.Logic.Configs.Utils;
 
 public abstract class VectorExpression
 {
-    public abstract Vector2 Evaluate(BossBehaviourContext context);
+    public abstract Vector2 Evaluate(FightBlackboard context);
     
     public static VectorExpression operator +(VectorExpression left, VectorExpression right) 
         => new AddVectorExpression(left, right);
@@ -39,70 +39,70 @@ public abstract class VectorExpression
 public class ConstantVectorExpression(float x, float y) : VectorExpression
 {
     private readonly Vector2 _value = new(x, y);
-    public override Vector2 Evaluate(BossBehaviourContext context) => _value;
+    public override Vector2 Evaluate(FightBlackboard context) => _value;
 }
 
 public class UnitsVectorExpression(float x, float y) : VectorExpression
 {
     private readonly Vector2 _units = new(x, y);
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.ToPixels(_units);
+    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.ToPixels(_units);
 }
 
 public class PlayerPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Player.GameObject.Transform.Position;
+    public override Vector2 Evaluate(FightBlackboard context) => context.Player.GameObject.Transform.Position;
 }
 
 public class BossPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Boss.GameObject.Transform.Position;
+    public override Vector2 Evaluate(FightBlackboard context) => context.Boss.GameObject.Transform.Position;
 }
 
 public class CameraCenterPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraCenter();
+    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraCenter();
 }
 
 public class CameraTopLeftPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraTopLeft();
+    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraTopLeft();
 }
 
 public class CameraTopRightPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraTopRight();
+    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraTopRight();
 }
 
 public class CameraBottomLeftPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraBottomLeft();
+    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraBottomLeft();
 }
 
 public class CameraBottomRightPositionExpression : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) => context.Layout.CameraBottomRight();
+    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraBottomRight();
 }
 
 public class AddVectorExpression(VectorExpression left, VectorExpression right) : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) 
+    public override Vector2 Evaluate(FightBlackboard context) 
         => left.Evaluate(context) + right.Evaluate(context);
 }
 
 public class SubtractVectorExpression(VectorExpression left, VectorExpression right) : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) 
+    public override Vector2 Evaluate(FightBlackboard context) 
         => left.Evaluate(context) - right.Evaluate(context);
 }
 
 public class ScaleVectorExpression(VectorExpression operand, float scalar) : VectorExpression
 {
-    public override Vector2 Evaluate(BossBehaviourContext context) 
+    public override Vector2 Evaluate(FightBlackboard context) 
         => operand.Evaluate(context) * scalar;
 }
 
 public class VectorMagnitudeExpression(VectorExpression vector) : FloatExpression
 {
-    public override float Evaluate(BossBehaviourContext context)
+    public override float Evaluate(FightBlackboard context)
         => vector.Evaluate(context).Length();
 }

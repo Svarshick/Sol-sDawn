@@ -7,7 +7,7 @@ namespace SolsDawn.Core.Logic;
 public class GameTests : IUpdatable, IDrawable
 {
     public bool IsActive = false;
-    private StarBlinkAnimation _starBlink;
+    private StarBlink _starBlink;
 
     public GameTests()
     {
@@ -27,17 +27,17 @@ public class GameTests : IUpdatable, IDrawable
              _lastTime = Time.TotalGameTime.TotalSeconds;
              var trans = new Transform();
              trans.Position = new Vector2(-100, -100);
-             _starBlink = new StarBlinkAnimation(
-                 true,
-                 0.3f,
+             _starBlink = new StarBlink(
                  trans,
-                 1,
+                 0.3f,
                  (float)Math.PI,
                  20,
                  200,
+                 5,
+                 1,
+                 true,
                  Color.Yellow,
-                 Color.White,
-                 5);
+                 Color.White);
          }
     }
 

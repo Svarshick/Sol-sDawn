@@ -1,5 +1,7 @@
 using MonoGame.Extended;
 using MonoGame.Extended.Input;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 

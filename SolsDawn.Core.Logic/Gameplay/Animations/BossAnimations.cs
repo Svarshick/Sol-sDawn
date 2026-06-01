@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
@@ -24,41 +26,48 @@ public class BossAnimations() : AnimationPlayer(Idle)
         switch (animationName)
         {
             case Idle:
-                _baseAnimation = new RectangleIdleAnimation(
+                _baseAnimation?.Cancel();
+                _baseAnimation = new RectangleIdle(
                     Transform,
                     _stats.Width,
                     _stats.Height,
                     _stats.Color);
                 break;
             case BladeTelegraph:
+                _overlayAnimation?.Cancel();
                 _overlayAnimation = null;
+                _baseAnimation?.Cancel();
                 _baseAnimation = new BossBladeTelegraphAnimation(_stats, Transform.Position, LookPosition);
                 break;
             case BladeParried:
-                _baseAnimation = new RectangleIdleAnimation(
+                _baseAnimation?.Cancel();
+                _baseAnimation = new RectangleIdle(
                     Transform,
                     _stats.Width,
                     _stats.Height,
                     _stats.BladeParriedColor);
                 break;
             case FireTelegraph:
+                _overlayAnimation?.Cancel();
                 _overlayAnimation = null;
                 _baseAnimation = new BossFireTelegraphAnimation(_stats, Transform.Position, LookPosition);
                 break;
             case FireParried:
-                _baseAnimation = new RectangleIdleAnimation(
+                _baseAnimation?.Cancel();
+                _baseAnimation = new RectangleIdle(
                     Transform,
                     _stats.Width,
                     _stats.Height,
                     _stats.FireParriedColor);
                 break;
             case Hit:
-                _overlayAnimation = new RectangleBlinkAnimation(
-                    true,
-                    _stats.HitDuration,
+                _overlayAnimation?.Cancel();
+                _overlayAnimation = new RectangleBlink(
                     Transform,
                     _stats.Width,
                     _stats.Height,
+                    _stats.HitDuration,
+                    true,
                     _stats.Color,
                     _stats.HitBlinkColor);
                 break;

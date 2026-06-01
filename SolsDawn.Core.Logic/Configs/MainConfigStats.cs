@@ -2,6 +2,8 @@ using System;
 using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs;
 
@@ -69,9 +71,11 @@ public static partial class MainConfig
         BladeParryTraceDuration = 0.7f,
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
+        BladeParryPushDistance = 2f,
+        BladeParryPushVelocity = 15f,
 
         FireDistance = 12f,
-        FireWidth = 0.3f,
+        FireWidth = 0.4f,
         FireTraceDuration = 1f,
         FireTraceWidth = 0.3f,
         FireTraceStartColor = Color.Coral,
@@ -89,6 +93,7 @@ public static partial class MainConfig
         TeleportStartColor = Color.Transparent,
         TeleportEndColor = Color.Aqua,
         TeleportTraceWidth = 1,
+        TeleportTraceDuration = 1,
         TeleportTraceStartColor = Color.Aquamarine,
         TeleportTraceEndColor = Color.Transparent
     };
@@ -123,8 +128,10 @@ public static partial class MainConfig
         BladeTraceStartColor = Color.DeepPink,
         BladeTraceEndColor = Color.Transparent,
 
-        BladeParriedDuration = 1.5f,
+        BladeParriedDuration = 0.3f,
         BladeParriedColor = Color.White,
+        BladeParriedPushDistance = 2f,
+        BladeParriedPushVelocity = 15f,
         BladeParryTraceDuration = 0.7f,
         BladeParryTraceStartColor = Color.White,
         BladeParryTraceEndColor = Color.Transparent,
@@ -141,10 +148,11 @@ public static partial class MainConfig
         FireParriedDuration = 1f,
         FireParriedColor = Color.MediumSpringGreen,
         FireParryTraceDuration = 1.5f,
-        FireParryTraceStartColor = Color.MediumSpringGreen,
+        FireParryTraceStartColor = Color.Red,
         FireParryTraceEndColor = Color.Transparent,
 
         TeleportTraceWidth = 1f,
+        TeleportTraceDuration = 1,
         TeleportTraceStartColor = Color.DeepSkyBlue,
         TeleportTraceEndColor = Color.Transparent
     };

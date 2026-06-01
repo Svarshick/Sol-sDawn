@@ -3,21 +3,21 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public class LineBlinkAnimation (
-    bool isOneShot,
+public class CircleBlick(
+    Transform transform,
+    float radius,
+    int sides,
+    float thickness,
     float duration,
-    Vector2 start,
-    Vector2 end,
+    bool isOneShot,
     Color trueColor,
     Color blickColor,
-    float thickness,
-    float layerDepth = 0.0f)
+    float layerDepth = 0.0f) 
     : IAnimation
 {
     public bool IsFinished { get; private set; }
-
+    
     private double _startTime = Time.TotalGameTime.TotalSeconds;
-
     public void Draw()
     {
         var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
@@ -33,7 +33,8 @@ public class LineBlinkAnimation (
             {
                 IsFinished = true;
             }
-            else {
+            else 
+            {
                 _startTime = Time.TotalGameTime.TotalSeconds;
             }
         }
@@ -47,17 +48,15 @@ public class LineBlinkAnimation (
             var t = MathHelper.Clamp((float)(elapsedTime * 2 / duration), 0f, 1f);
             color = Color.Lerp(trueColor, blickColor, t);
         }
-        
-        Game.SpriteBatch.DrawLine(
-            start,
-            end,
+
+        Game.SpriteBatch.DrawCircle(
+            transform.Position,
+            radius,
+            sides,
             color,
             thickness,
             layerDepth);
     }
-
-    public void Cancel()
-    {
-        IsFinished = true;
-    }
+    
+    public void Cancel() => IsFinished = true;
 }

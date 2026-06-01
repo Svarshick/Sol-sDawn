@@ -4,10 +4,10 @@ using Microsoft.Xna.Framework.Graphics;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
-using SolsDawn.Core.Logic.Effects;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Core.Logic.Gameplay.Animations;
-using SolsDawn.Core.Logic.Gameplay.Interaction;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic;
 
@@ -18,14 +18,15 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     public readonly static bool IsDesktop =
         OperatingSystem.IsMacOS() || OperatingSystem.IsLinux() || OperatingSystem.IsWindows();
 
-    public static EffectsPool EffectsPool { get; private set; }
+    public static AnimationsPool AnimationsPool { get; private set; }
     public static ScreenLayout ScreenLayout { get; private set; }
     public static SpriteBatch SpriteBatch { get; private set; }
 
     private GraphicsDeviceManager _graphicsDeviceManager;
     private Player _player;
     private Input _input;
-    private BossAI _bossAI;
+    private BossController _bossController;
+    private PlayerController _playerController;
 
     private GameTests _gameTests;
 
@@ -45,7 +46,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Collider(playerGo, 1, Collision.LayerName.Player);
         new Hp(playerGo, 10);
         new Animator<PlayerAnimations>(playerGo, new PlayerAnimations());
-        _player = new Player(playerGo, _input);
+        _player = new Player(playerGo);
         new HUD(playerGo, _player);
         
         var bossGo = new GameObject();
@@ -54,17 +55,16 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Boss(bossGo);
 
-        IntentionsPool.PlayerGO = playerGo;
-        IntentionsPool.BossGO = bossGo;
-        var context = new BossBehaviourContext(boss, _player, ScreenLayout);
-        _bossAI = new(MainConfig.BossBehaviourBuilder, context);
+        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, ScreenLayout);
+        _bossController = new(IntentionsPool.Blackboard, MainConfig.BossBehaviourBuilder);
+        _playerController = new(_player, _input);
 
         _gameTests = new();
         return;
 
         void InitSystems()
         {
-            EffectsPool = new EffectsPool();
+            AnimationsPool = new AnimationsPool();
             _input = new Input();
         }
         
@@ -86,12 +86,13 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         Time.Update(gameTime);
         MonoTask.Update();
         
-        EffectsPool.Update();
+        AnimationsPool.Update();
         ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
 
         _gameTests.Update();
         _input.Update();
-        _bossAI.Update();
+        _playerController.Update();
+        _bossController.Update();
         GameObjectPool.Update();
         IntentionsPool.Resolve();
         AffectsPool.Resolve();
@@ -103,7 +104,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private void LateUpdate()
     {
         _input.LateUpdate();
-        EffectsPool.LateUpdate();
+        AnimationsPool.LateUpdate();
 
         _gameTests.LateUpdate();
         GameObjectPool.LateUpdate();
@@ -120,7 +121,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             transformMatrix: ScreenLayout.Camera.GetViewMatrix()
         );
         
-        EffectsPool.Draw();
+        AnimationsPool.Draw();
         _gameTests.Draw();
         GameObjectPool.Draw();
         

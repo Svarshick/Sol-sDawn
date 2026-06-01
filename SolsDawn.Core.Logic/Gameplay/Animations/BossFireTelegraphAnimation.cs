@@ -1,46 +1,48 @@
 using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
 public class BossFireTelegraphAnimation : IAnimation
 {
     public bool IsFinished { get; private set; }
-    private RectangleBlinkAnimation _bossBlinkAnimation;
-    private LineBlinkAnimation _fireBlinkAnimation;
+    private RectangleBlink _bossBlink;
+    private LineBlink _fireBlink;
 
     public BossFireTelegraphAnimation(BossStats stats, Vector2 position, Vector2 lookPosition)
     {
-        _bossBlinkAnimation = new RectangleBlinkAnimation(
-            true,
-            stats.FireTelegraphDuration,
+        _bossBlink = new RectangleBlink(
             new Transform() { Position = position },
             stats.Width,
             stats.Height,
+            stats.FireTelegraphDuration,
+            true,
             stats.Color,
             stats.FireTelegraphBlinkColor);
 
         var fireEnd = position + Vector2.Normalize(lookPosition - position) * stats.FireDistance;
-        _fireBlinkAnimation = new LineBlinkAnimation(
+        _fireBlink = new LineBlink(
+            new Transform { Position = position },
+            fireEnd,
+            stats.FireWidth,
             true,
             stats.FireTelegraphDuration,
-            position,
-            fireEnd,
             stats.FireTraceEndColor,
-            stats.FireParryTraceStartColor,
-            stats.FireWidth);
+            stats.FireParryTraceStartColor);
     }
 
     public void Draw()
     {
-        _bossBlinkAnimation.Draw();
-        _fireBlinkAnimation.Draw();
-        IsFinished = _bossBlinkAnimation.IsFinished || _fireBlinkAnimation.IsFinished;
+        _bossBlink.Draw();
+        _fireBlink.Draw();
+        IsFinished = _bossBlink.IsFinished || _fireBlink.IsFinished;
     }
 
     public void Cancel()
     {
-        _bossBlinkAnimation.Cancel();
-        _fireBlinkAnimation.Cancel();
+        _bossBlink.Cancel();
+        _fireBlink.Cancel();
     }
 }

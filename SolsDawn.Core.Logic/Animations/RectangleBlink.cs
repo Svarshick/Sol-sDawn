@@ -3,12 +3,12 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public class RectangleBlinkAnimation(
-    bool isOneShot,
-    float duration,
+public class RectangleBlink(
     Transform transform,
     float width,
     float height,
+    float duration,
+    bool isOneShot,
     Color trueColor,
     Color blickColor,
     float layerDepth = 0.0f) 

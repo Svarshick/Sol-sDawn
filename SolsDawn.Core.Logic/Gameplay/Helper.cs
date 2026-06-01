@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
-using SolsDawn.Core.Logic.Effects;
+using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -48,15 +48,29 @@ public static class Helper
             attackEdgeLength);
 
         var nextPosition = from + direction * dashDistance;
-        Game.EffectsPool.Add(new LineTrace(
-            traceDuration,
-            from,
+        Game.AnimationsPool.Add(new LineTrace(
+            new Transform { Position = from },
             nextPosition,
+            dashWidth,
+            traceDuration,
             traceStartColor,
-            traceEndColor,
-            dashWidth));
+            traceEndColor));
        
-        Game.EffectsPool.Add(new LineTrace(traceDuration, bladeVertices[2], bladeVertices[1], traceStartColor, traceEndColor, attackEdgeWidth, 1));
-        Game.EffectsPool.Add(new LineTrace(traceDuration, bladeVertices[2], bladeVertices[3], traceStartColor, traceEndColor, attackEdgeWidth, 1));
+        Game.AnimationsPool.Add(new LineTrace(
+            new Transform { Position = bladeVertices[2] }, 
+            bladeVertices[1], 
+            attackEdgeWidth, 
+            traceDuration, 
+            traceStartColor, 
+            traceEndColor, 
+            1));
+        Game.AnimationsPool.Add(new LineTrace(
+            new Transform { Position = bladeVertices[2] }, 
+            bladeVertices[3], 
+            attackEdgeWidth, 
+            traceDuration, 
+            traceStartColor, 
+            traceEndColor, 
+            1));
     }
 }

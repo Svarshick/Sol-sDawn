@@ -1,5 +1,7 @@
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
@@ -17,19 +19,19 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
         switch (animationName)
         {
             case Idle:
-                _baseAnimation = new RectangleIdleAnimation(
+                _baseAnimation = new RectangleIdle(
                     Transform,
                     _stats.Width,
                     _stats.Height,
                     _stats.Color);
                 break;
             case Hit:
-                _overlayAnimation = new RectangleBlinkAnimation(
-                    true,
-                    _stats.HitInvulnerabilityDuration,
+                _overlayAnimation = new RectangleBlink(
                     Transform,
                     _stats.Width,
                     _stats.Height,
+                    _stats.HitInvulnerabilityDuration,
+                    true,
                     _stats.Color,
                     _stats.HitBlinkColor);
                 break;
