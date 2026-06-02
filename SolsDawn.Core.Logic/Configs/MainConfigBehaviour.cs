@@ -5,7 +5,7 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => FireAndOrb;
+    public static BossBehaviourBuilder BossBehaviourBuilder => FireAndOrbCrook;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))
@@ -62,10 +62,24 @@ public static partial class MainConfig
 
     private static BossBehaviourBuilder FireAndOrb => Create()
         .Wait(1f)
-        .SpawnOrb(Boss + Rotate(Normalize(Boss - Player) * Var.OrbDistance, Var.OrbAngle), Player, MainConfig.DefaultOrbStats)
-        .SpawnOrb(Boss + Normalize(Boss - Player) * Var.OrbDistance, Player, MainConfig.DefaultOrbStats)
-        .SpawnOrb(Boss + Rotate(Normalize(Boss - Player) * Var.OrbDistance, -Var.OrbAngle), Player, MainConfig.DefaultOrbStats)
+        .SpawnOrb(Boss + Rotate(Normalize(Boss - Player) * Var.OrbDistance, Var.OrbAngle), Player, DefaultOrbStats)
+        .SpawnOrb(Boss + Normalize(Boss - Player) * Var.OrbDistance, Player, DefaultOrbStats)
+        .SpawnOrb(Boss + Rotate(Normalize(Boss - Player) * Var.OrbDistance, -Var.OrbAngle), Player, DefaultOrbStats)
+        
+        //углы передаются в радианах.
+        //Если пользуешься Var переменной с [Euler], то оно автоматически переведет в радианы
+        //Если не хочешь писать в Var, то придется писать float.DegreesToRadians(угол)
+        //Также ты можешь писать в Var без [Euler], и тогда придется float.DegreesToRadians(Var.Угол). Зачем? Вот именно, незачем
+        .SpawnOrb(
+            Boss + Rotate(Normalize(Boss - Player) * Var.OrbDistance, float.DegreesToRadians(30)),
+            Player,
+                DefaultOrbStats)
         .Fire(Player);
+
+    private static BossBehaviourBuilder FireAndOrbCrook => Create()
+        .While(Count(100))
+        .Then(() => FireAndOrb)
+        .EndWhile();
     
     
     //======== ALNORAV ==========

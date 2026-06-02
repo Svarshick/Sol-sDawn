@@ -17,9 +17,9 @@ public class DebugStats
 //time in seconds
 public class Variables
 {
-    public float TelegraphDuration = 0.4f;
-    [Units] public float OrbDistance = 2f;
-    [Euler] public float OrbAngle = 30;
+    public float TelegraphDuration = 0.4f; //времени [Аттрибут] не нужен. По умолчанию время в секундах 
+    [Units] public float OrbDistance = 2f; //[Units] чтобы конфиг писать в юнитах и игра сама переведет юниты в пиксели
+    [Euler] public float OrbAngle = 30; //[Euler] чтобы углы писать в эйлере и игра сама переведет ейлера в радианы
 }
 
 //length in units
