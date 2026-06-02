@@ -247,6 +247,8 @@ public class BossBehaviourBuilder
         return this;
     }
 
+    public static VectorExpression Rotate(VectorExpression target, float radians) => new RotateVectorExpression(target, radians);
+    public static VectorExpression Normalize(VectorExpression target) => new NormalizeVectorExpression(target);
     public static VectorExpression Units(float x, float y) => new UnitsVectorExpression(x, y);
     public static VectorExpression Player => new PlayerPositionExpression();
     public static VectorExpression PlayerSnapshot = new PlayerPositionSnapshotExpression();

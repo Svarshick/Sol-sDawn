@@ -18,6 +18,8 @@ public class DebugStats
 public class Variables
 {
     public float TelegraphDuration = 0.4f;
+    [Units] public float OrbDistance = 2f;
+    [Euler] public float OrbAngle = 30;
 }
 
 //length in units
@@ -27,6 +29,7 @@ public static partial class MainConfig
     public static PlayerStats PlayerStats => PlayerStatsLazy.Value;
     public static BossStats BossStats => BossStatsLazy.Value;
     public static OrbStats DefaultOrbStats => OrbStatsLazy.Value;
+    public static Variables Var => VariablesLazy.Value;
     public static DebugStats DebugStats => DebugStatsLazy.Value;
 
     private static readonly Lazy<PlayerStats> PlayerStatsLazy
@@ -41,8 +44,8 @@ public static partial class MainConfig
     private static readonly Lazy<DebugStats> DebugStatsLazy
         = new(() => ConfigReader.Read(DesignDebugStats, Game.ScreenLayout));
 
-    private static Variables Var => VariablesLazy.Value;
-    private static readonly Lazy<Variables> VariablesLazy = new();
+    private static readonly Lazy<Variables> VariablesLazy = 
+        new(() => ConfigReader.Read(new Variables(), Game.ScreenLayout));
 
     private static readonly PlayerStats DesignPlayerStats = new()
     {

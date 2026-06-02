@@ -36,6 +36,22 @@ public abstract class VectorExpression
     public VectorMagnitudeExpression Magnitude() => new VectorMagnitudeExpression(this);
 }
 
+public class NormalizeVectorExpression(VectorExpression target) : VectorExpression
+{
+    public override Vector2 Evaluate(FightBlackboard context)
+    {
+        return Vector2.Normalize(target.Evaluate(context));
+    }
+}
+
+public class RotateVectorExpression(VectorExpression target, float radians) : VectorExpression
+{
+    public override Vector2 Evaluate(FightBlackboard context)
+    {
+        return Vector2.Rotate(target.Evaluate(context), radians);
+    }
+}
+
 public class ConstantVectorExpression(float x, float y) : VectorExpression
 {
     private readonly Vector2 _value = new(x, y);
