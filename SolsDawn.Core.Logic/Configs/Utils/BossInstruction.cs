@@ -10,6 +10,15 @@ public interface IInstruction
     public int Execute(FightBlackboard context, int currentIndex);
 }
 
+public class InstantActionInstruction(FightAction action) : IInstruction
+{
+    public int Execute(FightBlackboard context, int currentIndex)
+    {
+        action(context);
+        return currentIndex + 1;
+    }   
+}
+
 public class ActionInstruction(FightAction action) : IInstruction
 {
     public int Execute(FightBlackboard context, int currentIndex)

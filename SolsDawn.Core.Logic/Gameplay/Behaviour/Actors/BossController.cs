@@ -12,12 +12,22 @@ public class BossController(FightBlackboard blackboard, BossBehaviourBuilder bui
     {
         if (blackboard.Boss.State is Boss.PendingState)
         {
-            var instruction = _instructions[_actionIndex];
-            _actionIndex = instruction.Execute(blackboard, _actionIndex);
-            if (_actionIndex >= _instructions.Count)
+            var shouldContinue = true;
+            while (shouldContinue)
             {
-                BossBehaviourBuilder.Reset();
-                _actionIndex = 0;
+                var instruction = _instructions[_actionIndex];
+                shouldContinue = instruction 
+                    is JumpInstruction 
+                    or JumpIfFalseInstruction 
+                    or InstantActionInstruction
+                    or ForgetInstruction;
+                
+                _actionIndex = instruction.Execute(blackboard, _actionIndex);
+                if (_actionIndex >= _instructions.Count)
+                {
+                    BossBehaviourBuilder.Reset();
+                    _actionIndex = 0;
+                }
             }
         }
     }

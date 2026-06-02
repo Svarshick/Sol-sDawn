@@ -39,6 +39,8 @@ public static class AffectsPool
                 case DamageAffect damageAffect:
                     foreach (var target in damageAffect.Targets)
                     {
+                        if (target.IsDisposed)
+                            continue;
                         var player = target.GetComponent<Player>();
                         player?.BeDamaged(damageAffect.Value);
                         var boss = target.GetComponent<Boss>();

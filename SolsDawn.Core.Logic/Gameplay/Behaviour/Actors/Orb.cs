@@ -81,6 +81,12 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
             var shift = (float)(Time.ElapsedGameTime.TotalSeconds * orb.Stats.Velocity);
             orb.GameObject.Transform.Position = SDMath.MoveTo(orb.GameObject.Transform.Position, Target, shift);
 
+            if (orb.GameObject.Transform.Position == Target)
+            {
+                orb.GameObject.Dispose();
+                return;
+            }
+
             var circle = new BoundingCircle2D(orb.GameObject.Transform.Position, orb.Stats.Radius);
             var shape = new CollisionShape2D(circle);
             var targets = new List<GameObject>();

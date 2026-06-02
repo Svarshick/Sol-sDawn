@@ -112,7 +112,7 @@ public class BossBehaviourBuilder
 
     public BossBehaviourBuilder SpawnOrb(VectorExpression position, VectorExpression target, OrbStats stats)
     {
-        _instructions.Add(new ActionInstruction(ctx =>
+        _instructions.Add(new InstantActionInstruction(ctx =>
         {
             ctx.OrbController.Spawn(position.Evaluate(ctx), () => target.Evaluate(ctx), stats);
         }));
