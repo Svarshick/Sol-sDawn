@@ -5,10 +5,10 @@ using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-public record struct FightBlackboard(Boss Boss, Player Player, OrbController OrbController, ScreenLayout Layout)
+public record FightBlackboard(Boss Boss, Player Player, OrbController OrbController, ScreenLayout Layout)
 {
     public bool IsBossLastBladeSuccess;
-    public bool IsBossLastBladeParried;
+    public bool IsBossLastBladeParried { get; set; }
     public bool IsBossLastFireSuccess;
     public bool IsBossLastFireParried;
     
@@ -31,13 +31,20 @@ public class BossBehaviourBuilder
 {
     private readonly List<IInstruction> _instructions = new();
     private readonly Stack<IfGroup> _ifStack = new();
+    private readonly Stack<WhileScope> _whileStack = new();
 
     private class IfGroup
     {
-        public ConditionalJumpInstruction CurrentBranch;
+        public JumpIfFalseInstruction CurrentBranch;
         public readonly List<JumpInstruction> BranchExits = new();
     }
 
+    private class WhileScope(JumpIfFalseInstruction exitCondition, int exitConditionAddress)
+    {
+        public readonly int ExitConditionAddress = exitConditionAddress;
+        public readonly JumpIfFalseInstruction ExitCondition = exitCondition;
+        public readonly List<JumpInstruction> Breaks = new();
+    }
 
     private BossBehaviourBuilder()
     {
@@ -108,21 +115,16 @@ public class BossBehaviourBuilder
         return this;
     }
 
-    public BossBehaviourBuilder If(BoolExpression condition, bool forget = true)
+    public BossBehaviourBuilder If(BoolExpression condition)
     {
-        var branch = new ConditionalJumpInstruction(condition);
+        var branch = new JumpIfFalseInstruction(condition);
         _instructions.Add(branch);
-        if (forget)
-        {
-            _instructions.Add(new ForgetInstruction());
-        }
-
         var ifGroup = new IfGroup { CurrentBranch = branch };
         _ifStack.Push(ifGroup);
         return this;
     }
 
-    public BossBehaviourBuilder ElseIf(BoolExpression condition, bool forget = true)
+    public BossBehaviourBuilder ElseIf(BoolExpression condition)
     {
         if (_ifStack.Count == 0)
         {
@@ -131,21 +133,16 @@ public class BossBehaviourBuilder
 
         var exit = new JumpInstruction();
         _instructions.Add(exit);
-        var branch = new ConditionalJumpInstruction(condition);
+        var branch = new JumpIfFalseInstruction(condition);
         var ifGroup = _ifStack.Peek();
         ifGroup.CurrentBranch.Destination = _instructions.Count;
         ifGroup.CurrentBranch = branch;
         ifGroup.BranchExits.Add(exit);
         _instructions.Add(branch);
-        if (forget)
-        {
-            _instructions.Add(new ForgetInstruction());
-        }
-
         return this;
     }
 
-    public BossBehaviourBuilder Else(bool forget = true)
+    public BossBehaviourBuilder Else()
     {
         if (_ifStack.Count == 0)
         {
@@ -158,11 +155,6 @@ public class BossBehaviourBuilder
         ifGroup.CurrentBranch.Destination = _instructions.Count;
         ifGroup.CurrentBranch = null;
         ifGroup.BranchExits.Add(exit);
-        if (forget)
-        {
-            _instructions.Add(new ForgetInstruction());
-        }
-
         return this;
     }
 
@@ -184,6 +176,70 @@ public class BossBehaviourBuilder
             branchExit.Destination = _instructions.Count;
         }
 
+        return this;
+    }
+
+    public BossBehaviourBuilder While(BoolExpression condition)
+    {
+        var conditionInstruction = new JumpIfFalseInstruction(condition);
+        var scope = new WhileScope(conditionInstruction, _instructions.Count);
+        _instructions.Add(conditionInstruction);
+        _whileStack.Push(scope);
+        return this;
+    }
+
+    public BossBehaviourBuilder Continue()
+    {
+        if (_whileStack.Count == 0)
+        {
+            throw new InvalidOperationException("Continue must be called inside an While block.");
+        }
+        
+        var continueInstruction = new JumpInstruction();
+        var scope = _whileStack.Peek();
+        continueInstruction.Destination = scope.ExitConditionAddress;
+        _instructions.Add(continueInstruction);
+        return this;
+    }
+
+    public BossBehaviourBuilder Break()
+    {
+        if (_whileStack.Count == 0)
+        {
+            throw new InvalidOperationException("Break must be called inside an While block.");
+        }
+
+        var breakInstruction = new JumpInstruction();
+        var scope = _whileStack.Peek();
+        scope.Breaks.Add(breakInstruction);
+        _instructions.Add(breakInstruction);
+        return this;
+    }
+
+    public BossBehaviourBuilder EndWhile()
+    {
+        if (_whileStack.Count == 0)
+        {
+            throw new InvalidOperationException("EndWhile outside While block.");
+        }
+
+        var scope = _whileStack.Pop();
+        var jump = new JumpInstruction();
+        jump.Destination = scope.ExitConditionAddress;
+        _instructions.Add(jump);
+        scope.ExitCondition.Destination = _instructions.Count;
+
+        foreach (var loopBreak in scope.Breaks)
+        {
+            loopBreak.Destination = _instructions.Count;
+        }
+
+        return this;
+    }
+
+    public BossBehaviourBuilder Forget()
+    {
+        _instructions.Add(new ForgetInstruction());
         return this;
     }
 

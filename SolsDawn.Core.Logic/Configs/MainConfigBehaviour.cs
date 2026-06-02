@@ -5,7 +5,7 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => OrbTest;
+    public static BossBehaviourBuilder BossBehaviourBuilder => WhileTest;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))
@@ -33,11 +33,30 @@ public static partial class MainConfig
     private static BossBehaviourBuilder IfTest => Create()
         .Wait(0.5f)
         .If((Player - Boss).Magnitude() > Units(10))
-        .Teleport(Player + Units(0, -2))
+            .Teleport(Player + Units(0, -2))
         .Else()
-        .Fire(Player)
+            .Fire(Player)
         .EndIf();
 
+    private static BossBehaviourBuilder WhileTest => Create()
+        .Wait(1f)
+        .While(!IsBossLastBladeParried)
+            .Blade(Player)
+            .Wait(1f)
+            .Fire(Player)
+            .If(IsBossLastFireParried)
+                .Wait(0.5f)
+                .Fire(Player)
+            .EndIf()
+            .Wait(1f)
+        .EndWhile()
+        .Forget()
+        .SpawnOrb(Player + Units(0, -2), Player, DefaultOrbStats);
+    
+    
+    //======== ALNORAV ==========
+
+    
     private static readonly BossBehaviourBuilder AlnoraV = Create()
         .Then(() => LetsTeachYouBladeParry)
         .Then(() => LetsTeachYouFireParry)

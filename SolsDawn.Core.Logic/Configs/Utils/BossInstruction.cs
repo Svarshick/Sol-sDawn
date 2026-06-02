@@ -25,7 +25,7 @@ public class JumpInstruction : IInstruction
     public int Execute(FightBlackboard context, int currentIndex) => Destination;
 }
 
-public class ConditionalJumpInstruction(FightActionCondition condition) : IInstruction
+public class JumpIfFalseInstruction(FightActionCondition condition) : IInstruction
 {
     public int Destination = -1;
 
