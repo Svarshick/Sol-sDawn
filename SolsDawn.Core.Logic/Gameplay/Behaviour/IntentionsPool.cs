@@ -116,6 +116,9 @@ public static class IntentionsPool
             player.Enter(playerParry);
             boss.Enter(bossParry);
 
+            Blackboard.IsBossLastBladeParried = true;
+            Blackboard.IsBossLastBladeSuccess = false;
+            Blackboard.IsPlayerLastBladeSuccess = true;
             bossStateHandled = true;
             playerStateHandled = true;
         }
@@ -162,6 +165,9 @@ public static class IntentionsPool
                     0.5f),
                 Color.Transparent));
 
+            Blackboard.IsBossLastFireParried = true;
+            Blackboard.IsBossLastFireSuccess = false;
+            Blackboard.IsPlayerLastFireSuccess = true;
             bossStateHandled = true;
             playerStateHandled = true;
         }
@@ -170,12 +176,34 @@ public static class IntentionsPool
         if (!playerStateHandled && 
             playerStateEnter is not null)
         {
+            switch (playerStateEnter.State)
+            {
+                case Player.BladeExecuteState bladeState:
+                    Blackboard.IsPlayerLastBladeSuccess = bladeState.Targets.Count > 0;
+                    break;
+                case Player.FireExecuteState fireState:
+                    Blackboard.IsPlayerLastFireSuccess = fireState.Targets.Count > 0;
+                    break;
+            }
+            
             player.Enter(playerStateEnter.State);
         }
 
         if (!bossStateHandled &&
             bossStateEnter is not null)
         {
+            switch (bossStateEnter.State)
+            {
+                case Boss.BladeExecutionState bladeState:
+                    Blackboard.IsBossLastBladeSuccess = bladeState.Targets.Count > 0;
+                    Blackboard.IsBossLastBladeParried = false;
+                    break;
+                case Boss.FireExecutionState fireState:
+                    Blackboard.IsBossLastFireSuccess = fireState.Targets.Count > 0;
+                    Blackboard.IsBossLastFireParried = false;
+                    break;
+            }
+            
             boss.Enter(bossStateEnter.State);
         }
     }

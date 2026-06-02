@@ -240,6 +240,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         : State
     {
         public Vector2 LookPosition = lookPosition;
+        public IReadOnlyList<GameObject> Targets = targets;
         
         public override void Enter(State from)
         {
@@ -261,9 +262,9 @@ public sealed class Boss : Component<Boss>, IUpdatable
 
             boss.GameObject.Transform.Position += direction * boss.Stats.BladeDashDistance;
 
-            if (targets.Count > 0)
+            if (Targets.Count > 0)
             {
-                AffectsPool.Add(new DamageAffect(boss.GameObject, targets, 1));
+                AffectsPool.Add(new DamageAffect(boss.GameObject, Targets, 1));
             }
             
             var pending = new PendingState(boss);
@@ -413,6 +414,8 @@ public sealed class Boss : Component<Boss>, IUpdatable
         IReadOnlyList<GameObject> targets)
         : State
     {
+        public IReadOnlyList<GameObject> Targets = targets;
+        
         public override void Enter(State from)
         {
             var direction = lookPosition - boss.GameObject.Transform.Position;
@@ -426,9 +429,9 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 boss.Stats.FireTraceStartColor,
                 boss.Stats.FireTraceEndColor));
 
-            if (targets.Count > 0)
+            if (Targets.Count > 0)
             {
-                AffectsPool.Add(new DamageAffect(boss.GameObject, targets, 1));
+                AffectsPool.Add(new DamageAffect(boss.GameObject, Targets, 1));
             }
             
             var pending = new PendingState(boss);

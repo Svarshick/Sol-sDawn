@@ -7,11 +7,23 @@ namespace SolsDawn.Core.Logic.Configs.Utils;
 
 public record struct FightBlackboard(Boss Boss, Player Player, OrbController OrbController, ScreenLayout Layout)
 {
-    public bool BossLastAttackSucceeded;
+    public bool IsBossLastBladeSuccess;
+    public bool IsBossLastBladeParried;
+    public bool IsBossLastFireSuccess;
+    public bool IsBossLastFireParried;
+    
+    public bool IsPlayerLastBladeSuccess;
+    public bool IsPlayerLastFireSuccess;
 
     public void Forget()
     {
-        BossLastAttackSucceeded = false;
+        IsBossLastBladeSuccess = false;
+        IsBossLastBladeParried = false;
+        IsBossLastFireSuccess = false;
+        IsBossLastFireParried = false;
+
+        IsPlayerLastBladeSuccess = false;
+        IsPlayerLastFireSuccess = false;
     }
 }
 
@@ -19,14 +31,18 @@ public class BossBehaviourBuilder
 {
     private readonly List<IInstruction> _instructions = new();
     private readonly Stack<IfGroup> _ifStack = new();
+
     private class IfGroup
     {
         public ConditionalJumpInstruction CurrentBranch;
         public readonly List<JumpInstruction> BranchExits = new();
     }
-        
-    
-    private BossBehaviourBuilder() { }
+
+
+    private BossBehaviourBuilder()
+    {
+    }
+
     public static BossBehaviourBuilder Create() => new();
 
     public IReadOnlyList<IInstruction> Build()
@@ -42,7 +58,7 @@ public class BossBehaviourBuilder
         _instructions.AddRange(nextFactory()._instructions);
         return this;
     }
-    
+
     public BossBehaviourBuilder Wait(float seconds)
     {
         _instructions.Add(new ActionInstruction(ctx =>
@@ -100,6 +116,7 @@ public class BossBehaviourBuilder
         {
             _instructions.Add(new ForgetInstruction());
         }
+
         var ifGroup = new IfGroup { CurrentBranch = branch };
         _ifStack.Push(ifGroup);
         return this;
@@ -111,6 +128,7 @@ public class BossBehaviourBuilder
         {
             throw new InvalidOperationException("ElseIf must be called inside an If block.");
         }
+
         var exit = new JumpInstruction();
         _instructions.Add(exit);
         var branch = new ConditionalJumpInstruction(condition);
@@ -123,6 +141,7 @@ public class BossBehaviourBuilder
         {
             _instructions.Add(new ForgetInstruction());
         }
+
         return this;
     }
 
@@ -132,6 +151,7 @@ public class BossBehaviourBuilder
         {
             throw new InvalidOperationException("Else must be called inside an If block.");
         }
+
         var exit = new JumpInstruction();
         _instructions.Add(exit);
         var ifGroup = _ifStack.Peek();
@@ -142,6 +162,7 @@ public class BossBehaviourBuilder
         {
             _instructions.Add(new ForgetInstruction());
         }
+
         return this;
     }
 
@@ -151,7 +172,7 @@ public class BossBehaviourBuilder
         {
             throw new InvalidOperationException("EndIf outside If block.");
         }
-        
+
         var ifGroup = _ifStack.Pop();
         if (ifGroup.CurrentBranch is not null)
         {
@@ -176,5 +197,10 @@ public class BossBehaviourBuilder
     public static VectorExpression CameraBottomLeft => new CameraBottomLeftPositionExpression();
     public static VectorExpression CameraBottomRight => new CameraBottomRightPositionExpression();
     public static FloatExpression Units(float units) => new UnitsFloatExpression(units);
-    public static BoolExpression LastAttack => new LastAttackSucceededExpression();
+    public static BoolExpression IsBossLastBladeSuccess => new IsBossLastBladeSuccessExpression();
+    public static BoolExpression IsBossLastBladeParried => new IsBossLastBladeParriedExpression();
+    public static BoolExpression IsBossLastFireSuccess => new IsBossLastFireSuccessExpression();
+    public static BoolExpression IsBossLastFireParried => new IsBossLastFireParriedExpression();
+    public static BoolExpression IsPlayerLastBladeSuccess => new IsPlayerLastBladeSuccessExpression();
+    public static BoolExpression IsPlayerLastFireSuccess => new IsPlayerLastFireSuccessExpression();
 }

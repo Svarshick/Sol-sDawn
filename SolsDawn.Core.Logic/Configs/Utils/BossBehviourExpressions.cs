@@ -68,10 +68,32 @@ public class UnitsFloatExpression(float units) : FloatExpression
 
 //BOOL
 
-public class LastAttackSucceededExpression : BoolExpression
+public class IsBossLastBladeSuccessExpression : BoolExpression
 {
-    public override bool Evaluate(FightBlackboard context)
-    {
-        return context.BossLastAttackSucceeded;
-    }
+    public override bool Evaluate(FightBlackboard context) => context.IsBossLastBladeSuccess;
+}
+
+public class IsBossLastBladeParriedExpression : BoolExpression
+{
+    public override bool Evaluate(FightBlackboard context) => context.IsBossLastBladeParried;
+}
+
+public class IsBossLastFireSuccessExpression : BoolExpression
+{
+    public override bool Evaluate(FightBlackboard context) => context.IsBossLastFireSuccess;
+}
+
+public class IsBossLastFireParriedExpression : BoolExpression
+{
+    public override bool Evaluate(FightBlackboard context) => context.IsBossLastFireParried;
+}
+
+public class IsPlayerLastBladeSuccessExpression : BoolExpression
+{
+    public override bool Evaluate(FightBlackboard context) => context.IsPlayerLastBladeSuccess;
+}
+
+public class IsPlayerLastFireSuccessExpression : BoolExpression
+{
+    public override bool Evaluate(FightBlackboard context) => context.IsPlayerLastFireSuccess;
 }
