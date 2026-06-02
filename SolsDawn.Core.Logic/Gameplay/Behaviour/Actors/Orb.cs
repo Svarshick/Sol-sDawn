@@ -93,8 +93,8 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
             Collision.Overlap(shape, Collision.LayerName.Player, targets);
             if (targets.Count > 0)
             {
-                var explode = new ExplodeState(orb);
-                IntentionsPool.Add(Intend(orb.GameObject, explode));
+                AffectsPool.Add(new DamageAffect(orb.GameObject, targets, 1));
+                orb.Dispose();
             }
         }
     }
