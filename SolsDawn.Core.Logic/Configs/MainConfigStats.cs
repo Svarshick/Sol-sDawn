@@ -139,6 +139,7 @@ public static partial class MainConfig
         BladeParryTraceEndColor = Color.Transparent,
 
         FireTelegraphDuration = Var.TelegraphDuration,
+        FireTelegraphAimingDuration = Var.TelegraphDuration * 1/2,
         FireTelegraphBlinkColor = Color.MediumSpringGreen,
 
         FireDistance = 15,

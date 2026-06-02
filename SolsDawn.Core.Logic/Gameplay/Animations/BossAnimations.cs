@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
@@ -50,7 +49,7 @@ public class BossAnimations() : AnimationPlayer(Idle)
             case FireTelegraph:
                 _overlayAnimation?.Cancel();
                 _overlayAnimation = null;
-                _baseAnimation = new BossFireTelegraphAnimation(_stats, Transform.Position, LookPosition);
+                _baseAnimation = new BossFireTelegraphAnimation(_stats, Transform, LookPosition);
                 break;
             case FireParried:
                 _baseAnimation?.Cancel();
@@ -84,6 +83,12 @@ public class BossAnimations() : AnimationPlayer(Idle)
         {
             if (_baseAnimation is null)
                 TryPlay(DefaultAnimation);
+            
+            if (_baseAnimation is BossFireTelegraphAnimation fireTelegraph)
+            {
+                fireTelegraph.LookPosition = LookPosition;
+            }
+
             _baseAnimation.Draw();
         }
     }

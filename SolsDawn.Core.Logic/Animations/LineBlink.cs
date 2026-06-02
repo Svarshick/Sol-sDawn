@@ -15,6 +15,7 @@ public class LineBlink (
     : IAnimation
 {
     public bool IsFinished { get; private set; }
+    public Vector2 End = end;
 
     private double _startTime = Time.TotalGameTime.TotalSeconds;
 
@@ -50,7 +51,7 @@ public class LineBlink (
         
         Game.SpriteBatch.DrawLine(
             transform.Position,
-            end,
+            End,
             color,
             thickness,
             layerDepth);

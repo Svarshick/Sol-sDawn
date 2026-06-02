@@ -8,13 +8,19 @@ namespace SolsDawn.Core.Logic.Gameplay.Animations;
 public class BossFireTelegraphAnimation : IAnimation
 {
     public bool IsFinished { get; private set; }
-    private RectangleBlink _bossBlink;
-    private LineBlink _fireBlink;
+    public Vector2 LookPosition; 
+    
+    private readonly RectangleBlink _bossBlink;
+    private readonly LineBlink _fireBlink;
+    private readonly BossStats _bossStats;
+    private readonly Transform _startTransform; 
 
-    public BossFireTelegraphAnimation(BossStats stats, Vector2 position, Vector2 lookPosition)
+    public BossFireTelegraphAnimation(BossStats stats, Transform bossTransform, Vector2 lookPosition)
     {
+        _bossStats = stats;
+        _startTransform = bossTransform;
         _bossBlink = new RectangleBlink(
-            new Transform() { Position = position },
+            bossTransform,
             stats.Width,
             stats.Height,
             stats.FireTelegraphDuration,
@@ -22,9 +28,9 @@ public class BossFireTelegraphAnimation : IAnimation
             stats.Color,
             stats.FireTelegraphBlinkColor);
 
-        var fireEnd = position + Vector2.Normalize(lookPosition - position) * stats.FireDistance;
+        var fireEnd = bossTransform.Position + Vector2.Normalize(lookPosition - bossTransform.Position) * stats.FireDistance;
         _fireBlink = new LineBlink(
-            new Transform { Position = position },
+            bossTransform,
             fireEnd,
             stats.FireWidth,
             true,
@@ -36,6 +42,7 @@ public class BossFireTelegraphAnimation : IAnimation
     public void Draw()
     {
         _bossBlink.Draw();
+        _fireBlink.End = _startTransform.Position + Vector2.Normalize(LookPosition - _startTransform.Position) * _bossStats.FireDistance; 
         _fireBlink.Draw();
         IsFinished = _bossBlink.IsFinished || _fireBlink.IsFinished;
     }

@@ -48,6 +48,7 @@ public class BossStats
     public Color BladeParryTraceEndColor;
 
     public float FireTelegraphDuration;
+    public float FireTelegraphAimingDuration;
     public Color FireTelegraphBlinkColor;
 
     [Units] public float FireDistance;
@@ -356,24 +357,27 @@ public sealed class Boss : Component<Boss>, IUpdatable
     public class FireTelegraphState(
         Boss boss,
         FightBlackboard blackboard,
-        Vector2 lookPosition)
+        Func<Vector2> lookPosition)
         : State
     {
         public double TimeLeft = boss.Stats.FireTelegraphDuration;
+        public Vector2 FirePosition;
         
         public override void Enter(State from)
         {
             new Parry(boss.GameObject, boss.GameObject, ParryType.Fire);
-            boss._animations.LookPosition = lookPosition;
+            FirePosition = lookPosition.Invoke();
+            boss._animations.LookPosition = FirePosition;
             boss._animations.TryPlay(BossAnimations.FireTelegraph);
         }
 
         public override void Update()
         {
             TimeLeft -= Time.ElapsedGameTime.TotalSeconds;
+               
             if (TimeLeft < 0)
             {
-                var direction = lookPosition - boss.GameObject.Transform.Position;
+                var direction = FirePosition - boss.GameObject.Transform.Position;
                 direction.Normalize();
                 var fireEnd = boss.GameObject.Transform.Position + direction * boss.Stats.FireDistance;
 
@@ -386,8 +390,13 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 var targets = new List<GameObject>();
                 Collision.Overlap(shape, Collision.LayerName.Player, targets);
                 
-                var execute = new FireExecutionState(boss, blackboard, lookPosition, targets);
+                var execute = new FireExecutionState(boss, blackboard, FirePosition, targets);
                 IntentionsPool.Add(Intend(boss.GameObject, execute));
+            }
+            else if (TimeLeft > boss.Stats.FireTelegraphDuration - boss.Stats.FireTelegraphAimingDuration)
+            {
+                FirePosition = lookPosition.Invoke();
+                boss._animations.LookPosition = FirePosition;
             }
         }
 

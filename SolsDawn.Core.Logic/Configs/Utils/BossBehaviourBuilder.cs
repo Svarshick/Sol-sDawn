@@ -77,7 +77,7 @@ public class BossBehaviourBuilder
     {
         _instructions.Add(new ActionInstruction(ctx =>
         {
-            var state = new Boss.FireTelegraphState(ctx.Boss, ctx, lookPosition.Evaluate(ctx));
+            var state = new Boss.FireTelegraphState(ctx.Boss, ctx, () => lookPosition.Evaluate(ctx));
             IntentionsPool.Add(State.Intend(ctx.Boss.GameObject, state));
         }));
         return this;
