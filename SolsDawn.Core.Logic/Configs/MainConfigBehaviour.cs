@@ -5,7 +5,7 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => WhileTest;
+    public static BossBehaviourBuilder BossBehaviourBuilder => CountTest;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))
@@ -52,6 +52,13 @@ public static partial class MainConfig
         .EndWhile()
         .Forget()
         .SpawnOrb(Player + Units(0, -2), Player, DefaultOrbStats);
+
+    private static BossBehaviourBuilder CountTest => Create()
+        .While(Count(3))
+        .Wait(1f)
+        .Fire(Player)
+        .EndWhile()
+        .SpawnOrb(Player + Units(0, -2), PlayerSnapshot, DefaultOrbStats);
     
     
     //======== ALNORAV ==========

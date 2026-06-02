@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Configs.Utils;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
@@ -11,6 +12,12 @@ public class OrbController : IUpdatable
     private List<(Orb Orb, Func<Vector2> TargetFunc)> _orbData = new();
     private List<(Orb Orb, Func<Vector2> TargetFunc)> _orbDataBuff = new();
     private List<Orb> _removedOrbs = new();
+
+    private bool toClear = false;
+    public OrbController()
+    {
+        BossBehaviourBuilder.RESET += () => toClear = true;
+    }
     
     public void Spawn(Vector2 position, Func<Vector2> targetFunc, OrbStats stats)
     {
@@ -44,6 +51,12 @@ public class OrbController : IUpdatable
         (_orbData, _orbDataBuff) = (_orbDataBuff, _orbData);
         _orbDataBuff.Clear();
         _removedOrbs.Clear();
+
+        if (toClear)
+        {
+            _orbData.Clear();
+            toClear = false;
+        }
     }
 
     public void LateUpdate()

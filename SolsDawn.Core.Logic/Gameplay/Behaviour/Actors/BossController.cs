@@ -14,7 +14,11 @@ public class BossController(FightBlackboard blackboard, BossBehaviourBuilder bui
         {
             var instruction = _instructions[_actionIndex];
             _actionIndex = instruction.Execute(blackboard, _actionIndex);
-            _actionIndex %= _instructions.Count;
+            if (_actionIndex >= _instructions.Count)
+            {
+                BossBehaviourBuilder.Reset();
+                _actionIndex = 0;
+            }
         }
     }
 }

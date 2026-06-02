@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
@@ -14,6 +15,11 @@ public class PlayerPositionSnapshotExpression : VectorExpression
 {
     private Vector2 _snapshot;
     private bool _isEvaluated;
+
+    public PlayerPositionSnapshotExpression()
+    {
+        BossBehaviourBuilder.RESET += () => _isEvaluated = false;
+    }
 
     public override Vector2 Evaluate(FightBlackboard context)
     {
@@ -67,6 +73,19 @@ public class UnitsFloatExpression(float units) : FloatExpression
 
 
 //BOOL
+
+public class CountExpression : BoolExpression
+{
+    private int _i = 1;
+    private int _times;
+    public CountExpression(int times)
+    {
+        _times = times;
+        BossBehaviourBuilder.RESET += () => _i = 1;
+    }
+    
+    public override bool Evaluate(FightBlackboard context) => _times >= _i++;
+}
 
 public class IsBossLastBladeSuccessExpression : BoolExpression
 {

@@ -29,6 +29,10 @@ public record FightBlackboard(Boss Boss, Player Player, OrbController OrbControl
 
 public class BossBehaviourBuilder
 {
+    //DIRTY DIRTY DIRTY
+    public static event Action RESET;
+    public static void Reset() => RESET.Invoke();
+    
     private readonly List<IInstruction> _instructions = new();
     private readonly Stack<IfGroup> _ifStack = new();
     private readonly Stack<WhileScope> _whileStack = new();
@@ -252,7 +256,10 @@ public class BossBehaviourBuilder
     public static VectorExpression CameraTopRight => new CameraTopRightPositionExpression();
     public static VectorExpression CameraBottomLeft => new CameraBottomLeftPositionExpression();
     public static VectorExpression CameraBottomRight => new CameraBottomRightPositionExpression();
+    
     public static FloatExpression Units(float units) => new UnitsFloatExpression(units);
+
+    public static BoolExpression Count(int times) => new CountExpression(times);
     public static BoolExpression IsBossLastBladeSuccess => new IsBossLastBladeSuccessExpression();
     public static BoolExpression IsBossLastBladeParried => new IsBossLastBladeParriedExpression();
     public static BoolExpression IsBossLastFireSuccess => new IsBossLastFireSuccessExpression();
