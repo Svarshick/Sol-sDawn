@@ -5,11 +5,8 @@ using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-public struct FightBlackboard(Boss boss, Player player, ScreenLayout layout)
+public record struct FightBlackboard(Boss Boss, Player Player, OrbController OrbController, ScreenLayout Layout)
 {
-    public readonly Boss Boss = boss;
-    public readonly Player Player = player;
-    public readonly ScreenLayout Layout = layout;
     public bool BossLastAttackSucceeded;
 
     public void Forget()
@@ -20,7 +17,7 @@ public struct FightBlackboard(Boss boss, Player player, ScreenLayout layout)
 
 public class BossBehaviourBuilder
 {
-    private readonly List<IBossInstruction> _instructions = new();
+    private readonly List<IInstruction> _instructions = new();
     private readonly Stack<IfGroup> _ifStack = new();
     private class IfGroup
     {
@@ -32,7 +29,7 @@ public class BossBehaviourBuilder
     private BossBehaviourBuilder() { }
     public static BossBehaviourBuilder Create() => new();
 
-    public IReadOnlyList<IBossInstruction> Build()
+    public IReadOnlyList<IInstruction> Build()
     {
         if (_ifStack.Count > 0)
             throw new InvalidOperationException("Unclosed If block detected. Make sure to call EndIf.");
@@ -85,7 +82,16 @@ public class BossBehaviourBuilder
         }));
         return this;
     }
-    
+
+    public BossBehaviourBuilder SpawnOrb(VectorExpression position, VectorExpression target, OrbStats stats)
+    {
+        _instructions.Add(new ActionInstruction(ctx =>
+        {
+            ctx.OrbController.Spawn(position.Evaluate(ctx), () => target.Evaluate(ctx), stats);
+        }));
+        return this;
+    }
+
     public BossBehaviourBuilder If(BoolExpression condition, bool forget = true)
     {
         var branch = new ConditionalJumpInstruction(condition);
@@ -162,6 +168,7 @@ public class BossBehaviourBuilder
 
     public static VectorExpression Units(float x, float y) => new UnitsVectorExpression(x, y);
     public static VectorExpression Player => new PlayerPositionExpression();
+    public static VectorExpression PlayerSnapshot = new PlayerPositionSnapshotExpression();
     public static VectorExpression Boss => new BossPositionExpression();
     public static VectorExpression CameraCenter => new CameraCenterPositionExpression();
     public static VectorExpression CameraTopLeft => new CameraTopLeftPositionExpression();

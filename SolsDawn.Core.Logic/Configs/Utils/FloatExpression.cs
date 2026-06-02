@@ -43,11 +43,6 @@ public class ConstantFloatExpression(float value) : FloatExpression
     public override float Evaluate(FightBlackboard context) => value;
 }
 
-public class UnitsFloatExpression(float units) : FloatExpression
-{
-    public override float Evaluate(FightBlackboard context) => context.Layout.ToPixels(units);
-}
-
 public class AddFloatExpression(FloatExpression left, FloatExpression right) : FloatExpression
 {
     public override float Evaluate(FightBlackboard context) 

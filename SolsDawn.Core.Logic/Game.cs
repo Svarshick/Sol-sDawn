@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
@@ -25,6 +26,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private GraphicsDeviceManager _graphicsDeviceManager;
     private Player _player;
     private Input _input;
+    private OrbController _orbController;
     private BossController _bossController;
     private PlayerController _playerController;
 
@@ -55,7 +57,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Boss(bossGo);
 
-        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, ScreenLayout);
+        _orbController = new OrbController();
+        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, _orbController, ScreenLayout);
         _bossController = new(IntentionsPool.Blackboard, MainConfig.BossBehaviourBuilder);
         _playerController = new(_player, _input);
 
@@ -93,6 +96,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _input.Update();
         _playerController.Update();
         _bossController.Update();
+        _orbController.Update();
         GameObjectPool.Update();
         IntentionsPool.Resolve();
         AffectsPool.Resolve();
@@ -120,6 +124,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             rasterizerState: RasterizerState.CullNone,
             transformMatrix: ScreenLayout.Camera.GetViewMatrix()
         );
+        
+        SpriteBatch.DrawCircle(Vector2.Zero, 20f, 10, Color.Azure, 20f);
         
         AnimationsPool.Draw();
         _gameTests.Draw();

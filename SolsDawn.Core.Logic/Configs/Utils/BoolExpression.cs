@@ -21,7 +21,7 @@ public abstract class BoolExpression
     public static bool operator true(BoolExpression expr) => false;
     public static bool operator false(BoolExpression expr) => false;
 
-    public static implicit operator BossActionCondition(BoolExpression expr)
+    public static implicit operator FightActionCondition(BoolExpression expr)
         => ctx => expr.Evaluate(ctx);
 }
 
@@ -71,12 +71,4 @@ public class EqualBoolExpression(FloatExpression left, FloatExpression right) : 
 {
     public override bool Evaluate(FightBlackboard context) 
         => Math.Abs(left.Evaluate(context) - right.Evaluate(context)) < float.Epsilon;
-}
-
-public class LastAttackSucceededExpression : BoolExpression
-{
-    public override bool Evaluate(FightBlackboard context)
-    {
-        return context.BossLastAttackSucceeded;
-    }
 }

@@ -1,16 +1,16 @@
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-public delegate void BossAction(FightBlackboard context);
+public delegate void FightAction(FightBlackboard context);
 
-public delegate bool BossActionCondition(FightBlackboard context);
+public delegate bool FightActionCondition(FightBlackboard context);
 
 
-public interface IBossInstruction
+public interface IInstruction
 {
     public int Execute(FightBlackboard context, int currentIndex);
 }
 
-public class ActionInstruction(BossAction action) : IBossInstruction
+public class ActionInstruction(FightAction action) : IInstruction
 {
     public int Execute(FightBlackboard context, int currentIndex)
     {
@@ -19,13 +19,13 @@ public class ActionInstruction(BossAction action) : IBossInstruction
     }
 }
 
-public class JumpInstruction : IBossInstruction
+public class JumpInstruction : IInstruction
 {
     public int Destination = -1;
     public int Execute(FightBlackboard context, int currentIndex) => Destination;
 }
 
-public class ConditionalJumpInstruction(BossActionCondition condition) : IBossInstruction
+public class ConditionalJumpInstruction(FightActionCondition condition) : IInstruction
 {
     public int Destination = -1;
 
@@ -35,7 +35,7 @@ public class ConditionalJumpInstruction(BossActionCondition condition) : IBossIn
     }
 }
 
-public class ForgetInstruction : IBossInstruction
+public class ForgetInstruction : IInstruction
 {
     public int Execute(FightBlackboard context, int currentIndex)
     {

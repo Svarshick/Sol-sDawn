@@ -20,13 +20,22 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
     private readonly List<IDisposable> _components = new();
     
     public readonly Transform Transform = new();
+    public bool IsDisposed { get; private set; } = false;
     
     public GameObject()
     {
         GameObjectPool.Add(this);
     }
     
-    public int CompareTo(GameObject other) => GetHashCode().CompareTo(other.GetHashCode());
+    public void Dispose()
+    {
+        IsDisposed = true;
+        foreach(var component in _components)
+            component.Dispose();
+        GameObjectPool.Remove(this);
+    }
+    
+    public int CompareTo(GameObject? other) => GetHashCode().CompareTo(other?.GetHashCode());
 
     public T? GetComponent<T>() where T : Component<T>
     {
@@ -135,12 +144,5 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
             if (component is IDrawable drawable)
                 drawable.Draw();
         }
-    }
-
-    public void Dispose()
-    {
-        foreach(var component in _components)
-            component.Dispose();
-        GameObjectPool.Remove(this);
     }
 }

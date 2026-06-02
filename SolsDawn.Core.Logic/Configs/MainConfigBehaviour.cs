@@ -5,14 +5,19 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => AlnoraV;
+    public static BossBehaviourBuilder BossBehaviourBuilder => OrbTest;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))
         .Wait(1)
         .Blade(Player);
 
+    private static BossBehaviourBuilder OrbTest => Create()
+        .Wait(1f)
+        .SpawnOrb(Player + Units(0, -4), Player, DefaultOrbStats);
+    
     private static BossBehaviourBuilder TestAll => Create()
+        .Wait(0.5f)
         .Teleport(Units(3, 3))
         .Wait(1)
         .Blade(Units(0, 0))
@@ -20,7 +25,8 @@ public static partial class MainConfig
         .Teleport(Units(3, -3))
         .Wait(1)
         .Fire(Units(0, 0))
-        .Wait(0.5f);
+        .Wait(0.5f)
+        .SpawnOrb(Player + Units(0, -1), Player, DefaultOrbStats);
 
     private static BossBehaviourBuilder IfTest => Create()
         .Wait(0.5f)

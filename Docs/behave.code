@@ -1,0 +1,19 @@
+player: [controller] input -> intention -> affect
+boss: [controller instruction -> intention -> affect
+
+controller: place where "first", expected behvaiour 
+intention: place where behavior changes depending on interaction (parry)
+affect: place where stats consequences of behaviour (damage)
+
+
+intentions (Boss, Player):
+if Player hit boss hitbox 
+{
+	Player parry
+	Boss parry
+}
+
+else
+{
+	Do what they want to do
+}

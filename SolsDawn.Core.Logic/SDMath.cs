@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using System;
+using SolsDawn.Core;
 
 public static class SDMath
 {
@@ -40,5 +41,23 @@ public static class SDMath
         // Calculate the intersection point
         intersection = position1 + direction1 * t;
         return true;
+    }
+
+
+    public static Vector2 MoveTo(Vector2 start, Vector2 end, float maxShift)
+    {
+        var remain = end - start;
+        var direction = Vector2.Zero;
+        if (remain != Vector2.Zero)
+        {
+            direction = Vector2.Normalize(remain);
+        }
+
+        var delta = direction * maxShift;
+        if (delta.LengthSquared() >= remain.LengthSquared())
+        {
+            return end;
+        }
+        return start + delta;
     }
 }

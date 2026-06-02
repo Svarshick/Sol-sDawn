@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 public class PlayerController
 {

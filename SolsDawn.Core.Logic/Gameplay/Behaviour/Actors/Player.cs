@@ -41,7 +41,6 @@ public class PlayerStats
     public float BladeParryTraceDuration;
     public Color BladeParryTraceStartColor;
     public Color BladeParryTraceEndColor;
-    
 
     [Units] public float FireDistance;
     [Units] public float FireWidth;
@@ -300,17 +299,9 @@ public sealed class Player : Component<Player>, IUpdatable
         {
             if (player.GameObject.Transform.Position != PushPosition)
             {
-                var remain = PushPosition - player.GameObject.Transform.Position;
-                var direction = Vector2.Normalize(remain);
-                var delta = direction * (float)(Time.ElapsedGameTime.TotalSeconds * player.Stats.BladeParryPushVelocity);
-                if (delta.LengthSquared() >= remain.LengthSquared())
-                {
-                    player.GameObject.Transform.Position = PushPosition;
-                }
-                else
-                {
-                    player.GameObject.Transform.Position += delta;
-                }
+                var transform = player.GameObject.Transform;
+                var shift = (float)(Time.ElapsedGameTime.TotalSeconds * player.Stats.BladeParryPushVelocity);
+                transform.Position = SDMath.MoveTo(transform.Position, PushPosition, shift);
                 return;
             }
             

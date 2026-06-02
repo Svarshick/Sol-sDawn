@@ -1,12 +1,11 @@
 using System.Collections.Generic;
 using SolsDawn.Core.Logic.Configs.Utils;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 public class BossController(FightBlackboard blackboard, BossBehaviourBuilder builder) 
 {
-    private IReadOnlyList<IBossInstruction> _instructions = builder.Build();
+    private IReadOnlyList<IInstruction> _instructions = builder.Build();
     private int _actionIndex = 0;
     
     public void Update()

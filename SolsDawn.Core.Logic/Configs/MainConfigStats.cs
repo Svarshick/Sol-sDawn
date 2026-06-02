@@ -26,6 +26,7 @@ public static partial class MainConfig
 {
     public static PlayerStats PlayerStats => PlayerStatsLazy.Value;
     public static BossStats BossStats => BossStatsLazy.Value;
+    public static OrbStats DefaultOrbStats => OrbStatsLazy.Value;
     public static DebugStats DebugStats => DebugStatsLazy.Value;
 
     private static readonly Lazy<PlayerStats> PlayerStatsLazy
@@ -33,6 +34,9 @@ public static partial class MainConfig
 
     private static readonly Lazy<BossStats> BossStatsLazy
         = new(() => ConfigReader.Read(DesignBossStats, Game.ScreenLayout));
+
+    private static readonly Lazy<OrbStats> OrbStatsLazy
+        = new(() => ConfigReader.Read(DesignDefaultOrbStats, Game.ScreenLayout));
 
     private static readonly Lazy<DebugStats> DebugStatsLazy
         = new(() => ConfigReader.Read(DesignDebugStats, Game.ScreenLayout));
@@ -155,5 +159,16 @@ public static partial class MainConfig
         TeleportTraceEndColor = Color.Transparent
     };
 
+    private static readonly OrbStats DesignDefaultOrbStats = new()
+    {
+        Color = Color.Yellow,
+        Radius = 0.5f,
+        Velocity = 3,
+
+        ExplosionRadius = 2f,
+        ExplosionColor = Color.OrangeRed,
+        ExplosionTraceDuration = 2,
+    };
+    
     private static readonly DebugStats DesignDebugStats = new();
 }

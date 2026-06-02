@@ -48,41 +48,6 @@ public class UnitsVectorExpression(float x, float y) : VectorExpression
     public override Vector2 Evaluate(FightBlackboard context) => context.Layout.ToPixels(_units);
 }
 
-public class PlayerPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Player.GameObject.Transform.Position;
-}
-
-public class BossPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Boss.GameObject.Transform.Position;
-}
-
-public class CameraCenterPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraCenter();
-}
-
-public class CameraTopLeftPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraTopLeft();
-}
-
-public class CameraTopRightPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraTopRight();
-}
-
-public class CameraBottomLeftPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraBottomLeft();
-}
-
-public class CameraBottomRightPositionExpression : VectorExpression
-{
-    public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraBottomRight();
-}
-
 public class AddVectorExpression(VectorExpression left, VectorExpression right) : VectorExpression
 {
     public override Vector2 Evaluate(FightBlackboard context) 
