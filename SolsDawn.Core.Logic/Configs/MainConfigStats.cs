@@ -29,6 +29,8 @@ public static partial class MainConfig
     public static PlayerStats PlayerStats => PlayerStatsLazy.Value;
     public static BossStats BossStats => BossStatsLazy.Value;
     public static OrbStats DefaultOrbStats => OrbStatsLazy.Value;
+
+    public static OrbStats AlnoraRecoilOrbsStats => OrbStatsRecoilLazy.Value;
     public static Variables Var => VariablesLazy.Value;
     public static DebugStats DebugStats => DebugStatsLazy.Value;
 
@@ -41,6 +43,9 @@ public static partial class MainConfig
     private static readonly Lazy<OrbStats> OrbStatsLazy
         = new(() => ConfigReader.Read(DesignDefaultOrbStats, Game.ScreenLayout));
 
+    private static readonly Lazy<OrbStats> OrbStatsRecoilLazy
+        = new(() => ConfigReader.Read(DesignRecoilOrbStats, Game.ScreenLayout));
+
     private static readonly Lazy<DebugStats> DebugStatsLazy
         = new(() => ConfigReader.Read(DesignDebugStats, Game.ScreenLayout));
 
@@ -52,7 +57,7 @@ public static partial class MainConfig
         Color = Color.Blue,
         Width = 0.7f,
         Height = 1.3f,
-        Velocity = 5,
+        Velocity = 6,
         CursorRadius = 0.2f,
         CursorColor = new Color(0, 255, 255, 122),
 
@@ -79,21 +84,21 @@ public static partial class MainConfig
         BladeParryPushDistance = 2f,
         BladeParryPushVelocity = 15f,
 
-        FireDistance = 12f,
+        FireDistance = 20f,
         FireWidth = 0.4f,
-        FireTraceDuration = 1f,
+        FireTraceDuration = 0.7f,
         FireTraceWidth = 0.3f,
         FireTraceStartColor = Color.Coral,
         FireTraceEndColor = Color.Transparent,
 
-        FireParryTraceDuration = 1.5f,
+        FireParryTraceDuration = 0.7f,
         FireParryTraceStartColor = Color.Gold,
         FireParryTraceEndColor = Color.Transparent,
 
 
-        TeleportMinDistance = 3,
-        TeleportMaxDistance = 7,
-        TeleportHoldDuration = 0.5f,
+        TeleportMinDistance = 4,
+        TeleportMaxDistance = 9,
+        TeleportHoldDuration = 0.6f,
         TeleportWidth = 0.3f,
         TeleportStartColor = Color.Transparent,
         TeleportEndColor = Color.Aqua,
@@ -166,13 +171,24 @@ public static partial class MainConfig
     private static readonly OrbStats DesignDefaultOrbStats = new()
     {
         Color = Color.Yellow,
-        Radius = 0.5f,
-        Velocity = 3,
+        Radius = 0.2f,
+        Velocity = 4,
 
-        ExplosionRadius = 2f,
-        ExplosionColor = Color.OrangeRed,
-        ExplosionTraceDuration = 2,
+        ExplosionRadius = 1.5f,
+        ExplosionColor = Color.Orange,
+        ExplosionTraceDuration = 0.5f,
     };
     
+   private static readonly OrbStats DesignRecoilOrbStats = new()
+    {
+        Color = Color.BlueViolet,
+        Radius = 0.2f, 
+        Velocity = 6,
+
+        ExplosionRadius = 1,
+        ExplosionColor = Color.Aquamarine, 
+        ExplosionTraceDuration = 0.5f,
+    };
+
     private static readonly DebugStats DesignDebugStats = new();
 }

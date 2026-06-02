@@ -1,11 +1,14 @@
+using System.Runtime.CompilerServices;
+using MonoGame.Extended.VectorDraw;
 using SolsDawn.Core.Logic.Configs.Utils;
+using SolsDawn.Core.Logic.Gameplay;
 
 namespace SolsDawn.Core.Logic.Configs;
 using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => FireAndOrbCrook;
+    public static BossBehaviourBuilder BossBehaviourBuilder => FireSuffer;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))
@@ -51,7 +54,7 @@ public static partial class MainConfig
             .Wait(1f)
         .EndWhile()
         .Forget()
-        .SpawnOrb(Player + Units(0, -2), Player, DefaultOrbStats);
+        .SpawnOrb(Boss, Player, DefaultOrbStats);
 
     private static BossBehaviourBuilder CountTest => Create()
         .While(Count(3))
@@ -82,10 +85,10 @@ public static partial class MainConfig
         .EndWhile();
     
     
-    //======== ALNORAV ==========
+    //======== ALNORA ==========
 
-    
-    private static readonly BossBehaviourBuilder AlnoraV = Create()
+
+    private static readonly BossBehaviourBuilder Alnora = Create()
         .Then(() => LetsTeachYouBladeParry)
         .Then(() => LetsTeachYouFireParry)
         .Then(() => CrestOfMechan)
@@ -93,6 +96,46 @@ public static partial class MainConfig
         .Wait(0.5f);
 
 
+    private static BossBehaviourBuilder PulseXTwelve => Create()
+    //прям по часовой
+    .SpawnOrb(Boss, Normalize(Boss + Units(0, -1))*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*2)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*3)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*4)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*5)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*6)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*7)*Var.OrbDistance*100,DefaultOrbStats)
+  
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*8)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*9)*Var.OrbDistance*100,DefaultOrbStats)
+
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*10)*Var.OrbDistance*100,DefaultOrbStats)
+    
+    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*11)*Var.OrbDistance*100,DefaultOrbStats)
+    .Wait(0f);
+
+    private static BossBehaviourBuilder RadiumRecoil => Create()
+    //5 орбов отдачи
+    .SpawnOrb(Boss, Normalize(Boss - Player)*Var.OrbDistance*100, AlnoraRecoilOrbsStats)
+    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, Var.OrbAngle), AlnoraRecoilOrbsStats)
+    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, -Var.OrbAngle), AlnoraRecoilOrbsStats)
+    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, Var.OrbAngle*2), AlnoraRecoilOrbsStats)
+    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, -Var.OrbAngle*2), AlnoraRecoilOrbsStats);
+
+
+    private static BossBehaviourBuilder AVSnipeShot => Create()
+    .Fire(Player)
+    .Then(() => RadiumRecoil)
+    .Wait(0.5f);
 
     private static BossBehaviourBuilder LetsTeachYouBladeParry => Create()
 
@@ -109,7 +152,32 @@ public static partial class MainConfig
         .Teleport(Player + Units(2, -2))
         .Blade(Player)
 
+        .Wait(2f);
+
+    private static BossBehaviourBuilder FireSuffer => Create()
+        .Teleport(Player + (CameraBottomLeft - Player)*(3f/4))
+        .Then(()=> PulseXTwelve)
+        .Wait(1f)
+        .Fire(Player)
+
+        .Teleport(Player + (CameraBottomRight - Player)*(3f/4))
+        .Then(()=> PulseXTwelve)
+        .Wait(1f)
+        .Fire(Player)
+
+        .Teleport(Player + (CameraTopRight - Player)*(3f/4))
+        .Then(()=> PulseXTwelve)
+        .Wait(1f)
+        .Fire(Player)
+
+        .Teleport(Player + (CameraTopLeft - Player)*(3f/4))
+        .Then(()=> PulseXTwelve)
+        .Wait(1f)
+        .Fire(Player)
+
         .Wait(0.5f);
+
+
 
     private static BossBehaviourBuilder LetsTeachYouFireParry => Create()
         .Teleport(CameraBottomLeft)
