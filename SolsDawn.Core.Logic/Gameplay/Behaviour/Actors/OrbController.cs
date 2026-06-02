@@ -19,7 +19,6 @@ public class OrbController : IUpdatable
         new Hp(go, 1);
         new Collider(go, _id++, Collision.LayerName.Enemy);
         var orb = new Orb(go, stats);
-        orb.Target = targetFunc.Invoke();
         _orbData.Add((orb, targetFunc));
     }
     
@@ -33,8 +32,12 @@ public class OrbController : IUpdatable
                 _removedOrbs.Add(orb);
                 continue;
             }
-            
-            orb.Target = data.TargetFunc.Invoke();
+
+            if (orb.State is Orb.FollowState followState)
+            {
+                followState.Target = data.TargetFunc.Invoke();
+            }
+
             _orbDataBuff.Add(data);
         }
 

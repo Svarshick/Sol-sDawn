@@ -13,8 +13,10 @@ public static partial class MainConfig
         .Blade(Player);
 
     private static BossBehaviourBuilder OrbTest => Create()
-        .Wait(1f)
-        .SpawnOrb(Player + Units(0, -4), Player, DefaultOrbStats);
+        .Wait(0.5f)
+        .SpawnOrb(Player + Units(0, -3), Player, DefaultOrbStats)
+        .Teleport(Player + Units(0, -4))
+        .Fire(Player);
     
     private static BossBehaviourBuilder TestAll => Create()
         .Wait(0.5f)

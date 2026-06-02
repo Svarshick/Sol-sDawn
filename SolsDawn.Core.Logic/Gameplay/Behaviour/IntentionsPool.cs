@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
+using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
@@ -58,6 +59,15 @@ public static class IntentionsPool
 
         foreach (var intention in _intentionsQueue)
         {
+            if (intention.Source.IsDisposed)
+                continue;
+            
+            if (intention.Source.GetComponent<Orb>() is { } orb &&
+                intention is EnterStateIntention orbState)
+            {
+                orb.Enter(orbState.State);
+            }
+            
             if (intention.Source == playerGO &&
                 intention is EnterStateIntention playerState)
             {
@@ -126,10 +136,25 @@ public static class IntentionsPool
             var bossParry = new Boss.FireParriedState(boss, Blackboard, parryPosition);
             player.Enter(playerParry);
             boss.Enter(bossParry);
+
+            var parryRadius = 150;
+            
+            var circle = new BoundingCircle2D(parryPosition, parryRadius);
+            var shape = new CollisionShape2D(circle);
+            var targets = new List<GameObject>();
+            Collision.Overlap(shape, Collision.LayerName.Enemy, targets);
+            foreach (var target in targets)
+            {
+                if (target.GetComponent<Orb>() is { } orb)
+                {
+                    var explode = new Orb.ExplodeState(orb);
+                    orb.Enter(explode);
+                }
+            }
             
             Game.AnimationsPool.Add(new CircleTrace(
                 new Transform { Position = parryPosition },
-                150,
+                parryRadius,
                 20,
                 150,
                 Math.Max(player.Stats.FireParryTraceDuration, boss.Stats.FireTraceDuration),

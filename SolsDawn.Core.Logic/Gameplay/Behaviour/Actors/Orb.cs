@@ -22,17 +22,19 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
 {
     public readonly OrbStats Stats;
     
-    private Collider _collider;
-    private Hp _hp;
-
-    public Vector2 Target;
+    private readonly Collider _collider;
+    private readonly Hp _hp;
+    
+    public State State { get; private set; }
 
     public Orb(GameObject go, OrbStats stats) : base(go)
     {
+        Stats = stats;
+        
         _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
         _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
-        
-        Stats = stats;
+
+        State = new FollowState(this);
     }
 
     public override void Dispose()
@@ -41,26 +43,20 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
 
     public void Update()
     {
-        var shift = (float)(Time.ElapsedGameTime.TotalSeconds * Stats.Velocity);
-        GameObject.Transform.Position = SDMath.MoveTo(GameObject.Transform.Position, Target, shift);
-
-        var circle = new BoundingCircle2D(GameObject.Transform.Position, Stats.Radius);
-        var shape = new CollisionShape2D(circle);
-        var targets = new List<GameObject>();
-        Collision.Overlap(shape, Collision.LayerName.Player, targets);
-        if (targets.Count > 0)
-        {
-            Explode();
-            GameObject.Dispose();
-            return;
-        }
-        
         var bounds = new BoundingCircle2D(GameObject.Transform.Position, Stats.Radius);
         _collider.Shape = new CollisionShape2D(bounds);
+        State.Update();
     }
 
     public void LateUpdate()
     {
+    }
+    
+    public void Enter(State state)
+    {
+        State.Exit(state);
+        state.Enter(State);
+        State = state;
     }
 
     public void Draw()
@@ -74,23 +70,55 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
         _hp.ChangeCurrent(0);
     }
 
-    private void Explode()
+    public class FollowState(
+        Orb orb) 
+        : State
     {
-        var circle = new BoundingCircle2D(GameObject.Transform.Position, Stats.ExplosionRadius);
-        var shape = new CollisionShape2D(circle);
-        var targets = new List<GameObject>();
-        Collision.Overlap(shape, Collision.LayerName.Player, targets);
-        if (targets.Count > 0)
-        {
-            AffectsPool.Add(new DamageAffect(GameObject, targets, 1));
-        }
+        public Vector2 Target;
 
-        Game.AnimationsPool.Add(new CircleTrace(
-            GameObject.Transform, Stats.ExplosionRadius, 
-            20, 
-            Stats.ExplosionRadius, 
-            Stats.ExplosionTraceDuration,
-            Stats.ExplosionColor,
-            Color.Transparent));
+        public override void Update()
+        {
+            var shift = (float)(Time.ElapsedGameTime.TotalSeconds * orb.Stats.Velocity);
+            orb.GameObject.Transform.Position = SDMath.MoveTo(orb.GameObject.Transform.Position, Target, shift);
+
+            var circle = new BoundingCircle2D(orb.GameObject.Transform.Position, orb.Stats.Radius);
+            var shape = new CollisionShape2D(circle);
+            var targets = new List<GameObject>();
+            Collision.Overlap(shape, Collision.LayerName.Player, targets);
+            if (targets.Count > 0)
+            {
+                var explode = new ExplodeState(orb);
+                IntentionsPool.Add(Intend(orb.GameObject, explode));
+            }
+        }
+    }
+
+    public class ExplodeState(
+        Orb orb) 
+        : State
+    {
+        public override void Enter(State from)
+        {
+            var stats = orb.Stats;
+            var go = orb.GameObject;
+            var circle = new BoundingCircle2D(go.Transform.Position, stats.ExplosionRadius);
+            var shape = new CollisionShape2D(circle);
+            var targets = new List<GameObject>();
+            Collision.Overlap(shape, Collision.LayerName.Player, targets);
+            if (targets.Count > 0)
+            {
+                AffectsPool.Add(new DamageAffect(go, targets, 1));
+            }
+
+            Game.AnimationsPool.Add(new CircleTrace(
+                go.Transform, stats.ExplosionRadius,
+                20,
+                stats.ExplosionRadius,
+                stats.ExplosionTraceDuration,
+                stats.ExplosionColor,
+                Color.Transparent));
+
+            go.Dispose();
+        }
     }
 }
