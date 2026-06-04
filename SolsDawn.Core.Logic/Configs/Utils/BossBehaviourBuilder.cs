@@ -253,6 +253,7 @@ public class BossBehaviourBuilder
     public static VectorExpression Player => new PlayerPositionExpression();
     public static VectorExpression PlayerSnapshot = new PlayerPositionSnapshotExpression();
     public static VectorExpression Boss => new BossPositionExpression();
+    public static VectorExpression BossSnapshot = new BossPositionSnapshotExpression();
     public static VectorExpression CameraCenter => new CameraCenterPositionExpression();
     public static VectorExpression CameraTopLeft => new CameraTopLeftPositionExpression();
     public static VectorExpression CameraTopRight => new CameraTopRightPositionExpression();

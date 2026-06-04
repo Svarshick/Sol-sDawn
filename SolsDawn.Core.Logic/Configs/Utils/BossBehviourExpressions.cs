@@ -38,6 +38,28 @@ public class BossPositionExpression : VectorExpression
     public override Vector2 Evaluate(FightBlackboard context) => context.Boss.GameObject.Transform.Position;
 }
 
+public class BossPositionSnapshotExpression : VectorExpression
+{
+    private Vector2 _snapshot;
+    private bool _isEvaluated;
+
+    public BossPositionSnapshotExpression()
+    {
+        BossBehaviourBuilder.RESET += () => _isEvaluated = false;
+    }
+
+    public override Vector2 Evaluate(FightBlackboard context)
+    {
+        if (!_isEvaluated)
+        {
+            _snapshot = context.Boss.GameObject.Transform.Position;
+            _isEvaluated = true;
+        }
+
+        return _snapshot;
+    }
+}
+
 public class CameraCenterPositionExpression : VectorExpression
 {
     public override Vector2 Evaluate(FightBlackboard context) => context.Layout.CameraCenter();
