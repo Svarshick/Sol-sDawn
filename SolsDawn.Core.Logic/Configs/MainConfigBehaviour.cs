@@ -8,7 +8,7 @@ using static BossBehaviourBuilder;
 
 public static partial class MainConfig
 {
-    public static BossBehaviourBuilder BossBehaviourBuilder => FireSuffer;
+    public static BossBehaviourBuilder BossBehaviourBuilder => Alnora_The_teacher;
 
     private static BossBehaviourBuilder BladeTest => Create()
         .Teleport(Player + Units(0, -1))
@@ -88,53 +88,56 @@ public static partial class MainConfig
     //======== ALNORA ==========
 
 
-    private static readonly BossBehaviourBuilder Alnora = Create()
-        .Then(() => LetsTeachYouBladeParry)
-        .Then(() => LetsTeachYouFireParry)
-        .Then(() => CrestOfMechan)
+    private static BossBehaviourBuilder Alnora_The_teacher => Create()
+        .While(Count(10000))
+        //.Then(() => LetsTeachYouBladeParry)
+        .Then(() => FireTeacher)
+        //.Then(() => CrestOfMechan)
         //вау ты выжил, ну подыши хз
-        .Wait(0.5f);
+        .Wait(0.5f)
+        .EndWhile();
 
 
     private static BossBehaviourBuilder PulseXTwelve => Create()
     //прям по часовой
-    .SpawnOrb(Boss, Normalize(Boss + Units(0, -1))*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Normalize(BossSnapshot + Units(0, -1))*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*2)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*2)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*3)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*3)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*4)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*4)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*5)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*5)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*6)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*6)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*7)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*7)*Var.OrbDistance*100,DefaultOrbStats)
   
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*8)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*8)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*9)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*9)*Var.OrbDistance*100,DefaultOrbStats)
 
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*10)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*10)*Var.OrbDistance*100,DefaultOrbStats)
     
-    .SpawnOrb(Boss, Rotate(Normalize(Boss + Units(0, -1)), Var.OrbAngle*11)*Var.OrbDistance*100,DefaultOrbStats)
+    .SpawnOrb(Boss, Rotate(Normalize(BossSnapshot + Units(0, -1)), Var.OrbAngle*11)*Var.OrbDistance*100,DefaultOrbStats)
     .Wait(0f);
 
     private static BossBehaviourBuilder RadiumRecoil => Create()
-    //5 орбов отдачи
-    .SpawnOrb(Boss, Normalize(Boss - Player)*Var.OrbDistance*100, AlnoraRecoilOrbsStats)
-    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, Var.OrbAngle), AlnoraRecoilOrbsStats)
-    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, -Var.OrbAngle), AlnoraRecoilOrbsStats)
-    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, Var.OrbAngle*2), AlnoraRecoilOrbsStats)
-    .SpawnOrb(Boss, Rotate(Normalize(Boss - Player)*Var.OrbDistance*100, -Var.OrbAngle*2), AlnoraRecoilOrbsStats);
+        //5 орбов отдачи
+        .SpawnOrb(Boss, Normalize(BossSnapshot - PlayerSnapshot) * Var.OrbDistance * 100, AlnoraRecoilOrbsStats);
+    //.SpawnOrb(Boss, Rotate(Normalize(BossSnapshot - PlayerSnapshot)*Var.OrbDistance*100, Var.OrbAngle), AlnoraRecoilOrbsStats)
+    //.SpawnOrb(Boss, Rotate(Normalize(BossSnapshot - PlayerSnapshot)*Var.OrbDistance*100, -Var.OrbAngle), AlnoraRecoilOrbsStats)
+    //.SpawnOrb(Boss, Rotate(Normalize(BossSnapshot - PlayerSnapshot)*Var.OrbDistance*100, Var.OrbAngle*2), AlnoraRecoilOrbsStats)
+    //.SpawnOrb(Boss, Rotate(Normalize(BossSnapshot - PlayerSnapshot)*Var.OrbDistance*100, -Var.OrbAngle*2), AlnoraRecoilOrbsStats);
 
 
     private static BossBehaviourBuilder AVSnipeShot => Create()
-    .Fire(Player)
     .Then(() => RadiumRecoil)
+    .Fire(Player)
+    
     .Wait(0.5f);
 
     private static BossBehaviourBuilder LetsTeachYouBladeParry => Create()
@@ -179,22 +182,25 @@ public static partial class MainConfig
 
 
 
-    private static BossBehaviourBuilder LetsTeachYouFireParry => Create()
-        .Teleport(CameraBottomLeft)
-        .Wait(1f)
-        .Fire(Player)
+    private static BossBehaviourBuilder FireTeacher => Create()
 
-        .Teleport(CameraBottomRight)
-        .Wait(1f)
-        .Fire(Player)
 
-        .Teleport(CameraTopRight)
-        .Wait(1f)
-        .Fire(Player)
 
-        .Teleport(CameraTopLeft)
-        .Wait(1f)
-        .Fire(Player)
+        .Teleport(Player + (CameraBottomLeft - Player)*(3f/4))
+        .Wait(1.2f)
+        .Then(()=>AVSnipeShot)
+
+        .Teleport(Player + (CameraBottomRight - Player)*(3f/4))
+        .Wait(1.2f)
+        .Then(()=>AVSnipeShot)
+
+        .Teleport(Player + (CameraTopRight - Player)*(3f/4))
+        .Wait(1.2f)
+        .Then(()=>AVSnipeShot)
+
+        .Teleport(Player + (CameraTopLeft - Player)*(3f/4))
+        .Wait(1.2f)
+        .Then(()=>AVSnipeShot)
 
         .Wait(0.5f);
 

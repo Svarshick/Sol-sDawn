@@ -14,7 +14,7 @@
   </ItemGroup>  
   -->
   <ItemGroup>
-    <ProjectReference Include="..\SolsDawn.Core\SolsDawn.Core.csproj" />
+    <ProjectReference Include="../SolsDawn.Core/SolsDawn.Core.csproj" />
   </ItemGroup> 
   
   <ItemGroup>
@@ -23,7 +23,14 @@
     <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5-preview.4">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="MoonSharp" Version="2.0.0" />
     <PackageReference Include="ObservableCollections.R3" Version="3.3.4" />
     <PackageReference Include="Stateless" Version="5.20.1" />
   </ItemGroup>
+  
+  <ItemGroup>  
+    <None Include="../Configs/**/*.lua" Link="Configs/%(RecursiveDir)%(Filename)%(Extension)">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
 </Project>

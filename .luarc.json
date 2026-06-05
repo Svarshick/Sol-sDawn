@@ -1,0 +1,46 @@
+{
+    "runtime.version": "Lua 5.2",
+    "runtime.builtin": [],
+    "workspace.library": [
+        "./Configs/api_definitions.lua"
+    ],
+    "workspace.ignoreDir": [
+        "*"
+    ],
+    "diagnostics": {
+        "enable": true,
+        "globals": [
+            "AlnoraRecoilOrbsStats",
+            "DefaultOrbStats",
+            "CreateVector",
+            "Units",
+            "UnitsFloat",
+            "Rotate",
+            "Normalize",
+            "GetPlayerPosition",
+            "GetBossPosition",
+            "GetCameraCenter",
+            "GetCameraTopLeft",
+            "GetCameraTopRight",
+            "GetCameraBottomLeft",
+            "GetCameraBottomRight",
+            "IsBossLastBladeParried",
+            "IsBossLastFireParried",
+            "IsBossLastBladeSuccess",
+            "IsBossLastFireSuccess",
+            "Wait",
+            "Teleport",
+            "Blade",
+            "Fire",
+            "SpawnOrb"
+        ],
+        "param-type-mismatch": "Error",
+        "missing-parameter": "Error",
+        "redundant-parameter": "Error",
+        "assign-type-mismatch": "Error",
+        "need-check-type": "Error",
+        "unused-local": "Warning",
+        "unused-function": "Warning",
+        "undefined-field": "Warning"
+    }
+}

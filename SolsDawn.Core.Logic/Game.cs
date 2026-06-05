@@ -59,7 +59,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         _orbController = new OrbController();
         IntentionsPool.Blackboard = new FightBlackboard(boss, _player, _orbController, ScreenLayout);
-        _bossController = new(IntentionsPool.Blackboard, MainConfig.BossBehaviourBuilder);
+        string luaScriptPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Configs", "boss_behavior.lua");
+        _bossController = new BossController(IntentionsPool.Blackboard, luaScriptPath);
         _playerController = new(_player, _input);
 
         _gameTests = new();
