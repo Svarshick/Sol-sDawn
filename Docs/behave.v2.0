@@ -1,0 +1,52 @@
+Creating chain of events. Event could be canseled or fired. 
+evt2 follows evt1 + 0.3 seconds
+1. evt1 fired -> wait 0.3 seconds -> fire evt2
+2. evt1 canceled -> evt2 canceled
+
+Event placed inside scope (script). If we return from script, events killed (canceled or just unsubscribed quietly)
+
+example
+```
+warning about attack1 (animation)
+t1 = 0.3 seconds
+create parry collider for attack1 after t1 end
+t2 = 0.4 seconds after t1 end
+remove parry collider for attack1 after t2 end
+send intention to executing attack1 after t2 end
+
+warning about attack2 (animation) after t1 end
+t3 = 0.3 seconds after t1 end
+create parry collider for atack2 after t3 end
+t4 = 0.4 seconds after t3 end
+remove parry collider for attack2 after t4 end
+send intention to executing attack2 after t4 end
+
+I want it look like
+
+t1 = timer(0.3)
+t2 = t1.then(0.4)
+t3 = t1.then(0.3)
+t4 = t3.then(0.4)
+
+attack1_warning = someWarningConstructor(
+	func(ctx)
+		--yields every update to draw until t2 end or attack1 canceled
+	end
+)
+attack1_parry = someParryContrusctor(form, e.t.c...
+	func(ctx) --called if parried
+		--yields every update for logic until some time (or event without yielding and execute all in one frame)
+	end
+) --point to start after t1
+
+attack1_execution = someExecutionConstructor(...
+	func(ctx) --called if executing
+		--yields every update for logic until some time (or event without yielding and execute all in one frame)
+	end
+) --point to start after t2 if not canceled
+
+similar with attack2
+```
+
+attack chain of events and actions. Attack has start and end event. The first time attack part called (for example warning triggered), attack starts. Then action could end attack. For example parry can attack.cancel or attack execution could end attack (like evt fire or cancel. Maybe attack start and attack end would be events with cancel and fire methods)
+

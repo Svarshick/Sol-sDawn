@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
@@ -26,8 +27,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private GraphicsDeviceManager _graphicsDeviceManager;
     private Player _player;
     private Input _input;
-    private OrbController _orbController;
-    private BossController _bossController;
     private PlayerController _playerController;
 
     private GameTests _gameTests;
@@ -37,6 +36,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _graphicsDeviceManager = new GraphicsDeviceManager(this);
     }
 
+    private List<LuaRoutine> _routines;
     protected override void Initialize()
     {
         base.Initialize();
@@ -57,10 +57,15 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Boss(bossGo);
 
-        _orbController = new OrbController();
-        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, _orbController, ScreenLayout);
-        string luaScriptPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Configs", "boss_behavior.lua");
-        _bossController = new BossController(IntentionsPool.Blackboard, luaScriptPath);
+        var luaManager = new LuaManager("Configs");
+        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, ScreenLayout);
+
+        _routines = new();
+        for (int i = 0; i < 1000; i++)
+        {
+            var r = new LuaRoutine(luaManager.BossScript, luaManager.GetCompiledScript("boss/boss_test.lua"), i);
+            _routines.Add(r);
+        }
         _playerController = new(_player, _input);
 
         _gameTests = new();
@@ -93,11 +98,15 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         AnimationsPool.Update();
         ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
 
+        foreach (var r in _routines)
+        {
+            r.Update(true);
+        }
+
+        
         _gameTests.Update();
         _input.Update();
         _playerController.Update();
-        _bossController.Update();
-        _orbController.Update();
         GameObjectPool.Update();
         IntentionsPool.Resolve();
         AffectsPool.Resolve();

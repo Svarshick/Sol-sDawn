@@ -5,7 +5,7 @@ using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Configs.Utils;
 
-public record FightBlackboard(Boss Boss, Player Player, OrbController OrbController, ScreenLayout Layout)
+public record FightBlackboard(Boss Boss, Player Player, ScreenLayout Layout)
 {
     public bool IsBossLastBladeSuccess;
     public bool IsBossLastBladeParried { get; set; }
@@ -27,7 +27,8 @@ public record FightBlackboard(Boss Boss, Player Player, OrbController OrbControl
     }
 }
 
-public class BossBehaviourBuilder
+//LEGACY
+/*public class BossBehaviourBuilder
 {
     //DIRTY DIRTY DIRTY
     public static event Action RESET;
@@ -269,4 +270,4 @@ public class BossBehaviourBuilder
     public static BoolExpression IsBossLastFireParried => new IsBossLastFireParriedExpression();
     public static BoolExpression IsPlayerLastBladeSuccess => new IsPlayerLastBladeSuccessExpression();
     public static BoolExpression IsPlayerLastFireSuccess => new IsPlayerLastFireSuccessExpression();
-}
+}*/
