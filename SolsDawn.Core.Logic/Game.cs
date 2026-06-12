@@ -61,7 +61,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         IntentionsPool.Blackboard = new FightBlackboard(boss, _player, ScreenLayout);
 
         _routines = new();
-        for (int i = 0; i < 1000; i++)
+        for (int i = 0; i < 1; i++)
         {
             var r = new LuaRoutine(luaManager.BossScript, luaManager.GetCompiledScript("boss/boss_test.lua"), i);
             _routines.Add(r);
@@ -100,7 +100,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         foreach (var r in _routines)
         {
-            r.Update(true);
+            r.Update();
         }
 
         

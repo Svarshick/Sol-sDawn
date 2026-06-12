@@ -1,9 +1,7 @@
-local actions = require("boss/actions/boss_actions")
-actions.doSomething()
-local result = actions.calculateValue(10)
-print("Result is: " .. tostring(result))
-
 while true do 
     print("bla")
-    wait()
+    wait(1)
+    print("alb")
+    wait(1)
+    dofile("Configs/boss/actions/boss_actions.lua")
 end

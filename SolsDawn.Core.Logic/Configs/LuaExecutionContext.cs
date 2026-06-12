@@ -5,26 +5,26 @@ namespace SolsDawn.Core.Logic.Configs;
 public static class LuaExecutionContext
 {
     [field: ThreadStatic]
-    public static object CurrentActor { get; private set; }
+    public static LuaRoutine CurrentRoutine { get; private set; }
 
-    public static IDisposable Use(object actor)
+    public static IDisposable Use(LuaRoutine routine)
     {
-        return new ContextScope(actor);
+        return new ContextScope(routine);
     }
 
     private class ContextScope : IDisposable
     {
-        private readonly object _previous;
+        private readonly LuaRoutine _previous;
 
-        public ContextScope(object actor)
+        public ContextScope(LuaRoutine routine)
         {
-            _previous = CurrentActor;
-            CurrentActor = actor;
+            _previous = CurrentRoutine;
+            CurrentRoutine = routine;
         }
 
         public void Dispose()
         {
-            CurrentActor = _previous;
+            CurrentRoutine = _previous;
         }
     }
 }

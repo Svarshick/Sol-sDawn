@@ -36,38 +36,41 @@ public class LuaManager
         BossScript.Options.ScriptLoader = loader;
         OrbScript.Options.ScriptLoader = loader;
 
-        InitializeApis();
+        InitializeAPI();
     }
-    
-    private void InitializeApis()
+
+    private void InitializeAPI()
     {
+        UserData.RegisterProxyType<LuaEventProxy, LuaEvent>(source => new LuaEventProxy(source));
+        //UserData.RegisterProxyType<LuaEventProxy, LuaTimer>(source => new LuaEventProxy(source));
+        
+        const string waitCode = @"
+            return function(target)
+                if type(target) == 'number' then
+                    target = timer(target)
+                end
+                while not target.isFired and not target.isCanceled do
+                    coroutine.yield()
+                end
+            end
+        ";
+        
         var bossEnv = new Table(BossScript)
         {
-            ["wait"] = DynValue.NewCallback((_, _) => DynValue.NewYieldReq([])),
-            
-            ["attack"] = DynValue.NewCallback((_, args) =>
-            {
-                Console.WriteLine($"{(int)LuaExecutionContext.CurrentActor} attack. Status {args[0].String}");
-                return DynValue.NewYieldReq([]);
-            }),
-
-            ["status"] = DynValue.NewString("init status"),
+            ["timer"] = (Func<double, LuaTimer>)CreateTimer,
             
             MetaTable = new Table(BossScript)
             {
                 ["__index"] = BossScript.Globals
             },
         };
+
+        var wait = CompileFunction(waitCode, bossEnv, BossScript);
+        bossEnv["wait"] = wait;
         API[ActorType.Boss] = bossEnv;
 
         var orbEnv = new Table(OrbScript)
         {
-            ["fly"] = DynValue.NewCallback((_, _) =>
-            {
-                Console.WriteLine("Orb flies!");
-                return DynValue.NewYieldReq([]);
-            }),
-            
             MetaTable = new Table(OrbScript)
             {
                 ["__index"] = OrbScript.Globals
@@ -75,7 +78,27 @@ public class LuaManager
         };
         API[ActorType.Orb] = orbEnv;
     }
+    
+    private DynValue CompileFunction(string functionFabric, Table env, Script script)
+    {
+        var chunk = script.LoadString(functionFabric, env);
+        return script.Call(chunk);
+    }
+    
+    private static LuaTimer CreateTimer(double delay)
+    {
+        var currentRoutine = LuaExecutionContext.CurrentRoutine;
+        if (currentRoutine == null)
+        {
+            throw new InvalidOperationException("Cannot create a timer outside of an active LuaRoutine execution context.");
+        }
 
+        var timer = new LuaTimer(currentRoutine, delay);
+        currentRoutine.StartTimer(timer);
+        return timer;
+    }
+    
+    
     public DynValue GetCompiledScript(string path)
     {
         if (!_scriptCache.TryGetValue(path, out var compiledFunc))

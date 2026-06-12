@@ -13,7 +13,6 @@ public class GameTests : IUpdatable, IDrawable
     {
         if (!IsActive)
             return;
-        
     }
 
     private double _lastTime;
