@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
@@ -57,13 +58,13 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Boss(bossGo);
 
-        var luaManager = new LuaManager("Configs");
+        var luaManager = LuaExecutionContext.LuaManager;
         IntentionsPool.Blackboard = new FightBlackboard(boss, _player, ScreenLayout);
 
         _routines = new();
         for (int i = 0; i < 1; i++)
         {
-            var r = new LuaRoutine(luaManager.BossScript, luaManager.GetCompiledScript("boss/boss_test.lua"), i);
+            var r = new LuaRoutine(luaManager.BossScript, luaManager.GetCompiledScript("boss/boss_test.lua"), i, "boss");
             _routines.Add(r);
         }
         _playerController = new(_player, _input);
@@ -102,7 +103,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         {
             r.Update();
         }
-
         
         _gameTests.Update();
         _input.Update();

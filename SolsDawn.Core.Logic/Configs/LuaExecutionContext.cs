@@ -7,6 +7,8 @@ public static class LuaExecutionContext
     [field: ThreadStatic]
     public static LuaRoutine CurrentRoutine { get; private set; }
 
+    public static LuaManager LuaManager { get; } = new ("Configs");
+
     public static IDisposable Use(LuaRoutine routine)
     {
         return new ContextScope(routine);

@@ -23,8 +23,8 @@ public class LuaManager
 
     public LuaManager(string root)
     {
-        BossScript = new Script(CoreModules.LoadMethods | CoreModules.Basic | CoreModules.Coroutine);
-        OrbScript = new Script(CoreModules.LoadMethods | CoreModules.Basic | CoreModules.Coroutine);
+        BossScript = new Script(CoreModules.Basic | CoreModules.Coroutine);
+        OrbScript = new Script(CoreModules.Basic | CoreModules.Coroutine);
         ScriptRoot = root ?? "";
         
         var loader = new FileSystemScriptLoader();
@@ -57,6 +57,7 @@ public class LuaManager
         
         var bossEnv = new Table(BossScript)
         {
+            ["run"] = (Func<string, DynValue>)BlockRoutine,
             ["timer"] = (Func<double, LuaTimer>)CreateTimer,
             
             MetaTable = new Table(BossScript)
@@ -71,6 +72,8 @@ public class LuaManager
 
         var orbEnv = new Table(OrbScript)
         {
+            ["run"] = (Func<string, DynValue>)BlockRoutine,
+            
             MetaTable = new Table(OrbScript)
             {
                 ["__index"] = OrbScript.Globals
@@ -97,7 +100,16 @@ public class LuaManager
         currentRoutine.StartTimer(timer);
         return timer;
     }
-    
+
+    private static DynValue BlockRoutine(string path)
+    {
+        var manager = LuaExecutionContext.LuaManager ?? throw new NullReferenceException("Expected not null LuaManager");
+        var routine = LuaExecutionContext.CurrentRoutine ?? throw new NullReferenceException("Expected not null CurrentRoutine");
+        var package = routine.Package;
+        var script = manager.GetCompiledScript(Path.Combine(package, path) + ".lua");
+        routine.BlockWithRoutine(script);
+        return DynValue.NewYieldReq([]);
+    }
     
     public DynValue GetCompiledScript(string path)
     {

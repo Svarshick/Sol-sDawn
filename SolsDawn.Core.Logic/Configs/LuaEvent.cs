@@ -30,11 +30,16 @@ public class LuaEventProxy
 
     public bool isFired => _target.IsFired;
     public bool isCanceled => _target.IsCanceled;
+    public int id => _target.ID;
 }
 
 public class LuaEvent
 {
     public readonly LuaRoutine OwnerRoutine;
+    
+    private static int _id_counter = 0;
+    public int ID { get; } = _id_counter++;
+
     
     public LuaEventState State { get; protected set; }
     public bool IsFired => State == LuaEventState.Fired;
@@ -57,10 +62,10 @@ public class LuaEvent
                 _nextEvents.Add(nextEvent);
                 break;
             case LuaEventState.Fired:
-                nextEvent.OnParentCanceled();
+                nextEvent.OnParentFired();
                 break;
             case LuaEventState.Canceled:
-                nextEvent.OnParentFired();
+                nextEvent.OnParentCanceled();
                 break;
         }
     }
