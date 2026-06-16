@@ -144,7 +144,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             if (TimeLeft < 0)
             {
                 var pending = new PendingState(boss);
-                IntentionsPool.Add(Intend(boss.GameObject, pending));
+                IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
             }
         }
     }
@@ -167,7 +167,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             boss.GameObject.Transform.Position = position;
             
             var pending = new PendingState(boss);
-            IntentionsPool.Add(Intend(boss.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
         }
     }
 
@@ -221,7 +221,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 Collision.Overlap(shape, Collision.LayerName.Player, targets);
 
                 var execute = new BladeExecutionState(boss, blackboard, LookPosition, targets);
-                IntentionsPool.Add(Intend(boss.GameObject, execute));
+                IntentionsPool.AddIntention(Intend(boss.GameObject, execute));
             }
         }
 
@@ -268,7 +268,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             }
             
             var pending = new PendingState(boss);
-            IntentionsPool.Add(Intend(boss.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
         }
     }
 
@@ -350,7 +350,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             if (TimeLeft < 0)
             {
                 var pending = new PendingState(boss);
-                IntentionsPool.Add(Intend(boss.GameObject, pending));
+                IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
             }
         }
     }
@@ -392,7 +392,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 Collision.Overlap(shape, Collision.LayerName.Player, targets);
                 
                 var execute = new FireExecutionState(boss, blackboard, FirePosition, targets);
-                IntentionsPool.Add(Intend(boss.GameObject, execute));
+                IntentionsPool.AddIntention(Intend(boss.GameObject, execute));
             }
             else if (TimeLeft > boss.Stats.FireTelegraphDuration - boss.Stats.FireTelegraphAimingDuration)
             {
@@ -435,7 +435,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             }
             
             var pending = new PendingState(boss);
-            IntentionsPool.Add(Intend(boss.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
         }
     }
 
@@ -463,7 +463,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             if (TimeLeft < 0)
             {
                 var pending = new PendingState(boss);
-                IntentionsPool.Add(Intend(boss.GameObject, pending));
+                IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
             }
         }
     }

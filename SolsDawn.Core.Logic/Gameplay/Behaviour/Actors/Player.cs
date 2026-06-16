@@ -249,7 +249,7 @@ public sealed class Player : Component<Player>, IUpdatable
             }
             
             var pending = new IdleState(player);
-            IntentionsPool.Add(Intend(player.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
         }
     }
 
@@ -306,7 +306,7 @@ public sealed class Player : Component<Player>, IUpdatable
             }
             
             var pending = new IdleState(player);
-            IntentionsPool.Add(Intend(player.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
         }
     }
 
@@ -339,7 +339,7 @@ public sealed class Player : Component<Player>, IUpdatable
             }
             
             var pending = new IdleState(player);
-            IntentionsPool.Add(Intend(player.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
         }
     }
 
@@ -359,7 +359,7 @@ public sealed class Player : Component<Player>, IUpdatable
                 player.Stats.FireParryTraceEndColor));
             
             var pending = new IdleState(player);
-            IntentionsPool.Add(Intend(player.GameObject, pending));
+            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
         }
     }
 }

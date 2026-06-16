@@ -4,35 +4,63 @@ using MoonSharp.Interpreter;
 
 namespace SolsDawn.Core.Logic.Configs;
 
+[MoonSharpUserData]
 public class LuaRoutine
 {
-    private readonly DynValue _coroutine;
+    //API
+    public LuaTimer after(double time)
+    {
+        var t = new LuaTimer(this, time);
+        FinishEvent.ChainEvent(t); 
+        return t;
+    }
 
-    public object Actor { get; }
-    public Script Script { get; }
-    public string Package { get; }
+    public LuaRoutine onFinish(DynValue callback) => FinishEvent.OnFire(callback);
+    public LuaRoutine onCancel(DynValue callback) => FinishEvent.OnCancel(callback);
+    public LuaRoutine onEnd(DynValue callback)    => FinishEvent.OnEnd(callback);
 
-    private LuaRoutine _blockRoutine;
-    private List<LuaRoutine> _subroutines = new();
-    private List<LuaRoutine> _subroutinesBuff = new();
-    private List<LuaTimer> _activeTimers = new();
-    private List<LuaTimer> _timersBuff = new();
+    public void kill() => Kill();
 
-    public bool IsDead { get; private set; } = false;
+    public LuaEvent finished => FinishEvent;  
 
+    
+    //INTERNAL
+
+    [MoonSharpHidden] private readonly DynValue _coroutine;
+
+    [MoonSharpHidden] public object Actor { get; }
+    [MoonSharpHidden] public Script Script { get; }
+    [MoonSharpHidden] public string Package { get; }
+
+    [MoonSharpHidden] public LuaEvent FinishEvent { get; }
+
+    [MoonSharpHidden] private LuaRoutine _blockRoutine;
+    [MoonSharpHidden] private List<LuaRoutine> _subroutines = new();
+    [MoonSharpHidden] private List<LuaRoutine> _subroutinesBuff = new();
+    [MoonSharpHidden] private List<LuaTimer> _activeTimers = new();
+    [MoonSharpHidden] private List<LuaTimer> _timersBuff = new();
+
+    [MoonSharpHidden] public bool IsDead { get; private set; } = false;
+
+    [MoonSharpHidden]
     public LuaRoutine(Script script, DynValue routine, object actorInstance, string package)
     {
         Script = script;
         _coroutine = script.CreateCoroutine(routine);
         Actor = actorInstance;
         Package = package;
+        FinishEvent = new(this);
     }
 
+    [MoonSharpHidden]
     public void StartTimer(LuaTimer timer) => _timersBuff.Add(timer);
+    [MoonSharpHidden]
+    public LuaRoutine CreateSubroutine(DynValue callback) => new(Script, callback, Actor, Package);
 
-    public void StartSubroutine(DynValue routine)
+    [MoonSharpHidden]
+    //TODO: check that routine isn't active (to not duplicate). Maybe make LuaRoutineState instead of only isDead
+    public void StartSubroutine(LuaRoutine subroutine) 
     {
-        var subroutine = new LuaRoutine(Script, routine, Actor, Package);
         subroutine.Update();
         if (!subroutine.IsDead)
         {
@@ -40,6 +68,7 @@ public class LuaRoutine
         }
     }
 
+    [MoonSharpHidden]
     public void BlockWithRoutine(DynValue routine)
     {
         if (_blockRoutine is not null)
@@ -50,6 +79,7 @@ public class LuaRoutine
         _blockRoutine = _blockRoutine.IsDead ? null : _blockRoutine;
     }
 
+    [MoonSharpHidden]
     public void Update()
     {
         if (IsDead)
@@ -92,6 +122,7 @@ public class LuaRoutine
         }
     }
 
+    [MoonSharpHidden]
     private void UpdateTimers()
     {
         foreach (var timer in _activeTimers)
@@ -114,16 +145,19 @@ public class LuaRoutine
         _timersBuff.Clear();
     }
 
+    [MoonSharpHidden]
     private void Resume()
     {
         var result = _coroutine.Coroutine.Resume();
         if (_coroutine.Coroutine.State == CoroutineState.Dead)
         {
+            FinishEvent.Fire();
             Kill();
         }
     }
 
-    private void Kill()
+    [MoonSharpHidden]
+    public void Kill()
     {
         if (IsDead)
             return;
@@ -131,6 +165,7 @@ public class LuaRoutine
         using (LuaExecutionContext.Use(this))
         {
             IsDead = true;
+            FinishEvent.Cancel();
 
             //CANCEL TIMERS
             foreach (var timer in _activeTimers)

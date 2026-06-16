@@ -21,7 +21,7 @@ public class PlayerController
             _input.Teleport.State == Input.TeleportState.Released)
         {
             var idleState = new Player.IdleState(_player);
-            IntentionsPool.Add(new EnterStateIntention(_player.GameObject, idleState));
+            IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, idleState));
             return;   
         }
         
@@ -50,7 +50,7 @@ public class PlayerController
             _input.Move == Vector2.Zero)
         {
             var idleState = new Player.IdleState(_player);
-            IntentionsPool.Add(new EnterStateIntention(_player.GameObject, idleState));
+            IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, idleState));
             return;
         }
         
@@ -58,7 +58,7 @@ public class PlayerController
                  _input.Move != Vector2.Zero)
         {
             var moveState = new Player.MoveState(_player, _input);
-            IntentionsPool.Add(new EnterStateIntention(_player.GameObject, moveState));
+            IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, moveState));
             return;
         }
     }
@@ -66,7 +66,7 @@ public class PlayerController
     private void IntendTeleport()
     {
         var teleportState = new Player.TeleportState(_player, _input);
-        IntentionsPool.Add(new EnterStateIntention(_player.GameObject, teleportState));
+        IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, teleportState));
     }
 
     private void IntendBlade()
@@ -94,7 +94,7 @@ public class PlayerController
         Collision.Overlap(shape, Collision.LayerName.Parry, targets);
 
         var bladeState = new Player.BladeExecuteState(_player, lookPosition, targets);
-        IntentionsPool.Add(new EnterStateIntention(_player.GameObject, bladeState));
+        IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));
     }
     
 
@@ -120,6 +120,6 @@ public class PlayerController
         Collision.Overlap(shape, Collision.LayerName.Enemy, targets);
 
         var fireState = new Player.FireExecuteState(_player, lookPosition, targets);
-        IntentionsPool.Add(new EnterStateIntention(_player.GameObject, fireState));
+        IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, fireState));
     }
 }

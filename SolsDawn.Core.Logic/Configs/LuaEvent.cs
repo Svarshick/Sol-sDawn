@@ -11,50 +11,47 @@ public enum LuaEventState
     Canceled
 }
 
-public class LuaEventProxy
-{
-    private LuaEvent _target;
-
-    [MoonSharpHidden]
-    public LuaEventProxy(LuaEvent target)
-    {
-        _target = target;
-    }
-
-    public LuaTimer after(double time)
-    {
-        var t = new LuaTimer(_target.OwnerRoutine, time);
-        _target.Then(t);
-        return t;
-    }
-
-    public bool isFired => _target.IsFired;
-    public bool isCanceled => _target.IsCanceled;
-    public int id => _target.ID;
-}
-
+[MoonSharpUserData]
 public class LuaEvent
 {
-    public readonly LuaRoutine OwnerRoutine;
+    //API
+    public LuaTimer after(double time)
+    {
+        var t = new LuaTimer(OwnerRoutine, time);
+        ChainEvent(t);
+        return t;
+    }
     
-    private static int _id_counter = 0;
-    public int ID { get; } = _id_counter++;
-
+    public bool isFired => IsFired;
+    public bool isCanceled => IsCanceled;
+    public bool isEnded => IsEnded;
     
-    public LuaEventState State { get; protected set; }
-    public bool IsFired => State == LuaEventState.Fired;
-    public bool IsCanceled => State == LuaEventState.Canceled;
+    public LuaRoutine onFire(DynValue callback) => OnFire(callback);
+    public LuaRoutine onCancel(DynValue callback) => OnCancel(callback);
+    public LuaRoutine onEnd(DynValue callback) => OnEnd(callback);
+    
+    
+    //INTERNAL
+    
+    [MoonSharpHidden] public readonly LuaRoutine OwnerRoutine;
 
-    private readonly List<LuaEvent> _nextEvents = new();
-    private readonly List<object> _fireCallbacks = new();
-    private readonly List<object> _cancelCallbacks = new();
+    [MoonSharpHidden] public LuaEventState State { get; protected set; }
+    [MoonSharpHidden] public bool IsFired => State == LuaEventState.Fired;
+    [MoonSharpHidden] public bool IsCanceled => State == LuaEventState.Canceled;
+    [MoonSharpHidden] public bool IsEnded => State != LuaEventState.Pending;
 
+    [MoonSharpHidden] private readonly List<LuaEvent> _nextEvents = new();
+    [MoonSharpHidden] private readonly List<object> _fireCallbacks = new();
+    [MoonSharpHidden] private readonly List<object> _cancelCallbacks = new();
+
+    [MoonSharpHidden]
     public LuaEvent(LuaRoutine ownerRoutine)
     {
         OwnerRoutine = ownerRoutine;
     }
 
-    public void Then(LuaEvent nextEvent)
+    [MoonSharpHidden]
+    public void ChainEvent(LuaEvent nextEvent)
     {
         switch (State)
         {
@@ -70,35 +67,152 @@ public class LuaEvent
         }
     }
 
-    public void OnFire(object callback)
+    [MoonSharpHidden]
+    public LuaRoutine OnFire(object callback)
     {
-        switch (State)
+        switch (callback)
         {
-            case LuaEventState.Fired:
-                InvokeCallback(callback);
-                break;
-            case LuaEventState.Pending:
-                _fireCallbacks.Add(callback);
-                break;
+            case DynValue routineCallback:
+            {
+                var routine = OwnerRoutine.CreateSubroutine(routineCallback);
+                switch (State)
+                {
+                    case LuaEventState.Fired:
+                        OwnerRoutine.StartSubroutine(routine);
+                        break;
+                    case LuaEventState.Pending:
+                        _fireCallbacks.Add(routine);
+                        break;
+                    default:
+                        routine.Kill();
+                        break;
+                }
+
+                return routine;
+            }
+
+            case Action actionCallback:
+            {
+                switch (State)
+                {
+                    case LuaEventState.Fired:
+                        actionCallback();
+                        break;
+                    case LuaEventState.Pending:
+                        _fireCallbacks.Add(actionCallback);
+                        break;
+                }
+
+                return null;
+            }
+
+            default:
+            {
+                throw new NotImplementedException($"Can't work with {callback.GetType()} type");
+            }
         }
     }
 
-    public void OnCancel(object callback) 
+    [MoonSharpHidden]
+    public LuaRoutine OnCancel(object callback)
     {
-        switch (State)
+        switch (callback)
         {
-            case LuaEventState.Canceled:
-                InvokeCallback(callback);
-                break;
-            case LuaEventState.Pending:
-                _cancelCallbacks.Add(callback);
-                break;
+            case DynValue routineCallback:
+            {
+                var routine = OwnerRoutine.CreateSubroutine(routineCallback);
+                switch (State)
+                {
+                    case LuaEventState.Canceled:
+                        OwnerRoutine.StartSubroutine(routine);
+                        break;
+                    case LuaEventState.Pending:
+                        _cancelCallbacks.Add(routine);
+                        break;
+                    default:
+                        routine.Kill();
+                        break;
+                }
+
+                return routine;
+            }
+
+            case Action actionCallback:
+            {
+                switch (State)
+                {
+                    case LuaEventState.Canceled:
+                        actionCallback();
+                        break;
+                    case LuaEventState.Pending:
+                        _cancelCallbacks.Add(actionCallback);
+                        break;
+                }
+
+                return null;
+            }
+
+            default:
+            {
+                throw new NotImplementedException($"Can't work with {callback.GetType()} type");
+            }
         }
     }
 
+    [MoonSharpHidden]
+    public LuaRoutine OnEnd(object callback)
+    {
+        switch (callback)
+        {
+            case DynValue routineCallback:
+            {
+                var routine = OwnerRoutine.CreateSubroutine(routineCallback);
+                switch (State)
+                {
+                    case LuaEventState.Fired:
+                    case LuaEventState.Canceled:
+                        OwnerRoutine.StartSubroutine(routine);
+                        break;
+                    case LuaEventState.Pending:
+                        _fireCallbacks.Add(routine);
+                        _cancelCallbacks.Add(routine);
+                        break;
+                }
+
+                return routine;
+            }
+
+            case Action actionCallback:
+            {
+                switch (State)
+                {
+                    case LuaEventState.Fired:
+                    case LuaEventState.Canceled:
+                        actionCallback();
+                        break;
+                    case LuaEventState.Pending:
+                        _fireCallbacks.Add(actionCallback);
+                        _cancelCallbacks.Add(actionCallback);
+                        break;
+                }
+
+                return null;
+            }
+
+            default:
+            {
+                throw new NotImplementedException($"Can't work with {callback.GetType()} type");
+            }
+        }
+    }
+
+    [MoonSharpHidden]
     protected virtual void OnParentFired() => Fire();
+
+    [MoonSharpHidden]
     protected virtual void OnParentCanceled() => Cancel();
-    
+
+    [MoonSharpHidden]
     public void Fire()
     {
         if (State != LuaEventState.Pending)
@@ -109,22 +223,23 @@ public class LuaEvent
         {
             InvokeCallback(callback);
         }
-        
+
         foreach (var next in _nextEvents)
         {
             next.OnParentFired();
         }
-        
+
         _fireCallbacks.Clear();
         _cancelCallbacks.Clear();
         _nextEvents.Clear();
     }
 
+    [MoonSharpHidden]
     public void Cancel()
     {
         if (State != LuaEventState.Pending)
             return;
-        
+
         State = LuaEventState.Canceled;
         foreach (var callback in _cancelCallbacks)
         {
@@ -135,22 +250,25 @@ public class LuaEvent
         {
             next.OnParentCanceled();
         }
-        
+
         _fireCallbacks.Clear();
         _cancelCallbacks.Clear();
         _nextEvents.Clear();
     }
 
+    [MoonSharpHidden]
     private void InvokeCallback(object callback)
     {
         switch (callback)
         {
+            case LuaRoutine routine:
+                OwnerRoutine.StartSubroutine(routine);
+                break;
             case Action action:
                 action();
                 break;
-            case DynValue dynValue:
-                OwnerRoutine.StartSubroutine(dynValue);
-                break;
+            default:
+                throw new NotImplementedException($"Can't work with {callback.GetType()} type");
         }
     }
 }

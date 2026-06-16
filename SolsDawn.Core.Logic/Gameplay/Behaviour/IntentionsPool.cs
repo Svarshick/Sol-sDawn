@@ -21,7 +21,7 @@ public static class IntentionsPool
 
     private static bool _resolving;
 
-    public static void Add(Intention intention)
+    public static void AddIntention(Intention intention)
     {
         if (_resolving)
         {
@@ -37,13 +37,74 @@ public static class IntentionsPool
     public static void Resolve()
     {
         _resolving = true;
-        ResolveLogic();
+        ResolveLogicV2();
+        //ResolveLogic();
         (_intentionsQueue, _lateIntentionsQueue) = (_lateIntentionsQueue, _intentionsQueue);
         _lateIntentionsQueue.Clear();
         _resolving = false;
     }
 
     public static FightBlackboard Blackboard;
+
+    private static void ResolveLogicV2()
+    {
+        var player = Blackboard.Player;
+        var playerGO = Blackboard.Player.GameObject;
+        
+        EnterStateIntention playerStateEnter = null;
+        var playerStateHandled = false;
+
+        foreach (var intention in _intentionsQueue)
+        {
+            if (intention.Source == playerGO &&
+                intention is EnterStateIntention playerState)
+            {
+                if (playerStateEnter is null)
+                {
+                    playerStateEnter = playerState;
+                }
+                else
+                {
+                    Console.WriteLine($"[WARNING] more than one state intentions for {player}");
+                }
+            }
+        }
+
+        if (playerStateEnter is not null &&
+            playerStateEnter.State is Player.BladeExecuteState playerBlade) 
+        {
+            foreach (var target in playerBlade.Targets)
+            {
+                var parryWindow = target.GetComponent<ParryWindow>();
+                if (parryWindow is not null &&
+                    parryWindow.Type == ParryType.Blade)
+                {
+                    var parryPosition = (playerGO.Transform.Position + Blackboard.Boss.GameObject.Transform.Position) / 2;
+                    var playerParry = new Player.BladeParryState(player, parryPosition);
+                    player.Enter(playerParry);
+                    playerStateHandled = true;
+                    Game.LuaMain.EventToFire(parryWindow.ParriedEvent);
+                    break;
+                }
+            }
+        }
+        
+        if (!playerStateHandled && 
+            playerStateEnter is not null)
+        {
+            switch (playerStateEnter.State)
+            {
+                case Player.BladeExecuteState bladeState:
+                    Blackboard.IsPlayerLastBladeSuccess = bladeState.Targets.Count > 0;
+                    break;
+                case Player.FireExecuteState fireState:
+                    Blackboard.IsPlayerLastFireSuccess = fireState.Targets.Count > 0;
+                    break;
+            }
+            
+            player.Enter(playerStateEnter.State);
+        }
+    }
 
     private static void ResolveLogic()
     {

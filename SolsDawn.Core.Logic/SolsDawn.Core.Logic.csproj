@@ -30,7 +30,7 @@
   
   <ItemGroup>  
     <None Include="../Configs/**/*.lua" Link="Configs/%(RecursiveDir)%(Filename)%(Extension)">
-    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </None>
 </ItemGroup>
 </Project>
