@@ -1,60 +1,129 @@
+using System;
 using System.Collections.Generic;
-using MonoGame.Extended;
-using MonoGame.Extended.Collisions;
-using MonoGame.Extended.Collisions.Layers;
+using Microsoft.Xna.Framework;
+using nkast.Aether.Physics2D.Collision;
+using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Dynamics;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
 public static class Collision
 {
-    public static class LayerName
-    {
-        public const string Default = CollisionWorld2D.DefaultLayerName;
-        public const string Player = "player";
-        public const string Enemy = "enemy";
-        public const string Parry = "parry";
-    }
+    public static Category Default => Category.Cat1;
+    public static Category Player => Category.Cat2;
+    public static Category Enemy => Category.Cat3;
+    public static Category Parry => Category.Cat4;
 
-    public static readonly CollisionWorld2D World;
-    public static readonly Layer DefaultLayer = new(new SpatialHash(new SizeF(64f, 64f)));
-    public static readonly Layer PlayerLayer = new(new SpatialHash(new SizeF(64f, 64f)));
-    public static readonly Layer EnemyLayer = new(new SpatialHash(new SizeF(64f, 64f)));
-    public static readonly Layer ParryLayer = new(new SpatialHash(new SizeF(64f, 64f)));
+    public static readonly World World;
 
     static Collision()
     {
-        World = new CollisionWorld2D(DefaultLayer);
-        World.AddLayer(LayerName.Player, PlayerLayer);
-        World.AddLayer(LayerName.Enemy, EnemyLayer);
-        World.AddLayer(LayerName.Parry, ParryLayer);
+        World = new World(Vector2.Zero);
     }
 
-    public static void Overlap(CollisionShape2D shape, string layerName, IList<GameObject> gameObject)
+    public static void Update(GameTime gameTime)
     {
-        foreach (var actor in World.QueryCandidates(shape.BoundingBox, layerName))
+        foreach (var body in World.BodyList)
         {
-            if (shape.TryGetCollision(actor.Shape, out _)  && actor is Collider collider)
-            {
-                gameObject.Add(collider.GameObject);
-            }
+            if (body.Tag is not Collider collider)
+                continue;
+            body.Position = collider.GameObject.Transform.Position;
+            body.Rotation = collider.GameObject.Transform.Rotation;
         }
+
+        var dt = gameTime.ElapsedGameTime;
+        World.Step(dt);
+
+        foreach (var body in World.BodyList)
+        {
+            if (body.Tag is not Collider collider)
+                continue;
+            collider.GameObject.Transform.Position = body.Position;
+            collider.GameObject.Transform.Rotation = body.Rotation;
+        }
+    }
+
+    public static void Overlap(AABB aabb, Category layer, IList<GameObject> results)
+    {
+        World.QueryAABB(fixture =>
+        {
+            if ((fixture.CollisionCategories & layer) != 0)
+            {
+                if (fixture.Body.Tag is Collider collider)
+                {
+                    if (!results.Contains(collider.GameObject))
+                    {
+                        results.Add(collider.GameObject);
+                    }
+                }
+            }
+
+            return true;
+        }, ref aabb);
+    }
+
+    public static void Overlap(
+        Shape shape,
+        Vector2 position,
+        float rotation,
+        Category layer,
+        IList<GameObject> results)
+    {
+        var queryTransform = new nkast.Aether.Physics2D.Common.Transform(position, rotation);
+        shape.ComputeAABB(out var aabb, ref queryTransform, 0);
+
+        World.QueryAABB(fixture =>
+        {
+            if ((fixture.CollisionCategories & layer) != 0)
+            {
+                fixture.Body.GetTransform(out var bodyTransform);
+
+                if (nkast.Aether.Physics2D.Collision.Collision.TestOverlap(
+                        shape, 
+                        0, 
+                        fixture.Shape, 
+                        0, 
+                        ref queryTransform, 
+                        ref bodyTransform))
+                {
+                    if (fixture.Body.Tag is Collider collider)
+                    {
+                        if (!results.Contains(collider.GameObject))
+                        {
+                            results.Add(collider.GameObject);
+                        }
+                    }
+                }
+            }
+
+            return true;
+        }, ref aabb);
     }
 }
 
-public sealed class Collider : Component<Collider>, ICollisionActor
+public sealed class Collider : Component<Collider>
 {
-    public CollisionShape2D Shape { get; set; }
-    public int Id { get; }
+    public Body Body { get; private set; }
     
-    public Collider(GameObject go, int id, string layer, CollisionShape2D shape = default) : base(go)
+    public Collider(
+        GameObject go, 
+        Shape shape,
+        Category layer, 
+        BodyType bodyType = BodyType.Dynamic,
+        bool isSensor = false) : base(go)
     {
-        Id = id;
-        Shape = shape;
-        Collision.World.Insert(this, layer);
+        Body = new Body { Position = go.Transform.Position, Rotation = go.Transform.Rotation, BodyType = bodyType };
+        Body.Tag = this;
+        Fixture fixture = Body.CreateFixture(shape);
+        fixture.CollisionCategories = layer;
+        fixture.CollidesWith = layer; 
+        fixture.IsSensor = isSensor;
+        Collision.World.Add(Body);
     }
 
     public override void Dispose()
     {
-        Collision.World.Remove(this);
+        Collision.World.Remove(Body);
+        Body = null;
     }
 }

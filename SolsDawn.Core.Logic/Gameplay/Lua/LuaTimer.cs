@@ -1,4 +1,4 @@
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 public class LuaTimer : LuaEvent
 {

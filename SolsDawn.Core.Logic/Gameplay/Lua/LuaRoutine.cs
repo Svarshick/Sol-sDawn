@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using MoonSharp.Interpreter;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 [MoonSharpUserData]
 public class LuaRoutine
@@ -28,9 +29,8 @@ public class LuaRoutine
 
     [MoonSharpHidden] private readonly DynValue _coroutine;
 
-    [MoonSharpHidden] public object Actor { get; }
+    [MoonSharpHidden] public Entity Actor { get; }
     [MoonSharpHidden] public Script Script { get; }
-    [MoonSharpHidden] public string Package { get; }
 
     [MoonSharpHidden] public LuaEvent FinishEvent { get; }
 
@@ -43,19 +43,18 @@ public class LuaRoutine
     [MoonSharpHidden] public bool IsDead { get; private set; } = false;
 
     [MoonSharpHidden]
-    public LuaRoutine(Script script, DynValue routine, object actorInstance, string package)
+    public LuaRoutine(Script script, DynValue routine, Entity actor)
     {
         Script = script;
         _coroutine = script.CreateCoroutine(routine);
-        Actor = actorInstance;
-        Package = package;
+        Actor = actor;
         FinishEvent = new(this);
     }
 
     [MoonSharpHidden]
     public void StartTimer(LuaTimer timer) => _timersBuff.Add(timer);
     [MoonSharpHidden]
-    public LuaRoutine CreateSubroutine(DynValue callback) => new(Script, callback, Actor, Package);
+    public LuaRoutine CreateSubroutine(DynValue callback) => new(Script, callback, Actor);
 
     [MoonSharpHidden]
     //TODO: check that routine isn't active (to not duplicate). Maybe make LuaRoutineState instead of only isDead
@@ -74,7 +73,7 @@ public class LuaRoutine
         if (_blockRoutine is not null)
             throw new LogicException("[LUA ERROR] Can't block routine: block routine is already running");
 
-        _blockRoutine = new LuaRoutine(Script, routine, Actor, Package);
+        _blockRoutine = new LuaRoutine(Script, routine, Actor);
         _blockRoutine.Update();
         _blockRoutine = _blockRoutine.IsDead ? null : _blockRoutine;
     }

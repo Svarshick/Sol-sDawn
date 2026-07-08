@@ -1,48 +1,42 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using MonoGame.Extended;
-using SolsDawn.Core.Logic.Animations;
-using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
-using SolsDawn.Core.Logic.Gameplay.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 public class BossStats
 {
     public Color Color;
-    [Units] public float Width;
-    [Units] public float Height;
+    public float Width;
+    public float Height;
 
     public float HitDuration;
     public Color HitBlinkColor;
-    
+
     public float BladeTelegraphDuration;
     public Color BladeTelegraphBlinkColor;
-    [Units] public float BladeTelegraphStarDistance;
+    public float BladeTelegraphStarDistance;
     public float BladeTelegraphStarDuration;
     public Color BladeTelegraphStarColor;
-    [Units] public float BladeTelegraphStarOuterRadius;
-    [Units] public float BladeTelegraphStarInnerRadius;
+    public float BladeTelegraphStarOuterRadius;
+    public float BladeTelegraphStarInnerRadius;
     [Euler] public float BladeTelegraphStarStartAngle;
     [Euler] public float BladeTelegraphStarDeltaAngle;
-    [Units] public float BladeTelegraphStarThickness;
-    
-    [Units] public float BladeAttackDistance;
+    public float BladeTelegraphStarThickness;
+
+    public float BladeAttackDistance;
     [Euler] public float BladeAttackEdgeAngle;
-    [Units] public float BladeAttackEdgeLength;
-    [Units] public float BladeAttackEdgeWidth;
-    [Units] public float BladeDashDistance;
-    [Units] public float BladeDashWidth;
+    public float BladeAttackEdgeLength;
+    public float BladeAttackEdgeWidth;
+    public float BladeDashDistance;
+    public float BladeDashWidth;
     public float BladeTraceDuration;
     public Color BladeTraceStartColor;
     public Color BladeTraceEndColor;
 
     public float BladeParriedDuration;
     public Color BladeParriedColor;
-    [Units] public float BladeParriedPushDistance;
-    [Units] public float BladeParriedPushVelocity;
+    public float BladeParriedPushDistance;
+    public float BladeParriedPushVelocity;
     public float BladeParryTraceDuration;
     public Color BladeParryTraceStartColor;
     public Color BladeParryTraceEndColor;
@@ -51,40 +45,40 @@ public class BossStats
     public float FireTelegraphAimingDuration;
     public Color FireTelegraphBlinkColor;
 
-    [Units] public float FireDistance;
-    [Units] public float FireWidth;
+    public float FireDistance;
+    public float FireWidth;
     public float FireTraceDuration;
     public Color FireTraceStartColor;
     public Color FireTraceEndColor;
-    
+
     public float FireParriedDuration;
     public Color FireParriedColor;
     public float FireParryTraceDuration;
     public Color FireParryTraceStartColor;
     public Color FireParryTraceEndColor;
-    
-    [Units] public float TeleportTraceWidth;
+
+    public float TeleportTraceWidth;
     public float TeleportTraceDuration;
     public Color TeleportTraceStartColor;
     public Color TeleportTraceEndColor;
 }
 
-public sealed class Boss : Component<Boss>, IUpdatable 
+/*public sealed class Boss : Component<Boss>, IUpdatable
 {
     public readonly BossStats Stats;
-    
+
     public State State { get; private set; }
-    
+
     private readonly BossAnimations _animations;
     private readonly Collider _collider;
-    private readonly Hp _hp;
-    
+    private readonly HP _hp;
+
     public Boss(GameObject go) : base(go)
     {
-        Stats = MainConfig.BossStats; 
-            
-        _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();     
-        _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
+        Stats = MainConfig.BossStats;
+
+        _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
+        _hp = go.GetComponent<HP>() ?? throw new ComponentNotFoundException<HP>();
         var animator = go.GetComponent<Animator<BossAnimations>>() ?? throw new ComponentNotFoundException<Animator<BossAnimations>>();
         _animations = animator.Player;
 
@@ -94,14 +88,14 @@ public sealed class Boss : Component<Boss>, IUpdatable
     public override void Dispose()
     {
     }
-    
+
     public void Update()
     {
         var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Transform.Position, new Vector2(Stats.Width/2, Stats.Height/2));
         _collider.Shape = new CollisionShape2D(bounds);
         State.Update();
     }
-    
+
     public void LateUpdate()
     {
         State.LateUpdate();
@@ -113,13 +107,13 @@ public sealed class Boss : Component<Boss>, IUpdatable
         state.Enter(State);
         State = state;
     }
-    
+
     public void BeDamaged(int value)
     {
         Console.WriteLine($"[Boss] Damaged : {value}");
         _animations.TryPlay(BossAnimations.Hit);
     }
-    
+
     public class PendingState(
         Boss boss)
         : State
@@ -128,7 +122,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
 
     public class IdleState(
         Boss boss,
-        double duration) 
+        double duration)
         : State
     {
         public double TimeLeft = duration;
@@ -165,7 +159,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 boss.Stats.TeleportTraceEndColor));
 
             boss.GameObject.Transform.Position = position;
-            
+
             var pending = new PendingState(boss);
             IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
         }
@@ -228,7 +222,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         public override void Exit(State to)
         {
             ParryGO.Dispose();
-            ParryGO = null;   
+            ParryGO = null;
         }
     }
 
@@ -241,7 +235,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         public Vector2 LookPosition = lookPosition;
         public IReadOnlyList<GameObject> Targets = targets;
-        
+
         public override void Enter(State from)
         {
             var direction = LookPosition - boss.GameObject.Transform.Position;
@@ -266,7 +260,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             {
                 AffectsPool.Add(new DamageAffect(boss.GameObject, Targets, 1));
             }
-            
+
             var pending = new PendingState(boss);
             IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
         }
@@ -345,7 +339,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 }
                 return;
             }
-            
+
             TimeLeft -= Time.ElapsedGameTime.TotalSeconds;
             if (TimeLeft < 0)
             {
@@ -363,7 +357,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
     {
         public double TimeLeft = boss.Stats.FireTelegraphDuration;
         public Vector2 FirePosition;
-        
+
         public override void Enter(State from)
         {
             new Parry(boss.GameObject, boss.GameObject, ParryType.Fire);
@@ -375,7 +369,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         public override void Update()
         {
             TimeLeft -= Time.ElapsedGameTime.TotalSeconds;
-               
+
             if (TimeLeft < 0)
             {
                 var direction = FirePosition - boss.GameObject.Transform.Position;
@@ -390,7 +384,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 var shape = new CollisionShape2D(bounds);
                 var targets = new List<GameObject>();
                 Collision.Overlap(shape, Collision.LayerName.Player, targets);
-                
+
                 var execute = new FireExecutionState(boss, blackboard, FirePosition, targets);
                 IntentionsPool.AddIntention(Intend(boss.GameObject, execute));
             }
@@ -415,7 +409,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
         : State
     {
         public IReadOnlyList<GameObject> Targets = targets;
-        
+
         public override void Enter(State from)
         {
             var direction = lookPosition - boss.GameObject.Transform.Position;
@@ -433,7 +427,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
             {
                 AffectsPool.Add(new DamageAffect(boss.GameObject, Targets, 1));
             }
-            
+
             var pending = new PendingState(boss);
             IntentionsPool.AddIntention(Intend(boss.GameObject, pending));
         }
@@ -456,7 +450,7 @@ public sealed class Boss : Component<Boss>, IUpdatable
                 boss.Stats.FireParryTraceStartColor,
                 boss.Stats.FireParryTraceEndColor));
         }
-        
+
         public override void Update()
         {
             TimeLeft -= Time.ElapsedGameTime.TotalSeconds;
@@ -467,4 +461,4 @@ public sealed class Boss : Component<Boss>, IUpdatable
             }
         }
     }
-}
+}*/

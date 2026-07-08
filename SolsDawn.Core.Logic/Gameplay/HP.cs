@@ -1,17 +1,30 @@
+using MoonSharp.Interpreter;
+
 namespace SolsDawn.Core.Logic.Gameplay;
 
 public delegate void HpChangedDelegate(int oldValue, int newValue);
     
-public sealed class Hp(
+public sealed class HP(
     GameObject go, 
     int max, 
     float invulnerabilityDuration = 0) 
-    : Component<Hp>(go)
+    : Component<HP>(go)
 {
-    public int Max;
-    public int Current; 
+    public int Max { get; } = max;
+
+    public int Current
+    {
+        get;
+        set
+        {
+            var oldValue = field;
+            field = value;
+            currentHpChanged?.Invoke(oldValue, value);
+        }
+    }
 
     public float InvulnerabilityDuration = invulnerabilityDuration;
+    
     private double _lastHit;
     public event HpChangedDelegate currentHpChanged;
     public event HpChangedDelegate maxHpChanged;
@@ -20,21 +33,7 @@ public sealed class Hp(
     {
     }
     
-    public bool IsDied => Current <= 0;
+    public bool IsDead => Current <= 0;
     public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
     public void UpdateInvulnerability() => _lastHit = Time.TotalGameTime.TotalSeconds;
-
-    public void ChangeCurrent(int newValue)
-    {
-        var oldValue = Current;
-        Current = newValue;
-        currentHpChanged?.Invoke(oldValue, newValue);
-    }
-
-    public void ChangeMax(int newValue)
-    {
-        var oldValue = Current;
-        Current = newValue;
-        maxHpChanged?.Invoke(oldValue, newValue);
-    }
 }

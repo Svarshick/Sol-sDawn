@@ -8,9 +8,9 @@ namespace SolsDawn.Core.Logic.Configs;
 public class DebugStats
 {
     public Color HitColliderColor = Color.GreenYellow;
-    [Units] public float HitColliderWidth = 0.1f;
+    public float HitColliderWidth = 0.1f;
     public Color ParryColliderColor = Color.Orange;
-    [Units] public float ParryColliderWidth = 0.1f;
+    public float ParryColliderWidth = 0.1f;
 }
 
 //length in units
@@ -18,7 +18,7 @@ public class DebugStats
 public class Variables
 {
     public float TelegraphDuration = 0.4f; //времени [Аттрибут] не нужен. По умолчанию время в секундах 
-    [Units] public float OrbDistance = 2f; //[Units] чтобы конфиг писать в юнитах и игра сама переведет юниты в пиксели
+    public float OrbDistance = 2f; //[Units] чтобы конфиг писать в юнитах и игра сама переведет юниты в пиксели
     [Euler] public float OrbAngle = 30; //[Euler] чтобы углы писать в эйлере и игра сама переведет ейлера в радианы
 }
 
@@ -35,22 +35,22 @@ public static partial class MainConfig
     public static DebugStats DebugStats => DebugStatsLazy.Value;
 
     private static readonly Lazy<PlayerStats> PlayerStatsLazy
-        = new(() => ConfigReader.Read(DesignPlayerStats, Game.ScreenLayout));
+        = new(() => ConfigReader.Read(DesignPlayerStats));
 
     private static readonly Lazy<BossStats> BossStatsLazy
-        = new(() => ConfigReader.Read(DesignBossStats, Game.ScreenLayout));
+        = new(() => ConfigReader.Read(DesignBossStats));
 
     private static readonly Lazy<OrbStats> OrbStatsLazy
-        = new(() => ConfigReader.Read(DesignDefaultOrbStats, Game.ScreenLayout));
+        = new(() => ConfigReader.Read(DesignDefaultOrbStats));
 
     private static readonly Lazy<OrbStats> OrbStatsRecoilLazy
-        = new(() => ConfigReader.Read(DesignRecoilOrbStats, Game.ScreenLayout));
+        = new(() => ConfigReader.Read(DesignRecoilOrbStats));
 
     private static readonly Lazy<DebugStats> DebugStatsLazy
-        = new(() => ConfigReader.Read(DesignDebugStats, Game.ScreenLayout));
+        = new(() => ConfigReader.Read(DesignDebugStats));
 
     private static readonly Lazy<Variables> VariablesLazy = 
-        new(() => ConfigReader.Read(new Variables(), Game.ScreenLayout));
+        new(() => ConfigReader.Read(new Variables()));
 
     private static readonly PlayerStats DesignPlayerStats = new()
     {

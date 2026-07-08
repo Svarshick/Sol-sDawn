@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using MoonSharp.Interpreter;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 public enum LuaEventState
 {

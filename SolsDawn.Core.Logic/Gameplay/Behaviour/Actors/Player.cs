@@ -12,54 +12,54 @@ namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 public class PlayerStats
 {
     public Color Color;
-    [Units] public float Width;
-    [Units] public float Height;
-    [Units] public float Velocity;
-    [Units] public float CursorRadius;
+    public float Width;
+    public float Height;
+    public float Velocity;
+    public float CursorRadius;
     public Color CursorColor;
 
     public float TeleportRechargeDuration;
     public float BladeRechargeDuration;
     public float FireRechargeDuration;
-    
+
     public float HitInvulnerabilityDuration;
     public Color HitBlinkColor;
-    
-    [Units] public float BladeAttackDistance;
+
+    public float BladeAttackDistance;
     [Euler] public float BladeAttackEdgeAngle;
-    [Units] public float BladeAttackEdgeLength;
-    [Units] public float BladeAttackEdgeWidth;
-    [Units] public float BladeDashDistance;
-    [Units] public float BladeDashWidth;
+    public float BladeAttackEdgeLength;
+    public float BladeAttackEdgeWidth;
+    public float BladeDashDistance;
+    public float BladeDashWidth;
     public float BladeTraceDuration;
     public Color BladeTraceStartColor;
     public Color BladeTraceEndColor;
 
     //[Euler] public float BladeParryAngle;
-    [Units] public float BladeParryPushDistance;
-    [Units] public float BladeParryPushVelocity;
+    public float BladeParryPushDistance;
+    public float BladeParryPushVelocity;
     public float BladeParryTraceDuration;
     public Color BladeParryTraceStartColor;
     public Color BladeParryTraceEndColor;
 
-    [Units] public float FireDistance;
-    [Units] public float FireWidth;
+    public float FireDistance;
+    public float FireWidth;
     public float FireTraceDuration;
-    [Units] public float FireTraceWidth;
+    public float FireTraceWidth;
     public Color FireTraceStartColor;
     public Color FireTraceEndColor;
-    
+
     public float FireParryTraceDuration;
     public Color FireParryTraceStartColor;
     public Color FireParryTraceEndColor;
-    
-    [Units] public float TeleportMinDistance;
-    [Units] public float TeleportMaxDistance;
+
+    public float TeleportMinDistance;
+    public float TeleportMaxDistance;
     public float TeleportHoldDuration;
-    [Units] public float TeleportWidth;
+    public float TeleportWidth;
     public Color TeleportStartColor;
     public Color TeleportEndColor;
-    [Units] public float TeleportTraceWidth;
+    public float TeleportTraceWidth;
     public float TeleportTraceDuration;
     public Color TeleportTraceStartColor;
     public Color TeleportTraceEndColor;
@@ -99,8 +99,6 @@ public sealed class Player : Component<Player>, IUpdatable
     
     public void Update()
     {
-        var bounds = BoundingBox2D.CreateFromCenterAndExtents(GameObject.Transform.Position, new Vector2(Stats.Width/2, Stats.Height/2));
-        _collider.Shape = new CollisionShape2D(bounds);
         State.Update();
     }
     
@@ -164,7 +162,7 @@ public sealed class Player : Component<Player>, IUpdatable
         public override void Enter(State from)
         {
             ScreenPosition = input.Teleport.ScreenPosition;
-            var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(ScreenPosition);
+            var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
             var endPosition = TeleportPosition(mousePosition, 0);
             _teleportLine = new(player.GameObject.Transform, endPosition, player.Stats.TeleportWidth, player.Stats.TeleportStartColor);
             Game.AnimationsPool.Add(_teleportLine);
@@ -174,7 +172,7 @@ public sealed class Player : Component<Player>, IUpdatable
         {
             ScreenPosition = input.Teleport.ScreenPosition;
             ElapsedTime += Time.ElapsedGameTime.TotalSeconds;
-            var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(ScreenPosition);
+            var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
             var lerp = TeleportLerp(ElapsedTime);
             _teleportLine.End = TeleportPosition(mousePosition, lerp);
             _teleportLine.Color = Color.Lerp(player.Stats.TeleportStartColor, player.Stats.TeleportEndColor, lerp);
@@ -184,12 +182,12 @@ public sealed class Player : Component<Player>, IUpdatable
         {
             ScreenPosition = input.Teleport.ScreenPosition;
             _teleportLine.IsFinished = true;
-            var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(ScreenPosition);
+            var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
             var lerp = TeleportLerp(ElapsedTime);
             var endPosition = TeleportPosition(mousePosition, lerp);
 
             Game.AnimationsPool.Add(new LineTrace(
-                new Transform { Position = player.GameObject.Transform.Position },
+                new Transform2 { Position = player.GameObject.Transform.Position },
                 endPosition,
                 player.Stats.TeleportTraceWidth,
                 player.Stats.TeleportTraceDuration,
@@ -326,7 +324,7 @@ public sealed class Player : Component<Player>, IUpdatable
             var fireEnd = player.GameObject.Transform.Position + direction * player.Stats.FireDistance;
 
             Game.AnimationsPool.Add(new LineTrace(
-                new Transform { Position = player.GameObject.Transform.Position },
+                new Transform2 { Position = player.GameObject.Transform.Position },
                 fireEnd,
                 player.Stats.FireTraceWidth,
                 player.Stats.FireTraceDuration,
@@ -351,7 +349,7 @@ public sealed class Player : Component<Player>, IUpdatable
         public override void Enter(State from)
         {
             Game.AnimationsPool.Add(new LineTrace(
-                new Transform { Position = player.GameObject.Transform.Position },
+                new Transform2 { Position = player.GameObject.Transform.Position },
                 parryPosition,
                 player.Stats.FireWidth,
                 player.Stats.FireParryTraceDuration,

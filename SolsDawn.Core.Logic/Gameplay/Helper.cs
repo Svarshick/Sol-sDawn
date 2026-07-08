@@ -49,7 +49,7 @@ public static class Helper
 
         var nextPosition = from + direction * dashDistance;
         Game.AnimationsPool.Add(new LineTrace(
-            new Transform { Position = from },
+            new Transform2 { Position = from },
             nextPosition,
             dashWidth,
             traceDuration,
@@ -57,7 +57,7 @@ public static class Helper
             traceEndColor));
        
         Game.AnimationsPool.Add(new LineTrace(
-            new Transform { Position = bladeVertices[2] }, 
+            new Transform2 { Position = bladeVertices[2] }, 
             bladeVertices[1], 
             attackEdgeWidth, 
             traceDuration, 
@@ -65,7 +65,7 @@ public static class Helper
             traceEndColor, 
             1));
         Game.AnimationsPool.Add(new LineTrace(
-            new Transform { Position = bladeVertices[2] }, 
+            new Transform2 { Position = bladeVertices[2] }, 
             bladeVertices[3], 
             attackEdgeWidth, 
             traceDuration, 

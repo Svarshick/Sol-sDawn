@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
@@ -13,9 +14,9 @@ public class BossFireTelegraphAnimation : IAnimation
     private readonly RectangleBlink _bossBlink;
     private readonly LineBlink _fireBlink;
     private readonly BossStats _bossStats;
-    private readonly Transform _startTransform; 
+    private readonly Transform2 _startTransform; 
 
-    public BossFireTelegraphAnimation(BossStats stats, Transform bossTransform, Vector2 lookPosition)
+    public BossFireTelegraphAnimation(BossStats stats, Transform2 bossTransform, Vector2 lookPosition)
     {
         _bossStats = stats;
         _startTransform = bossTransform;

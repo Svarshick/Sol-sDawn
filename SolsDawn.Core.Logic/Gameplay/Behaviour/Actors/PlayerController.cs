@@ -1,6 +1,10 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
+using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Common;
+using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
@@ -76,27 +80,33 @@ public class PlayerController
         _player.LastBladeUsage = Time.TotalGameTime.TotalSeconds;
 
         var screenPosition = _input.Blade.ScreenPosition;
-        var lookPosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
+        var lookPosition = Game.Camera.ScreenToWorld(screenPosition);
         var bladeDirection = lookPosition - _player.GameObject.Transform.Position;
         bladeDirection.Normalize();
         var bladeVertices = Helper.ArchVertices(
-            _player.GameObject.Transform.Position,
-            bladeDirection,
+            Vector2.Zero,
+            new Vector2(1, 0),
             _player.Stats.BladeDashDistance + _player.Stats.BladeAttackDistance,
             _player.Stats.Width,
             _player.Stats.BladeAttackEdgeAngle,
             _player.Stats.BladeAttackEdgeLength);
 
-        var polygon = BoundingPolygon2D.CreateFromVertices(bladeVertices);
-        var shape = new CollisionShape2D(polygon);
+        var vertices = new Vertices(bladeVertices);
+        var shape = new PolygonShape(vertices, 1f);
         var targets = new List<GameObject>();
-        Collision.Overlap(shape, Collision.LayerName.Enemy, targets);
-        Collision.Overlap(shape, Collision.LayerName.Parry, targets);
-
+        var rotation = (float)Math.Atan2(bladeDirection.Y, bladeDirection.X);
+        Collision.Overlap(
+            shape, 
+            _player.GameObject.Transform.Position, 
+            rotation, 
+            Collision.Enemy | Collision.Parry, 
+            targets);
+        
+        Game.AnimationsPool.Add(new PolygonTrace(new Transform2 { Position = _player.GameObject.Transform.Position, Rotation = rotation }, bladeVertices, 0.05f, 1, Color.Red, Color.Red, 0.2f));
+        
         var bladeState = new Player.BladeExecuteState(_player, lookPosition, targets);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));
     }
-    
 
     private void IntendFire()
     {
@@ -105,19 +115,23 @@ public class PlayerController
         _player.LastFireUsage = Time.TotalGameTime.TotalSeconds;
 
         var screenPosition = _input.Fire.ScreenPosition;
-        var lookPosition = Game.ScreenLayout.Camera.ScreenToWorld(screenPosition);
+        var lookPosition = Game.Camera.ScreenToWorld(screenPosition);
         var direction = lookPosition - _player.GameObject.Transform.Position;
         direction.Normalize();
         var fireEnd = _player.GameObject.Transform.Position + direction * _player.Stats.FireDistance;
 
-        var bounds = new OrientedBoundingBox2D(
-            (_player.GameObject.Transform.Position + fireEnd) / 2,
-            direction,
-            direction.PerpendicularClockwise(),
-            new Vector2(_player.Stats.FireDistance / 2, _player.Stats.FireWidth / 2));
-        var shape = new CollisionShape2D(bounds);
+        var vertices = PolygonTools.CreateRectangle(
+            _player.Stats.FireDistance / 2f,
+            _player.Stats.FireWidth / 2f);
+        
+        var shape = new PolygonShape(vertices, 1f);
         var targets = new List<GameObject>();
-        Collision.Overlap(shape, Collision.LayerName.Enemy, targets);
+        Collision.Overlap(
+            shape, 
+            (_player.GameObject.Transform.Position + fireEnd) / 2, 
+            direction.ToAngle(),
+            Collision.Enemy, 
+            targets);
 
         var fireState = new Player.FireExecuteState(_player, lookPosition, targets);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, fireState));

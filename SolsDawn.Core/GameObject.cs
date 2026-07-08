@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using MonoGame.Extended;
 
 namespace SolsDawn.Core;
 
@@ -19,7 +20,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
 {
     private readonly List<IDisposable> _components = new();
     
-    public readonly Transform Transform = new();
+    public readonly Transform2 Transform = new();
     public bool IsDisposed { get; private set; } = false;
     
     public GameObject()

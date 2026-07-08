@@ -4,7 +4,7 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Animations;
 
 public class RectangleBlink(
-    Transform transform,
+    Transform2 transform,
     float width,
     float height,
     float duration,

@@ -5,7 +5,7 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Animations;
 
 public class StarBlink(
-    Transform transform,
+    Transform2 transform,
     float startAngle,
     float deltaAngle,
     float maxInnerRadius,

@@ -21,7 +21,7 @@ public sealed class HUD : Component<HUD>, IDrawable
     public void Draw()
     {
         var mouseState = MouseExtended.GetState();
-        var mousePosition = Game.ScreenLayout.Camera.ScreenToWorld(mouseState.Position.ToVector2());
+        var mousePosition = Game.Camera.ScreenToWorld(mouseState.Position.ToVector2());
         Game.SpriteBatch.DrawCircle(
             mousePosition,
             _player.Stats.CursorRadius,
@@ -29,10 +29,10 @@ public sealed class HUD : Component<HUD>, IDrawable
             _player.Stats.CursorColor,
             _player.Stats.CursorRadius);
 
-        var indicatorRadius = Game.ScreenLayout.ToPixels(0.5f);
-        var indicatorPadding = Game.ScreenLayout.ToPixels(0.3f);
-        var indicatorY = Game.ScreenLayout.CameraTopLeft().Y + indicatorRadius + indicatorPadding;
-        var indicatorX = Game.ScreenLayout.CameraTopLeft().X + indicatorRadius + indicatorPadding;
+        var indicatorRadius = 0.5f;
+        var indicatorPadding = 0.3f;
+        var indicatorY = Game.Camera.TopLeft.Y - indicatorRadius - indicatorPadding;
+        var indicatorX = Game.Camera.TopLeft.X + indicatorRadius + indicatorPadding;
         
         if (_player.TeleportCharged)
         {

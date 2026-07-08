@@ -1,6 +1,7 @@
 using System.Collections.Generic;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 public class LuaMain
 {
@@ -9,8 +10,11 @@ public class LuaMain
     
     public LuaMain()
     {
-        var manager = LuaExecutionContext.LuaLoader;
-         _rootRoutine = new LuaRoutine(manager.BossScript, manager.GetCompiledScript("boss/boss_test.lua"), "BOSS_ACTOR", "boss");
+        var loader = LuaExecutionContext.LuaLoader;
+        var go = new GameObject();
+        new HP(go, 100);
+        var boss = new Entity(go);
+        _rootRoutine = new LuaRoutine(loader.Script, loader.GetCompiledScript("init.lua"), boss);
          _eventsToFire = new();
     }
 

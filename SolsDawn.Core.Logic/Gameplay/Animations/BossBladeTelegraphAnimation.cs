@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
@@ -15,7 +16,7 @@ public class BossBladeTelegraphAnimation : IAnimation
     {
         var starPosition = position + Vector2.Normalize(lookPosition - position) * stats.BladeTelegraphStarDistance;
         _starBlink = new StarBlink(
-            new Transform { Position = starPosition },
+            new Transform2 { Position = starPosition },
             stats.BladeTelegraphStarStartAngle,
             stats.BladeTelegraphStarDeltaAngle,
             stats.BladeTelegraphStarInnerRadius,
@@ -26,7 +27,7 @@ public class BossBladeTelegraphAnimation : IAnimation
             stats.BladeTelegraphStarColor,
             stats.BladeTelegraphBlinkColor);
         _bossBlink = new RectangleBlink(
-            new Transform() { Position = position },
+            new Transform2 { Position = position },
             stats.Width,
             stats.Height,
             stats.BladeTelegraphDuration,

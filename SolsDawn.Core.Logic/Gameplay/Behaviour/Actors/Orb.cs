@@ -10,20 +10,20 @@ namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 public class OrbStats
 {
     public Color Color;
-    [Units] public float Radius;
-    [Units] public float Velocity;
+    public float Radius;
+    public float Velocity;
 
-    [Units] public float ExplosionRadius;
+    public float ExplosionRadius;
     public Color ExplosionColor;
     public float ExplosionTraceDuration;
 }
 
-public class Orb : Component<Orb>, IUpdatable, IDrawable
+/*public class Orb : Component<Orb>, IUpdatable, IDrawable
 {
     public readonly OrbStats Stats;
     
     private readonly Collider _collider;
-    private readonly Hp _hp;
+    private readonly HP _hp;
     
     public State State { get; private set; }
 
@@ -32,7 +32,7 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
         Stats = stats;
         
         _collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _hp = go.GetComponent<Hp>() ?? throw new ComponentNotFoundException<Hp>();
+        _hp = go.GetComponent<HP>() ?? throw new ComponentNotFoundException<HP>();
 
         State = new FollowState(this);
     }
@@ -67,7 +67,7 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
     public void BeDamaged(int value)
     {
         Console.WriteLine($"[Player] Damaged : {value}");
-        _hp.ChangeCurrent(0);
+        _hp.Current = 0;
     }
 
     public class FollowState(
@@ -127,4 +127,4 @@ public class Orb : Component<Orb>, IUpdatable, IDrawable
             go.Dispose();
         }
     }
-}
+}*/

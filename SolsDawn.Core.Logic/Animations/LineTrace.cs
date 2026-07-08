@@ -4,7 +4,7 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Animations;
 
 public class LineTrace(
-    Transform transform,
+    Transform2 transform,
     Vector2 end,
     float thickness,
     float duration,

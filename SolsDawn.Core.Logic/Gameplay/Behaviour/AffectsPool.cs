@@ -41,10 +41,8 @@ public static class AffectsPool
                     {
                         if (target.IsDisposed)
                             continue;
-                        var player = target.GetComponent<Player>();
-                        player?.BeDamaged(damageAffect.Value);
-                        var boss = target.GetComponent<Boss>();
-                        boss?.BeDamaged(damageAffect.Value);
+                        var hp = target.GetComponent<HP>();
+                        hp.Current -= 1;
                     }
 
                     break;

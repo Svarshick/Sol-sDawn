@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using Microsoft.Xna.Framework;
-using MonoGame.Extended;
 using MoonSharp.Interpreter;
+using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Common;
+using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic.Animations.Lua;
-using SolsDawn.Core.Logic.Gameplay;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 public static class LuaAPI
 {
@@ -23,8 +23,7 @@ public static class LuaAPI
     {
         var manager = LuaExecutionContext.LuaLoader ?? throw new NullReferenceException("Expected not null LuaManager");
         var routine = LuaExecutionContext.CurrentRoutine ?? throw new NullReferenceException("Expected not null CurrentRoutine");
-        var package = routine.Package;
-        var script = manager.GetCompiledScript(Path.Combine(package, path) + ".lua");
+        var script = manager.GetCompiledScript(path + ".lua");
         routine.BlockWithRoutine(script);
         return DynValue.NewYieldReq([]);
     }
@@ -100,67 +99,29 @@ public static class LuaAPI
         return animation;
     }
 
-    public static CollisionShape2D CreateCircleCollider(Vector2 center, float radius)
+    public static Shape CreateCircle(float radius)
     {
-        var shape = new BoundingCircle2D(center, radius);
-        return new CollisionShape2D(shape);
+        return new CircleShape(radius, 1.0f);
     }
 
-    public static CollisionShape2D CreateSquareCollider(Vector2 position, float a)
+    public static Shape CreateRectangle(float width, float height)
     {
-        var shape = BoundingBox2D.CreateFromCenterAndExtents(position, new Vector2(a/2, a/2));
-        return new CollisionShape2D(shape);
+        var vertices = PolygonTools.CreateRectangle(width/2, height/2);
+        return new PolygonShape(vertices, 1.0f);
     }
+
+    public static Shape CreateSquare(float side) => CreateRectangle(side, side);
 
     public static ParryWindow CreateParryWindow(
-        Vector2 position,
-        CollisionShape2D collider,
-        DynValue determineParried)
+        //ParryType type,
+        Shape shape,
+        DynValue parryExecuter,
+        DynValue parryDeterminer)
     {
         var routine = LuaExecutionContext.CurrentRoutine 
             ?? throw new NullReferenceException("Expected not null CurrentRoutine");
         var go = new GameObject();
-        go.Transform.Position = position;
-        return new ParryWindow(go, collider, ParryType.Blade, routine, determineParried);
-    }
-}
-
-[MoonSharpUserData]
-public class ParryWindow
-{
-    public readonly ParryType type;
-    public readonly CollisionShape2D collider;
-    public readonly LuaEvent parried;
-    
-    private readonly GameObject _go;
-    private readonly LuaRoutine _routine;
-    private readonly DynValue _determineParried;
-
-    [MoonSharpHidden]
-    public ParryWindow(
-        GameObject go,
-        CollisionShape2D collider,
-        ParryType type,
-        LuaRoutine routine,
-        DynValue determineParried)
-    {
-        this.type = type;
-        this.collider = collider;
-        _go = go;
-        _routine = routine;
-        _determineParried = determineParried;
-        
-        parried = new (_routine);
-    }
-    
-    public void open()
-    {
-        new SolsDawn.Core.Logic.Gameplay.ParryWindow(_go, type, _routine, _determineParried, parried);
-        new Collider(_go, 0, Collision.LayerName.Parry, collider);
-    }
-
-    public void close()
-    {
-        _go.Dispose();
+        new Collider(go, shape, Collision.Parry, BodyType.Kinematic, true);
+        return new ParryWindow(go, ParryType.Blade, routine, parryExecuter, parryDeterminer);
     }
 }

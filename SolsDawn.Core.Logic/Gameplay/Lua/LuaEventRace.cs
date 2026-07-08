@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MoonSharp.Interpreter;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 [MoonSharpUserData]
 public class LuaEventRace

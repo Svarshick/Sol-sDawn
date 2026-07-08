@@ -2,13 +2,14 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
+using nkast.Aether.Physics2D.Collision.Shapes;
 using SolsDawn.Core.Logic.Animations;
-using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Core.Logic.Gameplay.Animations;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
+using SolsDawn.Core.Logic.Gameplay.Lua;
 
 namespace SolsDawn.Core.Logic;
 
@@ -20,7 +21,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         OperatingSystem.IsMacOS() || OperatingSystem.IsLinux() || OperatingSystem.IsWindows();
 
     public static AnimationsPool AnimationsPool { get; private set; }
-    public static ScreenLayout ScreenLayout { get; private set; }
+    public static CartesianCamera Camera { get; private set; }
     public static SpriteBatch SpriteBatch { get; private set; }
     public static LuaMain LuaMain { get; private set; } = new();
 
@@ -44,19 +45,21 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         InitSystems();
 
         var playerGo = new GameObject();
-        new Collider(playerGo, 1, Collision.LayerName.Player);
-        new Hp(playerGo, 10);
+        var playerShape = new CircleShape(100, 1);
+        new Collider(playerGo, playerShape, Collision.Player);
+        new HP(playerGo, 10);
         new Animator<PlayerAnimations>(playerGo, new PlayerAnimations());
         _player = new Player(playerGo);
         new HUD(playerGo, _player);
         
         var bossGo = new GameObject();
-        new Collider(bossGo, 2, Collision.LayerName.Enemy);
-        new Hp(bossGo, 10);
+        var bossShape = new CircleShape(100, 1);
+        new Collider(bossGo, bossShape, Collision.Enemy);
+        new HP(bossGo, 10);
         new Animator<BossAnimations>(bossGo, new BossAnimations());
-        var boss = new Boss(bossGo);
+        var boss = new Entity(bossGo);
 
-        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, ScreenLayout);
+        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, Camera);
 
         _playerController = new(_player, _input);
         _gameTests = new();
@@ -70,14 +73,15 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         
         void InitScreen()
         {
-            IsMouseVisible = false;
-            ScreenLayout = new ScreenLayout(Window, GraphicsDevice);
-            _graphicsDeviceManager.PreferredBackBufferWidth = ScreenLayout.WidthResolution;
-            _graphicsDeviceManager.PreferredBackBufferHeight = ScreenLayout.HeightResolution;
-            _graphicsDeviceManager.HardwareModeSwitch = false;
-            _graphicsDeviceManager.IsFullScreen = true;
+            Camera = new CartesianCamera(GraphicsDevice);
+            IsMouseVisible = true;
+            Window.AllowUserResizing = true;
+            Camera.Position = Vector2.Zero;
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            _graphicsDeviceManager.PreferredBackBufferWidth = displayMode.Width;
+            _graphicsDeviceManager.PreferredBackBufferHeight = displayMode.Height;
+            _graphicsDeviceManager.IsFullScreen = false; 
             _graphicsDeviceManager.ApplyChanges();
-            Window.AllowUserResizing = false;
         }
     }
 
@@ -85,9 +89,10 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     {
         Time.Update(gameTime);
         MonoTask.Update();
+        Collision.Update(gameTime);
         
         AnimationsPool.Update();
-        ScreenLayout.FollowPosition(_player.GameObject.Transform.Position);
+        Camera.Position = _player.GameObject.Transform.Position;
 
         LuaMain.Update();
         
@@ -109,7 +114,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         _gameTests.LateUpdate();
         GameObjectPool.LateUpdate();
-        Collision.World.RebuildDynamicLayers();
     }
 
     protected override void Draw(GameTime gameTime)
@@ -119,10 +123,10 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         SpriteBatch.Begin(
             sortMode: SpriteSortMode.FrontToBack,
             rasterizerState: RasterizerState.CullNone,
-            transformMatrix: ScreenLayout.Camera.GetViewMatrix()
+            transformMatrix: Camera.GetViewMatrix()
         );
         
-        SpriteBatch.DrawCircle(Vector2.Zero, 20f, 10, Color.Azure, 20f);
+        SpriteBatch.DrawCircle(Vector2.Zero, 0.2f, 10, Color.Azure, 0.2f);
         
         AnimationsPool.Draw();
         _gameTests.Draw();

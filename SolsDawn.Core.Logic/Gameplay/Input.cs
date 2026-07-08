@@ -45,13 +45,13 @@ public class Input : IUpdatable
         if (keyboardState.IsKeyDown(Keys.W) ||
             keyboardState.IsKeyDown(Keys.Up))
         {
-            moveDirection.Y -= 1;
+            moveDirection.Y += 1;
         }
 
         if (keyboardState.IsKeyDown(Keys.S) ||
             keyboardState.IsKeyDown(Keys.Down))
         {
-            moveDirection.Y += 1;
+            moveDirection.Y -= 1;
         }
 
         if (keyboardState.IsKeyDown(Keys.D) ||

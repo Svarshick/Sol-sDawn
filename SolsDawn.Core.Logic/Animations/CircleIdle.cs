@@ -4,7 +4,7 @@ using MonoGame.Extended;
 namespace SolsDawn.Core.Logic.Animations;
 
 public class CircleIdle(
-    Transform transform,
+    Transform2 transform,
     float radius,
     int sides,
     float thickness,

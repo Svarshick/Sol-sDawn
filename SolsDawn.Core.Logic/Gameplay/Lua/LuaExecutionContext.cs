@@ -1,13 +1,13 @@
 using System;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
 public static class LuaExecutionContext
 {
     [field: ThreadStatic]
     public static LuaRoutine CurrentRoutine { get; private set; }
 
-    public static LuaLoader LuaLoader { get; } = new ("Configs");
+    public static LuaLoader LuaLoader { get; } = new ("Configs/Lua");
 
     public static IDisposable Use(LuaRoutine routine)
     {
