@@ -23,14 +23,13 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     public static AnimationsPool AnimationsPool { get; private set; }
     public static CartesianCamera Camera { get; private set; }
     public static SpriteBatch SpriteBatch { get; private set; }
-    public static LuaMain LuaMain { get; private set; } = new();
 
     private GraphicsDeviceManager _graphicsDeviceManager;
     private Player _player;
     private Input _input;
     private PlayerController _playerController;
-
     private GameTests _gameTests;
+    private LuaMain _luaMain; 
 
     public Game()
     {
@@ -69,6 +68,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         {
             AnimationsPool = new AnimationsPool();
             _input = new Input();
+            _luaMain = new LuaMain("Configs/Lua", _input);
         }
         
         void InitScreen()
@@ -94,7 +94,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         AnimationsPool.Update();
         Camera.Position = _player.GameObject.Transform.Position;
 
-        LuaMain.Update();
+        _luaMain.Update();
         
         _gameTests.Update();
         _input.Update();

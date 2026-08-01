@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using MonoGame.Extended;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
-using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
@@ -95,14 +93,13 @@ public class PlayerController
         var shape = new PolygonShape(vertices, 1f);
         var targets = new List<GameObject>();
         var rotation = (float)Math.Atan2(bladeDirection.Y, bladeDirection.X);
-        Collision.Overlap(
+        Query.Overlap(
             shape, 
             _player.GameObject.Transform.Position, 
             rotation, 
             Collision.Enemy | Collision.Parry, 
-            targets);
-        
-        Game.AnimationsPool.Add(new PolygonTrace(new Transform2 { Position = _player.GameObject.Transform.Position, Rotation = rotation }, bladeVertices, 0.05f, 1, Color.Red, Color.Red, 0.2f));
+            targets,
+            DebugCategory.Attack);
         
         var bladeState = new Player.BladeExecuteState(_player, lookPosition, targets);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));
@@ -126,12 +123,14 @@ public class PlayerController
         
         var shape = new PolygonShape(vertices, 1f);
         var targets = new List<GameObject>();
-        Collision.Overlap(
+        var rotation = (float)Math.Atan2(direction.Y, direction.X);
+        Query.Overlap(
             shape, 
             (_player.GameObject.Transform.Position + fireEnd) / 2, 
-            direction.ToAngle(),
+            rotation,
             Collision.Enemy, 
-            targets);
+            targets,
+            DebugCategory.Attack);
 
         var fireState = new Player.FireExecuteState(_player, lookPosition, targets);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, fireState));

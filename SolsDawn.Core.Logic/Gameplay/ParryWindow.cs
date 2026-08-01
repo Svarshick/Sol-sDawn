@@ -1,5 +1,7 @@
 using MonoGame.Extended;
 using MoonSharp.Interpreter;
+using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics.Contacts;
 using SolsDawn.Core.Logic.Gameplay.Lua;
 
 namespace SolsDawn.Core.Logic.Gameplay;
@@ -34,7 +36,8 @@ public class ParryWindow : Component<ParryWindow>
         ParryType type,
         LuaRoutine routine,
         DynValue parryExecuter,
-        DynValue parryDeterminer) : base(go)
+        DynValue parryDeterminer,
+        Intentions intentions) : base(go)
     {
         Type = type;
         Routine = routine;
@@ -42,6 +45,8 @@ public class ParryWindow : Component<ParryWindow>
         _parryExecuter = parryExecuter;
         _parryDeterminer = parryDeterminer;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
+        _collider.Body.OnCollision += (sender, other, contact) 
+            => intentions.AddIntention(new Parry(sender, other, contact));
         _collider.Body.Awake = false;
     }
     

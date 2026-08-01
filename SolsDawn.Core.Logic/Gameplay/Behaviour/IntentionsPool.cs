@@ -78,7 +78,7 @@ public static class IntentionsPool
                     var playerParry = new Player.BladeParryState(player, parryPosition);
                     player.Enter(playerParry);
                     playerStateHandled = true;
-                    Game.LuaMain.EventToFire(parryWindow.ParriedEvent);
+                    //Game.LuaMain.EventToFire(parryWindow.ParriedEvent);
                     break;
                 }
             }

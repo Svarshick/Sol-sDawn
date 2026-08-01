@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
+using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -101,29 +102,51 @@ public static class Collision
     }
 }
 
-public sealed class Collider : Component<Collider>
+public sealed class Collider : Component<Collider>, IDrawable
 {
     public Body Body { get; private set; }
-    
+    private Action DebugDrawer { get; set; }
+    private readonly double _creationTime;
+
     public Collider(
-        GameObject go, 
+        GameObject go,
         Shape shape,
-        Category layer, 
+        Category layer,
         BodyType bodyType = BodyType.Dynamic,
         bool isSensor = false) : base(go)
     {
+        _creationTime = Time.TotalGameTime.TotalSeconds;
         Body = new Body { Position = go.Transform.Position, Rotation = go.Transform.Rotation, BodyType = bodyType };
         Body.Tag = this;
         Fixture fixture = Body.CreateFixture(shape);
         fixture.CollisionCategories = layer;
-        fixture.CollidesWith = layer; 
+        fixture.CollidesWith = layer;
         fixture.IsSensor = isSensor;
         Collision.World.Add(Body);
+        DebugDrawer = DefaultDraw;
     }
 
     public override void Dispose()
     {
+        var timeToEnd = _creationTime + Debug.ColliderMinimalTime - Time.TotalGameTime.TotalSeconds;
+        if (timeToEnd > 0)
+        {
+            Game.AnimationsPool.Add(new DelegatedAnimation(DebugDrawer, (float)timeToEnd));
+        }
+        
         Collision.World.Remove(Body);
         Body = null;
+    }
+
+    public void DefaultDraw()
+    {
+        if (!Debug.ColliderEnabled)
+            return;
+        Game.SpriteBatch.DrawBody(Body, Debug.ColliderColor);
+    }
+
+    public void Draw()
+    {
+        DebugDrawer();
     }
 }

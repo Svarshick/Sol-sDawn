@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
 
@@ -5,7 +6,7 @@ namespace SolsDawn.Core.Logic.Animations;
 
 public class PolygonTrace(
     Transform2 transform,
-    Vector2[] vertices,
+    IReadOnlyList<Vector2> vertices,
     float thickness,
     float duration,
     Color startColor,
@@ -14,7 +15,6 @@ public class PolygonTrace(
     : IAnimation
 {
     public bool IsFinished { get; private set; }
-
     private readonly double _startTime = Time.TotalGameTime.TotalSeconds;
 
     public void Draw()
@@ -23,19 +23,11 @@ public class PolygonTrace(
         if (IsFinished)
             return;
         
-        var transformedVertices = (Vector2[])vertices.Clone();
-        for (int i = 0; i < transformedVertices.Length; i++)
-        {
-            var v = transformedVertices[i];
-            v.Rotate(transform.Rotation);
-            transformedVertices[i] = v;
-        }
-        
         var elapsedTime = Time.TotalGameTime.TotalSeconds - _startTime;
         var t = MathHelper.Clamp((float)(elapsedTime / duration), 0f, 1f);
-        Game.SpriteBatch.DrawPolygon(
+        Game.SpriteBatch.DrawPolygon(vertices,
             transform.Position,
-            transformedVertices,
+            transform.Rotation,
             Color.Lerp(startColor, endColor, t),
             thickness,
             layerDepth

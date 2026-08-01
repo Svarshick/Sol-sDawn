@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using MoonSharp.Interpreter;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
@@ -27,34 +26,30 @@ public class LuaRoutine
     
     //INTERNAL
 
-    [MoonSharpHidden] private readonly DynValue _coroutine;
-
-    [MoonSharpHidden] public Entity Actor { get; }
     [MoonSharpHidden] public Script Script { get; }
-
     [MoonSharpHidden] public LuaEvent FinishEvent { get; }
+    [MoonSharpHidden] public bool IsDead { get; private set; } = false;
 
-    [MoonSharpHidden] private LuaRoutine _blockRoutine;
+    [MoonSharpHidden] private readonly DynValue _coroutine;
     [MoonSharpHidden] private List<LuaRoutine> _subroutines = new();
     [MoonSharpHidden] private List<LuaRoutine> _subroutinesBuff = new();
     [MoonSharpHidden] private List<LuaTimer> _activeTimers = new();
     [MoonSharpHidden] private List<LuaTimer> _timersBuff = new();
 
-    [MoonSharpHidden] public bool IsDead { get; private set; } = false;
+    [MoonSharpHidden] private readonly List<IDisposable> _disposables;
 
     [MoonSharpHidden]
-    public LuaRoutine(Script script, DynValue routine, Entity actor)
+    public LuaRoutine(Script script, DynValue routine)
     {
         Script = script;
         _coroutine = script.CreateCoroutine(routine);
-        Actor = actor;
         FinishEvent = new(this);
     }
 
     [MoonSharpHidden]
     public void StartTimer(LuaTimer timer) => _timersBuff.Add(timer);
     [MoonSharpHidden]
-    public LuaRoutine CreateSubroutine(DynValue callback) => new(Script, callback, Actor);
+    public LuaRoutine CreateSubroutine(DynValue callback) => new(Script, callback);
 
     [MoonSharpHidden]
     //TODO: check that routine isn't active (to not duplicate). Maybe make LuaRoutineState instead of only isDead
@@ -68,16 +63,11 @@ public class LuaRoutine
     }
 
     [MoonSharpHidden]
-    public void BlockWithRoutine(DynValue routine)
+    public void AddResource(IDisposable resource)
     {
-        if (_blockRoutine is not null)
-            throw new LogicException("[LUA ERROR] Can't block routine: block routine is already running");
-
-        _blockRoutine = new LuaRoutine(Script, routine, Actor);
-        _blockRoutine.Update();
-        _blockRoutine = _blockRoutine.IsDead ? null : _blockRoutine;
+        _disposables.Add(resource);
     }
-
+    
     [MoonSharpHidden]
     public void Update()
     {
@@ -89,17 +79,7 @@ public class LuaRoutine
             try
             {
                 UpdateTimers();
-
-                if (_blockRoutine is not null)
-                {
-                    _blockRoutine.Update();
-                    _blockRoutine = _blockRoutine.IsDead ? null : _blockRoutine;
-                }
-
-                if (_blockRoutine is null)
-                {
-                    Resume();
-                }
+                Resume();
 
                 foreach (var subroutine in _subroutines)
                 {
@@ -178,8 +158,6 @@ public class LuaRoutine
             }
 
             //KILL ROUTINES
-            _blockRoutine?.Kill();
-
             foreach (var subroutine in _subroutines)
             {
                 subroutine.Kill();
@@ -189,6 +167,12 @@ public class LuaRoutine
             {
                 subroutine.Kill();
             }
+
+            foreach (var disposable in _disposables)
+            {
+                disposable.Dispose();
+            }
+            _disposables.Clear();
         }
     }
 }
