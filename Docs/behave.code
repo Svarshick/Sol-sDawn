@@ -1,5 +1,5 @@
 player: [controller] input -> intention -> affect
-boss: [controller instruction -> intention -> affect
+boss: [controller] instruction -> intention -> affect
 
 controller: place where "first", expected behvaiour 
 intention: place where behavior changes depending on interaction (parry)

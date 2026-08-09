@@ -43,27 +43,19 @@ public static class Extensions
         Body body,
         Color color)
     {
-        foreach (var fixture in body.FixtureList)
+        spriteBatch.DrawFixtures(body.FixtureList, body.Position, body.Rotation, color);
+    }
+    
+    public static void DrawFixtures(
+        this SpriteBatch spriteBatch,
+        FixtureCollection fixtureList,
+        Vector2 position,
+        float rotation,
+        Color color)
+    {
+        foreach (var fixture in fixtureList)
         {
-            switch (fixture.Shape)
-            {
-                case PolygonShape polygonShape:
-                    spriteBatch.DrawPolygon(
-                        polygonShape.Vertices,
-                        body.Position,
-                        body.Rotation,
-                        color,
-                        0.05f);
-                    break;
-                case CircleShape circleShape:
-                    spriteBatch.DrawCircle(
-                        body.Position,
-                        circleShape.Radius,
-                        20,
-                        color,
-                        0.05f);
-                    break;
-            }
+            spriteBatch.DrawShape(fixture.Shape, position, rotation, color);
         }
     }
 

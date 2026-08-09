@@ -1,13 +1,16 @@
 using System;
-using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
+using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Common;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay.Animations;
+using static SolsDawn.Core.Logic.Gameplay.Behaviour.BehaviourAPI;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
+namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 public class PlayerStats
 {
@@ -65,11 +68,12 @@ public class PlayerStats
     public Color TeleportTraceEndColor;
 }
 
-public sealed class Player : Component<Player>, IUpdatable
+public sealed class Player : Component<Player>
 {
     public readonly PlayerStats Stats;
     
     public State State { get; private set; }
+    public Routine StateRoutine { get; private set; }
 
     public double LastTeleportUsage;
     public double LastBladeUsage;
@@ -90,28 +94,31 @@ public sealed class Player : Component<Player>, IUpdatable
         var animator = go.GetComponent<Animator<PlayerAnimations>>() ?? throw new ComponentNotFoundException<Animator<PlayerAnimations>>();
         _animations = animator.Player;
 
-        State = new IdleState(this);
+        var state = new IdleState(this);
+        state.Enter(null);
+        State = state;
+        StateRoutine = new Routine(state.Update);
     }
 
     public override void Dispose()
     {
     }
-    
-    public void Update()
-    {
-        State.Update();
-    }
-    
-    public void LateUpdate()
-    {
-        State.LateUpdate();
-    }
 
     public void Enter(State state)
     {
         State.Exit(state);
+        if (StateRoutine is null)
+        {
+            Console.WriteLine($"[Warning] previous state {State} routine is null");
+        }
+        else
+        {
+            StateRoutine.Kill();
+        }
+
         state.Enter(State);
         State = state;
+        StateRoutine = new Routine(state.Update);
     }
 
     public void BeDamaged(int value)
@@ -141,11 +148,15 @@ public sealed class Player : Component<Player>, IUpdatable
             Direction = input.Move;
         }
 
-        public override void Update()
+        public override async Task Update()
         {
-            Direction = input.Move;
-            player.GameObject.Transform.Position += 
-                Direction * player.Stats.Velocity * (float)Time.ElapsedGameTime.TotalSeconds;
+            while (true)
+            {
+                Direction = input.Move;
+                player.GameObject.Transform.Position +=
+                    Direction * player.Stats.Velocity * (float)Time.ElapsedGameTime.TotalSeconds;
+                await NextFrame();
+            }
         }
     }
 
@@ -168,14 +179,18 @@ public sealed class Player : Component<Player>, IUpdatable
             Game.AnimationsPool.Add(_teleportLine);
         }
         
-        public override void Update()
+        public override async Task Update()
         {
-            ScreenPosition = input.Teleport.ScreenPosition;
-            ElapsedTime += Time.ElapsedGameTime.TotalSeconds;
-            var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
-            var lerp = TeleportLerp(ElapsedTime);
-            _teleportLine.End = TeleportPosition(mousePosition, lerp);
-            _teleportLine.Color = Color.Lerp(player.Stats.TeleportStartColor, player.Stats.TeleportEndColor, lerp);
+            while (true)
+            {
+                ScreenPosition = input.Teleport.ScreenPosition;
+                ElapsedTime += Time.ElapsedGameTime.TotalSeconds;
+                var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
+                var lerp = TeleportLerp(ElapsedTime);
+                _teleportLine.End = TeleportPosition(mousePosition, lerp);
+                _teleportLine.Color = Color.Lerp(player.Stats.TeleportStartColor, player.Stats.TeleportEndColor, lerp);
+                await NextFrame();
+            }
         }
 
         public override void Exit(State to)
@@ -209,45 +224,6 @@ public sealed class Player : Component<Player>, IUpdatable
             teleportDirection.Normalize();
             var delta = lerp * (player.Stats.TeleportMaxDistance - player.Stats.TeleportMinDistance);
             return player.GameObject.Transform.Position + teleportDirection * (player.Stats.TeleportMinDistance + delta);
-        }
-    }
-
-    public class BladeExecuteState(
-        Player player,
-        Vector2 lookPosition,
-        IReadOnlyList<GameObject> targets)
-        : State
-    {
-        public readonly IReadOnlyList<GameObject> Targets = targets;
-        public readonly Vector2 LookPosition = lookPosition;
-        
-        public override void Enter(State from)
-        {
-            var direction = LookPosition - player.GameObject.Transform.Position;
-            direction.Normalize();
-
-            Helper.DrawDashAttack(
-                player.GameObject.Transform.Position,
-                direction,
-                player.Stats.BladeDashDistance,
-                player.Stats.BladeDashWidth,
-                player.Stats.BladeAttackDistance,
-                player.Stats.BladeAttackEdgeAngle,
-                player.Stats.BladeAttackEdgeLength,
-                player.Stats.BladeAttackEdgeWidth,
-                player.Stats.BladeTraceDuration,
-                player.Stats.BladeTraceStartColor,
-                player.Stats.BladeTraceEndColor);
-
-            player.GameObject.Transform.Position += direction * player.Stats.BladeDashDistance;
-
-            if (Targets.Count > 0)
-            {
-                AffectsPool.Add(new DamageAffect(player.GameObject, Targets, 1));
-            }
-            
-            var pending = new IdleState(player);
-            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
         }
     }
 
@@ -293,7 +269,7 @@ public sealed class Player : Component<Player>, IUpdatable
             PushPosition = player.GameObject.Transform.Position - direction * player.Stats.BladeParryPushDistance;
         }
 
-        public override void Update()
+        public override async Task Update()
         {
             if (player.GameObject.Transform.Position != PushPosition)
             {
@@ -304,10 +280,91 @@ public sealed class Player : Component<Player>, IUpdatable
             }
             
             var pending = new IdleState(player);
-            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
+            Intend(player.GameObject, pending);
+            await BehaviourAPI.NextFrame();
         }
     }
 
+    public class BladeState(
+        Player player,
+        Vector2 lookPosition) 
+        : State
+    {
+        public override async Task Update()
+        {
+            var direction= lookPosition - player.GameObject.Transform.Position;
+            direction.Normalize();
+            var bladeVertices = Helper.ArchVertices(
+                Vector2.Zero,
+                new Vector2(1, 0),
+                player.Stats.BladeDashDistance + player.Stats.BladeAttackDistance,
+                player.Stats.Width,
+                player.Stats.BladeAttackEdgeAngle,
+                player.Stats.BladeAttackEdgeLength);
+
+            var vertices = new Vertices(bladeVertices);
+            var shape = new PolygonShape(vertices, 1f);
+            var parry = false;
+            var atk = PlayerAttack(
+                shape,
+                player.GameObject.Transform.Position,
+                direction.Angle(),
+                async _ => Console.WriteLine("hit"),
+                _ => true,
+                async _ =>
+                {
+                    parry = true;
+                    Console.WriteLine("parry");
+                    Intend(player.GameObject, new SlideState(player, -direction, 1, 0.5f));
+                });
+            
+            atk.Start();
+            
+            await NextFrame();
+            atk.End();
+            if (!parry)
+            {
+                Helper.DrawDashAttack(
+                    player.GameObject.Transform.Position,
+                    direction,
+                    player.Stats.BladeDashDistance,
+                    player.Stats.BladeDashWidth,
+                    player.Stats.BladeAttackDistance,
+                    player.Stats.BladeAttackEdgeAngle,
+                    player.Stats.BladeAttackEdgeLength,
+                    player.Stats.BladeAttackEdgeWidth,
+                    player.Stats.BladeTraceDuration,
+                    player.Stats.BladeTraceStartColor,
+                    player.Stats.BladeTraceEndColor);
+
+                player.GameObject.Transform.Position += direction * player.Stats.BladeDashDistance;
+            }
+
+            Intend(player.GameObject, new IdleState(player));
+        }
+    }
+
+    public class SlideState(
+        Player player,
+        Vector2 direction,
+        float speed,
+        float time)
+        : State
+    {
+        public override async Task Update()
+        {
+            var startTime = Time.TotalGameTime.TotalSeconds;
+            while (Time.TotalGameTime.TotalSeconds - startTime < time)
+            {
+                player.GameObject.Transform.Position += direction * (float)(speed * Time.ElapsedGameTime.TotalSeconds);
+                await NextFrame();
+            }
+            
+            Intend(player.GameObject, new IdleState(player));
+        }
+    }
+
+    /*
     public class FireExecuteState(
         Player player,
         Vector2 lookPosition,
@@ -316,7 +373,7 @@ public sealed class Player : Component<Player>, IUpdatable
     {
         public readonly IReadOnlyList<GameObject> Targets = targets;
         public readonly Vector2 LookPosition = lookPosition;
-        
+
         public override void Enter(State from)
         {
             var direction = LookPosition - player.GameObject.Transform.Position;
@@ -335,29 +392,9 @@ public sealed class Player : Component<Player>, IUpdatable
             {
                 AffectsPool.Add(new DamageAffect(player.GameObject, Targets, 1));
             }
-            
-            var pending = new IdleState(player);
-            IntentionsPool.AddIntention(Intend(player.GameObject, pending));
-        }
-    }
 
-    public class FireParryState(
-        Player player,
-        Vector2 parryPosition)
-        : State
-    {
-        public override void Enter(State from)
-        {
-            Game.AnimationsPool.Add(new LineTrace(
-                new Transform2 { Position = player.GameObject.Transform.Position },
-                parryPosition,
-                player.Stats.FireWidth,
-                player.Stats.FireParryTraceDuration,
-                player.Stats.FireParryTraceStartColor,
-                player.Stats.FireParryTraceEndColor));
-            
             var pending = new IdleState(player);
             IntentionsPool.AddIntention(Intend(player.GameObject, pending));
         }
-    }
+    }*/
 }

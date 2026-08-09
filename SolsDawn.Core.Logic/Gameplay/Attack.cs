@@ -1,6 +1,8 @@
+using System.Threading.Tasks;
 using MonoGame.Extended;
-using MoonSharp.Interpreter;
-using SolsDawn.Core.Logic.Gameplay.Lua;
+using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics.Contacts;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -10,114 +12,130 @@ public enum AttackType
     Fire,
 }
 
-public class PlayerAttack : Component<ParryWindow>
-{
-    //API
+public record struct HitByPlayerContext(
+    PlayerAttack Attack,
+    Collider Target,
+    Fixture AttackFixture,
+    Fixture TargetFixture,
+    Contact Contact);
 
-    //public MultiLuaEvent attacked
-    public Transform2 transform => GameObject.Transform;
-    public void start() => Start();
-    public void end() => GameObject.Dispose();
+public delegate Task HitByPlayerReaction(HitByPlayerContext context);
+
+public delegate bool HitByPlayerPredicate(HitByPlayerContext context);
+
+public class PlayerAttack : Component<PlayerAttack>
+{
+    public Transform2 Transform => GameObject.Transform;
     
-    //INTERNAL
+    public readonly AttackType Type;
+    public readonly Routine Routine;
+    public readonly HitByPlayerReaction HitExecuter;
+    public readonly HitByPlayerPredicate HitDeterminer;
+    public readonly ParryReaction ParryExecuter;
+    private readonly Collider _collider;
     
-    [MoonSharpHidden] public readonly AttackType Type;
-    [MoonSharpHidden] public readonly LuaRoutine Routine;
-    [MoonSharpHidden] private readonly DynValue _hitExecuter;
-    [MoonSharpHidden] private readonly DynValue _hitDeterminer;
-    [MoonSharpHidden] private readonly DynValue _parryExecuter;
-    [MoonSharpHidden] private readonly Collider _collider;
-    
-    [MoonSharpHidden]
     public PlayerAttack(
         GameObject go,
         AttackType type,
-        LuaRoutine routine,
-        DynValue hitExecuter,
-        DynValue hitDeterminer,
-        DynValue parryExecuter) : base(go)
+        Routine routine,
+        HitByPlayerReaction hitExecuter,
+        HitByPlayerPredicate hitDeterminer,
+        ParryReaction parryExecuter) : base(go)
     {
         Type = type;
         Routine = routine;
-        _hitExecuter = hitExecuter;
-        _hitDeterminer = hitDeterminer;
-        _parryExecuter = parryExecuter;
+        HitExecuter = hitExecuter;
+        HitDeterminer = hitDeterminer;
+        ParryExecuter = parryExecuter;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _collider.Body.Awake = false;
+        _collider.OnCollision += (sender, other, contact) =>
+        {
+            if (other.Tag is not Collider collider)
+                return false;
+            if (collider.GameObject.TryGetComponent(out ParryWindow parryWindow))
+            {
+                var context = new ParryContext(this, parryWindow, sender, other, contact);
+                IntentionsPool.AddIntention(new ParryIntention(context));
+            }
+            else
+            {
+                var context = new HitByPlayerContext(this, collider, sender, other, contact);
+                IntentionsPool.AddIntention(new HitByPlayerIntention(context));
+            }
+            return false;
+        };
+        _collider.Awake = false;
     }
     
-    [MoonSharpHidden]
-    public bool DetermineHit(CollisionShape2D collider) => Routine.Script.Call(_hitDeterminer, collider).Boolean;
-    
-    [MoonSharpHidden]
-    public void Hit() { }
-    
-    [MoonSharpHidden]
-    public void Parry() { }
-
-    [MoonSharpHidden]
     public void Start()
     {
         if (GameObject.IsDisposed)
             return;
-        _collider.Body.Awake = true;
+        _collider.Awake = true;
     }
     
-    [MoonSharpHidden]
+    public void End() => GameObject.Dispose();
+    
     public override void Dispose()
     {
     }
 }
 
+public record struct HitByEnemyContext(
+    EnemyAttack Attack,
+    Collider Target,
+    Fixture AttackFixture,
+    Fixture TargetFixture,
+    Contact Contact);
 
-public class EnemyAttack : Component<ParryWindow>
+
+public delegate Task HitByEnemyReaction(HitByEnemyContext context);
+
+public delegate bool HitByEnemyPredicate(HitByEnemyContext context);
+
+public class EnemyAttack : Component<EnemyAttack>
 {
-    //API
+    public Transform2 Transform => GameObject.Transform;
 
-    //public MultiLuaEvent attacked
-    public Transform2 transform => GameObject.Transform;
-    public void start() => Start();
-    public void end() => GameObject.Dispose();
-    
-    //INTERNAL
-    
-    [MoonSharpHidden] public readonly AttackType Type;
-    [MoonSharpHidden] public readonly LuaRoutine Routine;
-    [MoonSharpHidden] private readonly DynValue _hitExecuter;
-    [MoonSharpHidden] private readonly DynValue _hitDeterminer;
-    [MoonSharpHidden] private readonly Collider _collider;
-    
-    [MoonSharpHidden]
+    public readonly AttackType Type;
+    public readonly Routine Routine;
+    public readonly HitByEnemyReaction HitExecuter;
+    public readonly HitByEnemyPredicate HitDeterminer;
+    private readonly Collider _collider;
+
+
     public EnemyAttack(
         GameObject go,
         AttackType type,
-        LuaRoutine routine,
-        DynValue hitExecuter,
-        DynValue hitDeterminer) : base(go)
+        Routine routine,
+        HitByEnemyReaction hitExecuter,
+        HitByEnemyPredicate hitDeterminer) : base(go)
     {
         Type = type;
         Routine = routine;
-        _hitExecuter = hitExecuter;
-        _hitDeterminer = hitDeterminer;
+        HitExecuter = hitExecuter;
+        HitDeterminer = hitDeterminer;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _collider.Body.Awake = false;
+        _collider.OnCollision += (sender, other, contact) =>
+        {
+            if (other.Tag is not Collider collider)
+                return false;
+            var context = new HitByEnemyContext(this, collider, sender, other, contact);
+            IntentionsPool.AddIntention(new HitByEnemyIntention(context));
+            return false;
+        };
+        _collider.Awake = false;
     }
-    
-    [MoonSharpHidden]
-    public bool DetermineHit(CollisionShape2D collider) => Routine.Script.Call(_hitDeterminer, collider).Boolean;
-    
-    [MoonSharpHidden]
-    public void Hit() { }
 
-    [MoonSharpHidden]
     public void Start()
     {
         if (GameObject.IsDisposed)
             return;
-        _collider.Body.Awake = true;
+        _collider.Awake = true;
     }
     
-    [MoonSharpHidden]
+    public void End() => GameObject.Dispose();
+
     public override void Dispose()
     {
     }

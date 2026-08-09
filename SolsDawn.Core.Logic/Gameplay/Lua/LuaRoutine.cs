@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
-using MoonSharp.Interpreter;
+using Lua;
 
 namespace SolsDawn.Core.Logic.Gameplay.Lua;
 
-[MoonSharpUserData]
+[LuaObject]
 public class LuaRoutine
 {
-    //API
-    public LuaTimer after(double time)
+    [LuaMember("after")]
+    public LuaTimer After(double time)
     {
         var t = new LuaTimer(this, time);
         FinishEvent.ChainEvent(t); 
@@ -26,19 +26,18 @@ public class LuaRoutine
     
     //INTERNAL
 
-    [MoonSharpHidden] public Script Script { get; }
-    [MoonSharpHidden] public LuaEvent FinishEvent { get; }
-    [MoonSharpHidden] public bool IsDead { get; private set; } = false;
+    public Script Script { get; }
+    public LuaEvent FinishEvent { get; }
+    public bool IsDead { get; private set; } = false;
 
-    [MoonSharpHidden] private readonly DynValue _coroutine;
-    [MoonSharpHidden] private List<LuaRoutine> _subroutines = new();
-    [MoonSharpHidden] private List<LuaRoutine> _subroutinesBuff = new();
-    [MoonSharpHidden] private List<LuaTimer> _activeTimers = new();
-    [MoonSharpHidden] private List<LuaTimer> _timersBuff = new();
+    private readonly DynValue _coroutine;
+    private List<LuaRoutine> _subroutines = new();
+    private List<LuaRoutine> _subroutinesBuff = new();
+    private List<LuaTimer> _activeTimers = new();
+    private List<LuaTimer> _timersBuff = new();
 
-    [MoonSharpHidden] private readonly List<IDisposable> _disposables;
+    private readonly List<IDisposable> _disposables;
 
-    [MoonSharpHidden]
     public LuaRoutine(Script script, DynValue routine)
     {
         Script = script;
@@ -46,12 +45,9 @@ public class LuaRoutine
         FinishEvent = new(this);
     }
 
-    [MoonSharpHidden]
     public void StartTimer(LuaTimer timer) => _timersBuff.Add(timer);
-    [MoonSharpHidden]
     public LuaRoutine CreateSubroutine(DynValue callback) => new(Script, callback);
 
-    [MoonSharpHidden]
     //TODO: check that routine isn't active (to not duplicate). Maybe make LuaRoutineState instead of only isDead
     public void StartSubroutine(LuaRoutine subroutine) 
     {
@@ -62,13 +58,11 @@ public class LuaRoutine
         }
     }
 
-    [MoonSharpHidden]
     public void AddResource(IDisposable resource)
     {
         _disposables.Add(resource);
     }
     
-    [MoonSharpHidden]
     public void Update()
     {
         if (IsDead)
@@ -101,7 +95,6 @@ public class LuaRoutine
         }
     }
 
-    [MoonSharpHidden]
     private void UpdateTimers()
     {
         foreach (var timer in _activeTimers)
@@ -124,7 +117,6 @@ public class LuaRoutine
         _timersBuff.Clear();
     }
 
-    [MoonSharpHidden]
     private void Resume()
     {
         var result = _coroutine.Coroutine.Resume();
@@ -135,7 +127,6 @@ public class LuaRoutine
         }
     }
 
-    [MoonSharpHidden]
     public void Kill()
     {
         if (IsDead)

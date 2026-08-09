@@ -1,0 +1,137 @@
+---------------------------------------------------------
+	Input
+---------------------------------------------------------
+Update:
+[ look at:
+[ state
+[ buttons 
+[ buttons buff*
+Then:
+[ want to change state
+
+
+---------------------------------------------------------
+	Phys
+---------------------------------------------------------
+Update:
+[ collision
+Then:
+[ create intention
+
+---------------------------------------------------------
+	Intention
+---------------------------------------------------------
+Update:
+[ execute:
+[ atk/parry
+[
+
+Then:
+[ look at:
+[ state intention
+[ 
+[
+
+ 
+---------------------------------------------------------
+	Routine
+---------------------------------------------------------
+
+
+
+
+
+=========================================================
+	Comments
+=========================================================
+Atk contains tags. For example force, mechanic (like shild break), e.t.c
+Only player has states => two sources of state changes: 1. Input, 2. Atk/Parry effect
+
+Atk/parry process:
+Phys collision, check if happened. Add parry/atk intention
+
+---------------------------------------------------------
+	Types
+---------------------------------------------------------
+Enemy atk:
+1. hit determiner
+2. hit executer. Could change player state
+Player atk:
+1. hit determiner
+2. hit executer
+3. parry executer. Could change player state
+
+---------------------------------------------------------
+	Common parry logic
+---------------------------------------------------------
+Fire parry:
+controlling player and enemy. 
+1. enemy side routine.												LET IT BE !!!!!!!!!!!!!!!
+
+=========================================================
+	Enemy Pseudocode
+=========================================================
+---------------------------------------------------------
+	Default attack
+---------------------------------------------------------
++animation
++pw
++atk
++warningEndT
++atkEndT
+
+pw.Open; animation.Play
+r1(warningEndT, pw.End) -> (pw.Close)
+r1 1.[warningEndT] (atk.Start; "attack animation") -> atkEndT (atk.End)
+r1 2.[pw.End] ("slide back"; "parry animation")
+r1 *. animation.Stop
+
+//only timers
+r1(warningeEndT, pw.End) ->
+r1 1.[warningEndT] -> atkEndT
+r2 2.[pw.End]
+
+---------------------------------------------------------
+	Spear attack	
+---------------------------------------------------------
++animation
++pw1
++pw2
++pw3
++atkEndT1
++atkEndT2
++atkEndT3
++atk
+
+atk.Start; pw1.Open; animation.Play
+r1(atkEndT1, pw1.End) -> (pw1.Close)
+r1 1.[atkEndT1] (atk.End; animation.Stop)
+r1 2.[pw1.End] ("change animation"; pw2.Open;) -> atkEndT2; r2(atkEndT2, pw2.End)
+ r2 1.[atkEndT1] (atk.End; animation.Stop)
+ r2 2.[pw2.End] ("change animation"; pw3.Open;) -> atkEndT3; r3(atkEndT3, pw3.End) ->
+  r3 1.[atkEndT3] 
+  r3 2.[pw3.End] 
+  r3 *. (atk.End; animation.Stop)
+
+//only timers
+r1(atkEndT1, pw1.End) ->
+r1 1.[atkEndT1]
+r1 2.[pw1.End] -> atkEndT2; r2(atkEndT2, pw2.End) -> 
+ r2 1.[atkEndT2]
+ r2 2.[pw2.End] -> atkEndT3; r3(atkEndT3, pw3.End) ->
+  r3 1.[atkEndT3]
+  r3 2.[pw3.End]
+
+---------------------------------------------------------
+	Ghost attack	
+---------------------------------------------------------
+look like Spear attack, but with several atk
+
+
+=========================================================
+	Player Pseudocode
+=========================================================
+---------------------------------------------------------
+	Blade attack	
+---------------------------------------------------------
+

@@ -3,13 +3,13 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Core.Logic.Gameplay.Animations;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
 using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
-using SolsDawn.Core.Logic.Gameplay.Lua;
 
 namespace SolsDawn.Core.Logic;
 
@@ -25,11 +25,9 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     public static SpriteBatch SpriteBatch { get; private set; }
 
     private GraphicsDeviceManager _graphicsDeviceManager;
-    private Player _player;
     private Input _input;
     private PlayerController _playerController;
     private GameTests _gameTests;
-    private LuaMain _luaMain; 
 
     public Game()
     {
@@ -48,8 +46,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Collider(playerGo, playerShape, Collision.Player);
         new HP(playerGo, 10);
         new Animator<PlayerAnimations>(playerGo, new PlayerAnimations());
-        _player = new Player(playerGo);
-        new HUD(playerGo, _player);
+        var player = new Player(playerGo);
+        new HUD(playerGo, player);
         
         var bossGo = new GameObject();
         var bossShape = new CircleShape(100, 1);
@@ -58,9 +56,10 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         new Animator<BossAnimations>(bossGo, new BossAnimations());
         var boss = new Entity(bossGo);
 
-        IntentionsPool.Blackboard = new FightBlackboard(boss, _player, Camera);
+        IntentionsPool.Blackboard = new FightBlackboard(boss, player, Camera);
 
-        _playerController = new(_player, _input);
+        BehaviourController.Player = player;
+        _playerController = new(player, _input);
         _gameTests = new();
         return;
 
@@ -68,7 +67,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         {
             AnimationsPool = new AnimationsPool();
             _input = new Input();
-            _luaMain = new LuaMain("Configs/Lua", _input);
         }
         
         void InitScreen()
@@ -92,17 +90,16 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         Collision.Update(gameTime);
         
         AnimationsPool.Update();
-        Camera.Position = _player.GameObject.Transform.Position;
 
-        _luaMain.Update();
-        
         _gameTests.Update();
         _input.Update();
         _playerController.Update();
         GameObjectPool.Update();
         IntentionsPool.Resolve();
         AffectsPool.Resolve();
+        BehaviourController.Update();
         
+        Camera.Position = BehaviourController.Player.GameObject.Transform.Position;
         base.Update(gameTime);
         LateUpdate();
     }

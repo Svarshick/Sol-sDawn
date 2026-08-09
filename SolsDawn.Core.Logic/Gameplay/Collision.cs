@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision;
@@ -102,11 +101,36 @@ public static class Collision
     }
 }
 
+public delegate void FixtureDrawer(FixtureCollection fixtureList, Vector2 position, float rotation);
+
 public sealed class Collider : Component<Collider>, IDrawable
 {
-    public Body Body { get; private set; }
-    private Action DebugDrawer { get; set; }
-    private readonly double _creationTime;
+    public bool Awake
+    {
+        get => _body.Awake;
+        set
+        {
+            if (value && !_body.Awake)
+            {
+                _activationTime = Time.TotalGameTime.TotalSeconds;
+            }
+
+            _body.Awake = value;
+        }
+    }
+
+    public event OnCollisionEventHandler OnCollision
+    {
+        add => _body.OnCollision += value;
+        remove => _body.OnCollision -= value;
+    }
+    
+    public FixtureCollection FixtureList => _body.FixtureList;
+    
+    private FixtureDrawer DebugDrawer { get; set; }
+    
+    private double _activationTime;
+    private Body _body;
 
     public Collider(
         GameObject go,
@@ -115,38 +139,56 @@ public sealed class Collider : Component<Collider>, IDrawable
         BodyType bodyType = BodyType.Dynamic,
         bool isSensor = false) : base(go)
     {
-        _creationTime = Time.TotalGameTime.TotalSeconds;
-        Body = new Body { Position = go.Transform.Position, Rotation = go.Transform.Rotation, BodyType = bodyType };
-        Body.Tag = this;
-        Fixture fixture = Body.CreateFixture(shape);
+        _body = new Body
+        {
+            Position = go.Transform.Position, 
+            Rotation = go.Transform.Rotation, 
+            BodyType = bodyType,
+            Tag = this
+        };
+        Fixture fixture = _body.CreateFixture(shape);
+        fixture.Tag = this;
         fixture.CollisionCategories = layer;
         fixture.CollidesWith = layer;
         fixture.IsSensor = isSensor;
-        Collision.World.Add(Body);
+        Collision.World.Add(_body);
+        _activationTime = Time.TotalGameTime.TotalSeconds;
+        
         DebugDrawer = DefaultDraw;
     }
 
     public override void Dispose()
     {
-        var timeToEnd = _creationTime + Debug.ColliderMinimalTime - Time.TotalGameTime.TotalSeconds;
+        var timeToEnd = _activationTime + Debug.ColliderMinimalTime - Time.TotalGameTime.TotalSeconds;
         if (timeToEnd > 0)
         {
-            Game.AnimationsPool.Add(new DelegatedAnimation(DebugDrawer, (float)timeToEnd));
+            var fixtureList = _body.FixtureList;
+            var position = _body.Position;
+            var rotation = _body.Rotation;
+            var drawer = DebugDrawer;
+
+            Game.AnimationsPool.Add(new DelegatedAnimation(
+                () => drawer(fixtureList, position, rotation),
+                (float)timeToEnd
+            ));
         }
-        
-        Collision.World.Remove(Body);
-        Body = null;
+
+        Collision.World.Remove(_body);
+        _body = null;
     }
 
-    public void DefaultDraw()
+    public static void DefaultDraw(FixtureCollection fixtureList, Vector2 position, float rotation)
     {
         if (!Debug.ColliderEnabled)
             return;
-        Game.SpriteBatch.DrawBody(Body, Debug.ColliderColor);
+        Game.SpriteBatch.DrawFixtures(fixtureList, position, rotation, Debug.ColliderColor);
     }
 
     public void Draw()
     {
-        DebugDrawer();
+        if (_body.Awake)
+        {
+            DebugDrawer(_body.FixtureList, _body.Position, _body.Rotation);
+        }
     }
 }

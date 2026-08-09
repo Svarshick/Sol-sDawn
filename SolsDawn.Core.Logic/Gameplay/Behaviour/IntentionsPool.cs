@@ -1,25 +1,26 @@
 using System;
 using System.Collections.Generic;
 using SolsDawn.Core.Logic.Configs.Utils;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 
-public record Intention(GameObject Source);
+public abstract record Intention;
 
-public record EnterStateIntention(GameObject Source, State State) : Intention(Source);
-//public record ExitStateIntention(GameObject Source, State State) : Intention(Source);
+public record EnterStateIntention(GameObject Object, State State) : Intention;
+public record ParryIntention(ParryContext Context) : Intention;
+public record HitByPlayerIntention(HitByPlayerContext Context) : Intention;
+public record HitByEnemyIntention(HitByEnemyContext Context) : Intention; 
 
 public static class IntentionsPool
 {
     private static List<Intention> _intentionsQueue = new();
     private static List<Intention> _lateIntentionsQueue = new();
 
-    private static bool _resolving;
+    public static bool IsResolving { get; private set; }
 
     public static void AddIntention(Intention intention)
     {
-        if (_resolving)
+        if (IsResolving)
         {
             _lateIntentionsQueue.Add(intention);
             Console.WriteLine($"[WARNING] Intention while resolving: {intention}");
@@ -32,11 +33,11 @@ public static class IntentionsPool
 
     public static void Resolve()
     {
-        _resolving = true;
+        IsResolving = true;
         ResolveLogic();
         (_intentionsQueue, _lateIntentionsQueue) = (_lateIntentionsQueue, _intentionsQueue);
         _lateIntentionsQueue.Clear();
-        _resolving = false;
+        IsResolving = false;
     }
 
     public static FightBlackboard Blackboard;
@@ -47,45 +48,79 @@ public static class IntentionsPool
         var playerGO = Blackboard.Player.GameObject;
         
         EnterStateIntention playerStateEnter = null;
-        var playerStateHandled = false;
-
+        
         foreach (var intention in _intentionsQueue)
         {
-            if (intention.Source == playerGO &&
-                intention is EnterStateIntention playerState)
+            switch (intention)
             {
-                if (playerStateEnter is null)
+                case EnterStateIntention playerState when
+                    playerState.Object == playerGO:
                 {
-                    playerStateEnter = playerState;
-                }
-                else
-                {
-                    Console.WriteLine($"[WARNING] more than one state intentions for {player}");
-                }
-            }
-        }
+                    if (playerStateEnter is null)
+                    {
+                        playerStateEnter = playerState;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[WARNING] more than one state intentions for {player}");
+                    }
 
-        if (playerStateEnter is not null &&
-            playerStateEnter.State is Player.BladeExecuteState playerBlade) 
-        {
-            foreach (var target in playerBlade.Targets)
-            {
-                var parryWindow = target.GetComponent<ParryWindow>();
-                if (parryWindow is not null &&
-                    parryWindow.Type == ParryType.Blade)
+                    break;
+                }
+                case ParryIntention parry:
                 {
-                    var parryPosition = (playerGO.Transform.Position + Blackboard.Boss.GameObject.Transform.Position) / 2;
-                    var playerParry = new Player.BladeParryState(player, parryPosition);
-                    player.Enter(playerParry);
-                    playerStateHandled = true;
-                    //Game.LuaMain.EventToFire(parryWindow.ParriedEvent);
+                    var context = parry.Context;
+                    var parryWindow = context.ParryWindow;
+                    var attack = context.Attack;
+                    if (parryWindow.GameObject.IsDisposed)
+                        break;
+                    
+                    if (parryWindow.ParryDeterminer is null || parryWindow.ParryDeterminer(context))
+                    {
+                        if (parryWindow.ParryExecuter is not null)
+                        {
+                            var parryWindowRoutine = new Routine(async () => await parryWindow.ParryExecuter(context));
+                            parryWindow.Routine.StartSubroutine(parryWindowRoutine);
+                        }
+
+                        parryWindow.Parried.Fire();
+                        parryWindow.Destroy();
+
+                        if (attack.ParryExecuter is not null)
+                        {
+                            var attackRoutine = new Routine(async () => await attack.ParryExecuter(context));
+                            attack.Routine.StartSubroutine(attackRoutine);
+                        }
+                    }
+
+                    break;
+                }
+                case HitByPlayerIntention playerAttack:
+                {
+                    var context = playerAttack.Context;
+                    var attack = context.Attack;
+                    if(attack.HitExecuter is not null && (attack.HitDeterminer is null || attack.HitDeterminer(context)))
+                    {
+                        var routine = new Routine(async () => await attack.HitExecuter(context));
+                        attack.Routine.StartSubroutine(routine);
+                    }
+                    break;
+                }
+                case HitByEnemyIntention enemyAttack:
+                {
+                    var context = enemyAttack.Context;
+                    var attack = context.Attack;
+                    if(attack.HitDeterminer is null || attack.HitDeterminer(context))
+                    {
+                        var routine = new Routine(async () => await attack.HitExecuter(context));
+                        attack.Routine.StartSubroutine(routine);
+                    }
                     break;
                 }
             }
         }
         
-        if (!playerStateHandled && 
-            playerStateEnter is not null)
+        if (playerStateEnter is not null)
         {
             player.Enter(playerStateEnter.State);
         }

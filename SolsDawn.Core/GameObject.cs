@@ -17,7 +17,7 @@ public abstract class Component<T> : IDisposable where T : Component<T>
 
 public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable<GameObject>
 {
-    private readonly List<IDisposable> _components = new();
+    internal readonly List<IDisposable> Components = new();
     
     public readonly Transform2 Transform = new();
     public bool IsDisposed { get; private set; } = false;
@@ -29,17 +29,17 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
     
     public void Dispose()
     {
+        if (IsDisposed)
+            return;
         IsDisposed = true;
-        foreach(var component in _components)
-            component.Dispose();
-        GameObjectPool.Remove(this);
+        GameObjectPool.Destroy(this);
     }
     
     public int CompareTo(GameObject? other) => GetHashCode().CompareTo(other?.GetHashCode());
 
     public T? GetComponent<T>() where T : Component<T>
     {
-        foreach (var component in _components)
+        foreach (var component in Components)
         {
             if (component is T match)
                 return match;
@@ -48,13 +48,28 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
         return null;
     }
 
+    public bool TryGetComponent<T>(out T? component) where T : Component<T>
+    {
+        foreach (var currentComponent in Components)
+        {
+            if (currentComponent is T found)
+            {
+                component = found;
+                return true;
+            }
+        }
+
+        component = null;
+        return false;
+    }
+
     public bool TryGetComponents<T1, T2>(out T1? component1, out T2? component2) 
         where T1 : Component<T1>
         where T2 : Component<T2>
     {
         component1 = null;
         component2 = null;
-        foreach (var component in _components)
+        foreach (var component in Components)
         {
             if (component is T1 match1)
                 component1 = match1;
@@ -77,7 +92,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
         component1 = null;
         component2 = null;
         component3 = null;
-        foreach (var component in _components)
+        foreach (var component in Components)
         {
             if (component is T1 match1)
                 component1 = match1;
@@ -101,17 +116,17 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
         if (existingComponent != null)
             throw new ArgumentException($"The component {component.GetType().Name} is already attached");
         
-        _components.Add(component);
+        Components.Add(component);
     }
     
     public void RemoveComponent<T>() where T : Component<T>
     {
-        for (int i = 0; i < _components.Count; i++)
+        for (int i = 0; i < Components.Count; i++)
         {
-            if (_components[i] is T)
+            if (Components[i] is T)
             {
-                _components[i].Dispose();
-                _components.RemoveAt(i);
+                Components[i].Dispose();
+                Components.RemoveAt(i);
                 return;
             }
         }
@@ -121,7 +136,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
 
     public void Update()
     {
-        foreach (var component in _components)
+        foreach (var component in Components)
         {
             if (component is IUpdatable updatable)
                 updatable.Update();
@@ -130,7 +145,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
 
     public void LateUpdate()
     {
-        foreach (var component in _components)
+        foreach (var component in Components)
         {
             if (component is IUpdatable updatable)
                 updatable.LateUpdate();
@@ -139,7 +154,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IDisposable, IComparable
 
     public void Draw()
     {
-        foreach (var component in _components)
+        foreach (var component in Components)
         {
             if (component is IDrawable drawable)
                 drawable.Draw();

@@ -1,8 +1,8 @@
+using System.Threading.Tasks;
 using MonoGame.Extended;
-using MoonSharp.Interpreter;
 using nkast.Aether.Physics2D.Dynamics;
 using nkast.Aether.Physics2D.Dynamics.Contacts;
-using SolsDawn.Core.Logic.Gameplay.Lua;
+using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -12,66 +12,61 @@ public enum ParryType
     Fire,
 }
 
+public record struct ParryContext(
+    PlayerAttack Attack,
+    ParryWindow ParryWindow,
+    Fixture AttackFixture,
+    Fixture ParryWindowFixture,
+    Contact Contact);
+
+public delegate Task ParryReaction(ParryContext context);
+
+public delegate bool ParryPredicate(ParryContext context);
+
 public class ParryWindow : Component<ParryWindow>
 {
-    //API
+    public Transform2 Transform => GameObject.Transform;
 
-    public LuaEvent parried => ParriedEvent;
-    public Transform2 transform => GameObject.Transform;
-    public void open() => Open();
-    public void destroy() => GameObject.Dispose();
+    public readonly ParryType Type;
+    public readonly Routine Routine;
+    public readonly Event Parried;
+    public readonly ParryReaction ParryExecuter;
+    //TODO: dangerous. Expected independent from Routine and runs in Intentions stage.
+    //But could capture and trigger Routine events (in theory)
+    public readonly ParryPredicate ParryDeterminer;
+    private readonly Collider _collider;
     
-    //INTERNAL
-    
-    [MoonSharpHidden] public readonly ParryType Type;
-    [MoonSharpHidden] public readonly LuaRoutine Routine;
-    [MoonSharpHidden] public readonly LuaEvent ParriedEvent;
-    [MoonSharpHidden] private readonly DynValue _parryExecuter;
-    [MoonSharpHidden] private readonly DynValue _parryDeterminer;
-    [MoonSharpHidden] private readonly Collider _collider;
-    
-    [MoonSharpHidden]
     public ParryWindow(
         GameObject go,
         ParryType type,
-        LuaRoutine routine,
-        DynValue parryExecuter,
-        DynValue parryDeterminer,
-        Intentions intentions) : base(go)
+        Routine routine,
+        ParryReaction parryExecuter,
+        ParryPredicate parryDeterminer) : base(go)
     {
         Type = type;
         Routine = routine;
-        ParriedEvent = new(routine);
-        _parryExecuter = parryExecuter;
-        _parryDeterminer = parryDeterminer;
+        Parried = new(routine);
+        ParryExecuter = parryExecuter;
+        ParryDeterminer = parryDeterminer;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _collider.Body.OnCollision += (sender, other, contact) 
-            => intentions.AddIntention(new Parry(sender, other, contact));
-        _collider.Body.Awake = false;
+        _collider.Awake = false;
     }
     
-    [MoonSharpHidden]
-    public bool Determine(CollisionShape2D collider) => Routine.Script.Call(_parryDeterminer, collider).Boolean;
-
-    [MoonSharpHidden]
-    public void Execute()
+    public void Destroy()
     {
-        Routine.CreateSubroutine(_parryExecuter);
-        _collider.Body.Awake = false;
-        ParriedEvent.Fire();
+        _collider.Awake = false;
+        Parried.Cancel();
+        GameObject.Dispose();
     }
-
-    [MoonSharpHidden]
+    
     public void Open()
     {
         if (GameObject.IsDisposed)
             return;
-        _collider.Body.Awake = true;
+        _collider.Awake = true;
     }
     
-    [MoonSharpHidden]
     public override void Dispose()
     {
-        ParriedEvent.Cancel();
     }
 }

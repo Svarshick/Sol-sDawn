@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using nkast.Aether.Physics2D.Collision.Shapes;
-using nkast.Aether.Physics2D.Common;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
+namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 public class PlayerController
 {
@@ -37,7 +33,7 @@ public class PlayerController
 
             if (_input.Fire.IsPressed)
             {
-                IntendFire();
+                //IntendFire();
                 return;
             }
 
@@ -79,33 +75,12 @@ public class PlayerController
 
         var screenPosition = _input.Blade.ScreenPosition;
         var lookPosition = Game.Camera.ScreenToWorld(screenPosition);
-        var bladeDirection = lookPosition - _player.GameObject.Transform.Position;
-        bladeDirection.Normalize();
-        var bladeVertices = Helper.ArchVertices(
-            Vector2.Zero,
-            new Vector2(1, 0),
-            _player.Stats.BladeDashDistance + _player.Stats.BladeAttackDistance,
-            _player.Stats.Width,
-            _player.Stats.BladeAttackEdgeAngle,
-            _player.Stats.BladeAttackEdgeLength);
-
-        var vertices = new Vertices(bladeVertices);
-        var shape = new PolygonShape(vertices, 1f);
-        var targets = new List<GameObject>();
-        var rotation = (float)Math.Atan2(bladeDirection.Y, bladeDirection.X);
-        Query.Overlap(
-            shape, 
-            _player.GameObject.Transform.Position, 
-            rotation, 
-            Collision.Enemy | Collision.Parry, 
-            targets,
-            DebugCategory.Attack);
         
-        var bladeState = new Player.BladeExecuteState(_player, lookPosition, targets);
+        var bladeState = new Player.BladeState(_player, lookPosition);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));
     }
 
-    private void IntendFire()
+    /*private void IntendFire()
     {
         if (!_player.FireCharged)
             return;
@@ -134,5 +109,5 @@ public class PlayerController
 
         var fireState = new Player.FireExecuteState(_player, lookPosition, targets);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, fireState));
-    }
+    }*/
 }
