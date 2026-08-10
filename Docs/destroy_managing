@@ -1,0 +1,16 @@
+every destory is delayed. Cycle:
+
+Update go [could destroy go/component]
+Actual destroy go/components [call OnDestroy]
+
+----------------------------------------------
+	logic bound to destroy
+----------------------------------------------
+parry, attack call Canceled event. Canceled could chaing to routines, e.t.c
+loop looks like:
+
+Phys Update
+Routines Update
+GO Update
+Go Destroying
+	+ fires event

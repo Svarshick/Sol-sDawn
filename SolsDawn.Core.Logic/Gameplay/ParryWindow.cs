@@ -23,7 +23,7 @@ public delegate Task ParryReaction(ParryContext context);
 
 public delegate bool ParryPredicate(ParryContext context);
 
-public class ParryWindow : Component<ParryWindow>
+public class ParryWindow : Component
 {
     public Transform2 Transform => GameObject.Transform;
 
@@ -41,7 +41,7 @@ public class ParryWindow : Component<ParryWindow>
         ParryType type,
         Routine routine,
         ParryReaction parryExecuter,
-        ParryPredicate parryDeterminer) : base(go)
+        ParryPredicate parryDeterminer) : base(go, true)
     {
         Type = type;
         Routine = routine;
@@ -51,22 +51,17 @@ public class ParryWindow : Component<ParryWindow>
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
         _collider.Awake = false;
     }
-    
-    public void Destroy()
+
+    public override void OnDestroyImmediate()
     {
         _collider.Awake = false;
         Parried.Cancel();
-        GameObject.Dispose();
     }
     
     public void Open()
     {
-        if (GameObject.IsDisposed)
+        if (GameObject.IsDestroyed)
             return;
         _collider.Awake = true;
-    }
-    
-    public override void Dispose()
-    {
     }
 }

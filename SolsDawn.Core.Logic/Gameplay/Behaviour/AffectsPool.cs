@@ -39,7 +39,7 @@ public static class AffectsPool
                 case DamageAffect damageAffect:
                     foreach (var target in damageAffect.Targets)
                     {
-                        if (target.IsDisposed)
+                        if (target.IsDestroyed)
                             continue;
                         var hp = target.GetComponent<HP>();
                         hp.Current -= 1;

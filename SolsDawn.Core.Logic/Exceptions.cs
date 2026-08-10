@@ -2,7 +2,7 @@ using System;
 
 namespace SolsDawn.Core.Logic;
 
-public class ComponentNotFoundException<T> : InvalidOperationException where T : Component<T>
+public class ComponentNotFoundException<T> : InvalidOperationException where T : Component
 {
     public ComponentNotFoundException() : base(BuildMessage())
     {

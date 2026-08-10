@@ -10,7 +10,7 @@ public abstract class AnimationPlayer(string defaultAnimation) : IDrawable
     public abstract void TryPlay(string animationName);
 }
 
-public class Animator<T> : Component<Animator<T>>, IDrawable
+public class Animator<T> : Component 
     where T : AnimationPlayer
 {
     public readonly T Player;
@@ -19,12 +19,8 @@ public class Animator<T> : Component<Animator<T>>, IDrawable
         Player = player;
         Player.Transform = GameObject.Transform;
     }
-    
-    public override void Dispose()
-    {
-    }
 
-    public void Draw()
+    public override void Draw()
     {
         Player.Draw();   
     }

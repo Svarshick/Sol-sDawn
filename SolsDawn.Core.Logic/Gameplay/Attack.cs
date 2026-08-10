@@ -23,7 +23,7 @@ public delegate Task HitByPlayerReaction(HitByPlayerContext context);
 
 public delegate bool HitByPlayerPredicate(HitByPlayerContext context);
 
-public class PlayerAttack : Component<PlayerAttack>
+public class PlayerAttack : Component
 {
     public Transform2 Transform => GameObject.Transform;
     
@@ -40,7 +40,8 @@ public class PlayerAttack : Component<PlayerAttack>
         Routine routine,
         HitByPlayerReaction hitExecuter,
         HitByPlayerPredicate hitDeterminer,
-        ParryReaction parryExecuter) : base(go)
+        ParryReaction parryExecuter) 
+        : base(go, true)
     {
         Type = type;
         Routine = routine;
@@ -69,16 +70,12 @@ public class PlayerAttack : Component<PlayerAttack>
     
     public void Start()
     {
-        if (GameObject.IsDisposed)
+        if (GameObject.IsDestroyed)
             return;
         _collider.Awake = true;
     }
-    
-    public void End() => GameObject.Dispose();
-    
-    public override void Dispose()
-    {
-    }
+
+    public void End() => Destroy();
 }
 
 public record struct HitByEnemyContext(
@@ -93,7 +90,7 @@ public delegate Task HitByEnemyReaction(HitByEnemyContext context);
 
 public delegate bool HitByEnemyPredicate(HitByEnemyContext context);
 
-public class EnemyAttack : Component<EnemyAttack>
+public class EnemyAttack : Component
 {
     public Transform2 Transform => GameObject.Transform;
 
@@ -109,7 +106,8 @@ public class EnemyAttack : Component<EnemyAttack>
         AttackType type,
         Routine routine,
         HitByEnemyReaction hitExecuter,
-        HitByEnemyPredicate hitDeterminer) : base(go)
+        HitByEnemyPredicate hitDeterminer) 
+        : base(go, true)
     {
         Type = type;
         Routine = routine;
@@ -129,14 +127,10 @@ public class EnemyAttack : Component<EnemyAttack>
 
     public void Start()
     {
-        if (GameObject.IsDisposed)
+        if (GameObject.IsDestroyed)
             return;
         _collider.Awake = true;
     }
     
-    public void End() => GameObject.Dispose();
-
-    public override void Dispose()
-    {
-    }
+    public void End() => Destroy();
 }

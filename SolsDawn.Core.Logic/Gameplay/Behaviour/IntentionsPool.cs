@@ -72,7 +72,7 @@ public static class IntentionsPool
                     var context = parry.Context;
                     var parryWindow = context.ParryWindow;
                     var attack = context.Attack;
-                    if (parryWindow.GameObject.IsDisposed)
+                    if (parryWindow.GameObject.IsDestroyed)
                         break;
                     
                     if (parryWindow.ParryDeterminer is null || parryWindow.ParryDeterminer(context))

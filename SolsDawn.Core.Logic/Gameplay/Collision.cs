@@ -103,7 +103,7 @@ public static class Collision
 
 public delegate void FixtureDrawer(FixtureCollection fixtureList, Vector2 position, float rotation);
 
-public sealed class Collider : Component<Collider>, IDrawable
+public sealed class Collider : Component
 {
     public bool Awake
     {
@@ -157,7 +157,7 @@ public sealed class Collider : Component<Collider>, IDrawable
         DebugDrawer = DefaultDraw;
     }
 
-    public override void Dispose()
+    public override void OnDestroyImmediate()
     {
         var timeToEnd = _activationTime + Debug.ColliderMinimalTime - Time.TotalGameTime.TotalSeconds;
         if (timeToEnd > 0)
@@ -184,7 +184,7 @@ public sealed class Collider : Component<Collider>, IDrawable
         Game.SpriteBatch.DrawFixtures(fixtureList, position, rotation, Debug.ColliderColor);
     }
 
-    public void Draw()
+    public override void Draw()
     {
         if (_body.Awake)
         {

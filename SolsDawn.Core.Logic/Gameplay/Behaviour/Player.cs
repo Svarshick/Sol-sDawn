@@ -68,7 +68,7 @@ public class PlayerStats
     public Color TeleportTraceEndColor;
 }
 
-public sealed class Player : Component<Player>
+public sealed class Player : Component
 {
     public readonly PlayerStats Stats;
     
@@ -86,7 +86,7 @@ public sealed class Player : Component<Player>
     private readonly Collider _collider;
     private readonly PlayerAnimations _animations;
     
-    public Player(GameObject go) : base(go)
+    public Player(GameObject go) : base(go, true)
     {
         Stats = MainConfig.PlayerStats;
 
@@ -98,10 +98,6 @@ public sealed class Player : Component<Player>
         state.Enter(null);
         State = state;
         StateRoutine = new Routine(state.Update);
-    }
-
-    public override void Dispose()
-    {
     }
 
     public void Enter(State state)

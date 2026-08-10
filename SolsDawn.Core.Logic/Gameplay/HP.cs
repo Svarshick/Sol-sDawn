@@ -6,7 +6,7 @@ public sealed class HP(
     GameObject go, 
     int max, 
     float invulnerabilityDuration = 0) 
-    : Component<HP>(go)
+    : Component(go)
 {
     public int Max { get; } = max;
 
@@ -27,10 +27,6 @@ public sealed class HP(
     public event HpChangedDelegate currentHpChanged;
     public event HpChangedDelegate maxHpChanged;
 
-    public override void Dispose()
-    {
-    }
-    
     public bool IsDead => Current <= 0;
     public bool IsInvulnerable => Time.TotalGameTime.TotalSeconds - _lastHit > InvulnerabilityDuration;
     public void UpdateInvulnerability() => _lastHit = Time.TotalGameTime.TotalSeconds;

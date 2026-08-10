@@ -5,7 +5,7 @@ using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
-public sealed class HUD : Component<HUD>, IDrawable
+public sealed class HUD : Component
 {
     private readonly Player _player;
     
@@ -14,11 +14,7 @@ public sealed class HUD : Component<HUD>, IDrawable
         _player = player;
     }
 
-    public override void Dispose()
-    {
-    }
-
-    public void Draw()
+    public override void Draw()
     {
         var mouseState = MouseExtended.GetState();
         var mousePosition = Game.Camera.ScreenToWorld(mouseState.Position.ToVector2());
