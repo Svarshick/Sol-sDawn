@@ -1,7 +1,8 @@
+using Microsoft.Xna.Framework;
 using MonoGame.Extended;
 using MonoGame.Extended.Input;
+using nkast.Aether.Physics2D.Collision;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -69,6 +70,31 @@ public sealed class HUD : Component
                 indicatorRadius,
                 0.9f
             );
+        }
+
+        if (Game.Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)
+        {
+            var bounds = Game.Camera.BoundingBox;
+            var start = Vector2.Zero;
+            var end = _player.GameObject.Transform.Position;
+            var input = new RayCastInput
+            {
+                Point1 = start,
+                Point2 = end,
+                MaxFraction = 1.0f
+            };
+            
+            if (bounds.RayCast(out var output, ref input))
+            {
+                var hitPoint = start + output.Fraction * (end - start);
+                Game.SpriteBatch.DrawCircle(
+                    hitPoint,
+                    0.5f,
+                    20,
+                    Color.White,
+                    1,
+                    0.95f);
+            }
         }
     }
 }

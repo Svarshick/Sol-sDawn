@@ -1,18 +1,22 @@
 using SolsDawn.Core.Logic.Animations;
-using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 
-public class PlayerAnimations() : AnimationPlayer(Idle)
+public class EntityAnimations : AnimationPlayer
 {
     public const string Idle = "Idle";
     public const string Hit = "Hit";
 
     private IAnimation _baseAnimation;
     private IAnimation _overlayAnimation;
-    private readonly PlayerStats _stats = MainConfig.PlayerStats;
+    private EntityStats _stats;
 
+    public EntityAnimations(EntityStats stats) : base(Idle)
+    {
+        _stats = stats;
+    }
+    
     public override void TryPlay(string animationName)
     {
         switch (animationName)
@@ -24,7 +28,7 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
                     _stats.Height,
                     _stats.Color);
                 break;
-            case Hit:
+            case Hit:/*
                 _overlayAnimation = new RectangleBlink(
                     Transform,
                     _stats.Width,
@@ -32,11 +36,11 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
                     _stats.HitInvulnerabilityDuration,
                     true,
                     _stats.Color,
-                    _stats.HitBlinkColor);
+                    _stats.HitBlinkColor);*/
                 break;
         }
     }
-    
+
     public override void Draw()
     {
         if (_overlayAnimation is { IsFinished: false })

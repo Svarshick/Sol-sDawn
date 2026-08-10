@@ -4,12 +4,30 @@ using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
 using nkast.Aether.Physics2D.Dynamics;
-using SolsDawn.Core.Logic.Animations.Lua;
+using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Gameplay.Animations;
+using CircleIdle = SolsDawn.Core.Logic.Animations.Lua.CircleIdle;
+using LineTrace = SolsDawn.Core.Logic.Animations.Lua.LineTrace;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 public static class BehaviourAPI
 {
+    public static Entity CreateEntity(EntityStats stats = null)
+    {
+        stats ??= new EntityStats
+        {
+            Color = Color.Magenta,
+            Width = 0.8f,
+            Height = 1.6f
+        };
+        var go = new GameObject();
+        var shape = Shapes.Rectangle(stats.Width, stats.Height);
+        new Collider(go, shape, Collision.Enemy);
+        new Animator<EntityAnimations>(go, new EntityAnimations(stats));
+        return new Entity(go, stats);
+    }
+
     public static float Angle(this Vector2 v) => (float)Math.Atan2(v.Y, v.X);
     
     public static Routine.NextFrameAwaiter NextFrame() => new();
@@ -29,6 +47,17 @@ public static class BehaviourAPI
         routine.StartTimer(timer);
         return timer;
     }
+
+    public static Event Event()
+    {
+        var routine = ExecutionContext.CurrentRoutine ?? throw new NullReferenceException("Cannot create a timer outside of an active LuaRoutine execution context.");
+        return new Event(routine);
+    }
+
+    public static float ElapsedSeconds => (float)Time.ElapsedGameTime.TotalSeconds;
+    
+    public static float TotalSeconds => (float)Time.TotalGameTime.TotalSeconds;
+    
     
     public static EventRace Race(params object[] args)
     {

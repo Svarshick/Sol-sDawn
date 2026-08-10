@@ -1,8 +1,8 @@
 using Microsoft.Xna.Framework;
 using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Configs;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Animations;
 

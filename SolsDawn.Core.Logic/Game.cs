@@ -3,13 +3,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
 using nkast.Aether.Physics2D.Collision.Shapes;
-using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs.Utils;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Core.Logic.Gameplay.Animations;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic;
 
@@ -49,14 +47,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         var player = new Player(playerGo);
         new HUD(playerGo, player);
         
-        var bossGo = new GameObject();
-        var bossShape = new CircleShape(100, 1);
-        new Collider(bossGo, bossShape, Collision.Enemy);
-        new HP(bossGo, 10);
-        new Animator<BossAnimations>(bossGo, new BossAnimations());
-        var boss = new Entity(bossGo);
-
-        IntentionsPool.Blackboard = new FightBlackboard(boss, player, Camera);
+        IntentionsPool.Blackboard = new FightBlackboard(player, Camera);
 
         BehaviourController.Player = player;
         _playerController = new(player, _input);
@@ -89,17 +80,19 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         MonoTask.Update();
         Collision.Update(gameTime);
         
-        AnimationsPool.Update();
-
-        _gameTests.Update();
         _input.Update();
         _playerController.Update();
-        GameObjectPool.Update();
         IntentionsPool.Resolve();
         AffectsPool.Resolve();
         BehaviourController.Update();
+        GameObjectPool.Update();
+        
+        AnimationsPool.Update();
         
         Camera.Position = BehaviourController.Player.GameObject.Transform.Position;
+        
+        _gameTests.Update();
+        
         base.Update(gameTime);
         LateUpdate();
     }

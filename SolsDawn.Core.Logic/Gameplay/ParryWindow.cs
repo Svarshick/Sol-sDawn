@@ -49,12 +49,12 @@ public class ParryWindow : Component
         ParryExecuter = parryExecuter;
         ParryDeterminer = parryDeterminer;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _collider.Awake = false;
+        _collider.Enabled = false;
     }
 
     public override void OnDestroyImmediate()
     {
-        _collider.Awake = false;
+        _collider.Enabled = false;
         Parried.Cancel();
     }
     
@@ -62,6 +62,6 @@ public class ParryWindow : Component
     {
         if (GameObject.IsDestroyed)
             return;
-        _collider.Awake = true;
+        _collider.Enabled = true;
     }
 }

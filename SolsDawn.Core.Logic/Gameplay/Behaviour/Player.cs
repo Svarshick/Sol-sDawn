@@ -311,7 +311,7 @@ public sealed class Player : Component
                 {
                     parry = true;
                     Console.WriteLine("parry");
-                    Intend(player.GameObject, new SlideState(player, -direction, 1, 0.5f));
+                    Intend(player.GameObject, new SlideState(player, -direction, 20, 0.05f));
                 });
             
             atk.Start();
@@ -352,7 +352,7 @@ public sealed class Player : Component
             var startTime = Time.TotalGameTime.TotalSeconds;
             while (Time.TotalGameTime.TotalSeconds - startTime < time)
             {
-                player.GameObject.Transform.Position += direction * (float)(speed * Time.ElapsedGameTime.TotalSeconds);
+                player.GameObject.Transform.Position += direction * speed * ElapsedSeconds;
                 await NextFrame();
             }
             

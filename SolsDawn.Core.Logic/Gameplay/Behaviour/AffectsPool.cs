@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using SolsDawn.Core.Logic.Gameplay.Behaviour.Actors;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 

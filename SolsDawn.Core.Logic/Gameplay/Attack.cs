@@ -65,14 +65,14 @@ public class PlayerAttack : Component
             }
             return false;
         };
-        _collider.Awake = false;
+        _collider.Enabled = false;
     }
     
     public void Start()
     {
         if (GameObject.IsDestroyed)
             return;
-        _collider.Awake = true;
+        _collider.Enabled = true;
     }
 
     public void End() => Destroy();
@@ -122,14 +122,14 @@ public class EnemyAttack : Component
             IntentionsPool.AddIntention(new HitByEnemyIntention(context));
             return false;
         };
-        _collider.Awake = false;
+        _collider.Enabled = false;
     }
 
     public void Start()
     {
         if (GameObject.IsDestroyed)
             return;
-        _collider.Awake = true;
+        _collider.Enabled = true;
     }
     
     public void End() => Destroy();

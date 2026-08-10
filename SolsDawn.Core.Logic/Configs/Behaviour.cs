@@ -10,52 +10,91 @@ public class Behaviour
 {
     public static async Task Init()
     {
+        var boss = CreateEntity();
+        
         while (true)
         {
-            await SimpleAttack();
-        }
-    }
-    
-    public static async Task SimpleAttack()
-    {
-        var scale = 1;
-        var attackPosition = Vector2.Zero;
-        var attackRadius = 1;
-        var warningAnimationColor = Color.Yellow;
-        var parryAnimationColor = Color.White;
-
-        while (true)
-        {
-            Console.WriteLine("attack started!");
-            
-            var warningAnimation = BehaviourAPI.Animations.CircleIdle(
-                attackPosition,
-                attackRadius,
-                20,
-                attackRadius,
-                warningAnimationColor,
-                0);
-
-            var pwShape = Shapes.Circle(attackRadius);
-            var pw = ParryWindow(pwShape, attackPosition, 0, null, _ => true);
-            var pwT = Timer(1 * scale);
-            pwT.OnFire(() => { pw.Open(); warningAnimation.Color = parryAnimationColor; });
-            
-            var atkT = pwT.After(1 * scale);
-            
-            var branch = Race(pw.Parried, atkT);
-            branch.OnEnd(() => { warningAnimation.Cancel(); pw.Destroy(); });
-            
-            branch.OnWinner(pw.Parried).OnFire(() => Console.WriteLine("Parry"));
-            branch.OnWinner(atkT).OnFire(() => Console.WriteLine("Atk"));
-            branch.OnEnd(pw.Destroy);
-
-            await branch.Finished;
-            Console.WriteLine("raise ended");
+            await SimpleAttack(boss);
             await Timer(2);
         }
     }
 
+    public static async Task SimpleAttack(Entity entity)
+    {
+        var attackPosition = Vector2.Zero;
+        var attackRadius = 1;
+        var warningColor = Color.Green;
+        var parryWindowColor = Color.Yellow;
+        var attackColor = Color.Red;
+        var parriedColor = Color.White;
+        var warningTime = 0.5f;
+        var parryWindowTime = 0.5f;
+        var attackTime = 1f;
+        var parriedTime = 1.5f;
+
+        Console.WriteLine("Atk started");
+
+        var warningAnimation = BehaviourAPI.Animations.CircleIdle(
+            attackPosition,
+            attackRadius,
+            20,
+            attackRadius,
+            warningColor,
+            0);
+
+        var end = Event();
+        var pwBegin = Timer(warningTime);
+        var atkBegin = pwBegin.After(parryWindowTime);
+
+        var pwShape = Shapes.Circle(attackRadius);
+        var pw = ParryWindow(
+            pwShape,
+            attackPosition,
+            0,
+            async _ =>
+            {
+                var t = Timer(parriedTime);
+                warningAnimation.Color = parriedColor;
+                await t;
+                warningAnimation.Cancel();
+                end.Fire();
+            },
+            _ => true);
+
+        pwBegin.OnFire(() =>
+        {
+            pw.Open();
+            warningAnimation.Color = parryWindowColor;
+        });
+
+        var branch = Race(pw.Parried, atkBegin);
+        branch.OnEnd(() =>
+        {
+            pw.Destroy();
+        });
+
+        branch.OnWinner(pw.Parried).OnFire(() => Console.WriteLine("Parried"));
+        branch.OnWinner(atkBegin).OnFire(() =>
+        {
+            Console.WriteLine("Atk");
+            warningAnimation.Cancel();
+            end.Fire();
+        });
+
+        await end;
+        Console.WriteLine("Atk ended");
+    }
+
+    public static async Task Slide(Entity entity, Vector2 direction, float speed, float time)
+    {
+        var timer = Timer(time);
+        while (!timer.IsEnded)
+        {
+            entity.Transform.Position += direction * speed * ElapsedSeconds;
+            await NextFrame();
+        }
+    }
+    
     public static async Task AnimationTest()
     {
         var scale = 1;

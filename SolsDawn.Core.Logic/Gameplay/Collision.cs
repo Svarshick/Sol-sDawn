@@ -105,17 +105,17 @@ public delegate void FixtureDrawer(FixtureCollection fixtureList, Vector2 positi
 
 public sealed class Collider : Component
 {
-    public bool Awake
+    public bool Enabled
     {
-        get => _body.Awake;
+        get => _body.Enabled;
         set
         {
-            if (value && !_body.Awake)
+            if (value && !_body.Enabled)
             {
                 _activationTime = Time.TotalGameTime.TotalSeconds;
             }
 
-            _body.Awake = value;
+            _body.Enabled = value;
         }
     }
 
@@ -186,7 +186,7 @@ public sealed class Collider : Component
 
     public override void Draw()
     {
-        if (_body.Awake)
+        if (_body.Enabled)
         {
             DebugDrawer(_body.FixtureList, _body.Position, _body.Rotation);
         }
