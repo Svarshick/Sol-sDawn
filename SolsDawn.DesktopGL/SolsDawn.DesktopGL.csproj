@@ -13,7 +13,7 @@
     <ProjectReference Include="..\SolsDawn.Core.Logic\SolsDawn.Core.Logic.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5-preview.4" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.5" />
   </ItemGroup>
   <Import Project="..\SolsDawn.Content\BuildContent.targets" />
 </Project>

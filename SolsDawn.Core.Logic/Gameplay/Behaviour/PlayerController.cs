@@ -74,7 +74,7 @@ public class PlayerController
         _player.LastBladeUsage = Time.TotalGameTime.TotalSeconds;
 
         var screenPosition = _input.Blade.ScreenPosition;
-        var lookPosition = Game.Camera.ScreenToWorld(screenPosition);
+        var lookPosition = SolsDawn.Camera.ScreenToWorld(screenPosition);
         
         var bladeState = new Player.BladeState(_player, lookPosition);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));

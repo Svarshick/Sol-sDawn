@@ -1,6 +1,4 @@
 using Microsoft.Xna.Framework;
-using MonoGame.Extended;
-using MonoGame.Extended.Input;
 using nkast.Aether.Physics2D.Collision;
 using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
@@ -17,64 +15,44 @@ public sealed class HUD : Component
 
     public override void Draw()
     {
-        var mouseState = MouseExtended.GetState();
-        var mousePosition = Game.Camera.ScreenToWorld(mouseState.Position.ToVector2());
-        Game.SpriteBatch.DrawCircle(
-            mousePosition,
-            _player.Stats.CursorRadius,
-            20,
-            _player.Stats.CursorColor,
-            _player.Stats.CursorRadius);
-
         var indicatorRadius = 0.5f;
         var indicatorPadding = 0.3f;
-        var indicatorY = Game.Camera.TopLeft.Y - indicatorRadius - indicatorPadding;
-        var indicatorX = Game.Camera.TopLeft.X + indicatorRadius + indicatorPadding;
+        var indicatorY = SolsDawn.Camera.TopLeft.Y - indicatorRadius - indicatorPadding;
+        var indicatorX = SolsDawn.Camera.TopLeft.X + indicatorRadius + indicatorPadding;
         
         if (_player.TeleportCharged)
         {
-            Game.SpriteBatch.DrawCircle(
-                indicatorX,
-                indicatorY,
+            SolsDawn.Painter.FillCircle(
+                1,
+                new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                20,
                 _player.Stats.TeleportEndColor,
-                indicatorRadius,
-                0.9f
-            );
+                indicatorRadius);
         }
 
         indicatorX += (indicatorRadius * 2 + indicatorPadding);
         if (_player.BladeCharged)
         {
-            Game.SpriteBatch.DrawCircle(
-                indicatorX,
-                indicatorY,
+            SolsDawn.Painter.FillCircle(
+                1,
+                new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                20,
-                _player.Stats.BladeTraceStartColor,
-                indicatorRadius,
-                0.9f
-            );
+                _player.Stats.BladeTraceStartColor);
         }
         
         indicatorX += (indicatorRadius * 2 + indicatorPadding);
         if (_player.FireCharged)
         {
-            Game.SpriteBatch.DrawCircle(
-                indicatorX,
-                indicatorY,
+            SolsDawn.Painter.FillCircle(
+                1,
+                new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                20,
-                _player.Stats.FireTraceStartColor,
-                indicatorRadius,
-                0.9f
-            );
+                _player.Stats.FireTraceStartColor);
         }
 
-        if (Game.Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)
+        if (SolsDawn.Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)
         {
-            var bounds = Game.Camera.BoundingBox;
+            var bounds = SolsDawn.Camera.BoundingBox;
             var start = Vector2.Zero;
             var end = _player.GameObject.Transform.Position;
             var input = new RayCastInput
@@ -87,13 +65,11 @@ public sealed class HUD : Component
             if (bounds.RayCast(out var output, ref input))
             {
                 var hitPoint = start + output.Fraction * (end - start);
-                Game.SpriteBatch.DrawCircle(
+                SolsDawn.Painter.FillCircle(
+                    1,
                     hitPoint,
                     0.5f,
-                    20,
-                    Color.White,
-                    1,
-                    0.95f);
+                    Color.White);
             }
         }
     }

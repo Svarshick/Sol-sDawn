@@ -2,10 +2,12 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public abstract class AnimationPlayer(string defaultAnimation) : IDrawable
+public abstract class AnimationPlayer(string defaultAnimation) : IDrawable, IUpdatable
 {
     public readonly string DefaultAnimation = defaultAnimation;
     public Transform2 Transform;
+    public abstract void Update();
+    public abstract void LateUpdate();
     public abstract void Draw();
     public abstract void TryPlay(string animationName);
 }
@@ -20,8 +22,7 @@ public class Animator<T> : Component
         Player.Transform = GameObject.Transform;
     }
 
-    public override void Draw()
-    {
-        Player.Draw();   
-    }
+    public override void Update() => Player.Update();
+    public override void LateUpdate() => Player.LateUpdate();
+    public override void Draw() => Player.Draw();   
 }

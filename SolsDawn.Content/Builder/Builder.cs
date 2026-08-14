@@ -36,11 +36,28 @@ public class Builder : ContentBuilder
     {
         var contentCollection = new ContentCollection();
 
-        // include everything in the folder
+        // By default, no content will be imported from the Assets folder using the default importer for their file type.
+        // Please define your content collection rules here.
+
+        // Import all content in the Assets folder using the default importer for their file type.
         contentCollection.Include<WildcardRule>("*");
 
-        // By default, all content will be imported from the Assets folder using the default importer for their file type.
-        // Please add any custom content collection rules here.
+        /* Examples
+         
+        // Only copy content from the assets folder rather than build it with the pipeline.
+        contentCollection.IncludeCopy<WildcardRule>("*.json");
+
+        // Exclude assets that match the pattern., only required overriding a default import behaviour.
+        contentCollection.Exclude<WildcardRule>("Font/*.txt");
+
+        // Include a specific asset with processor parameters.
+        contentCollection.Include("Models/character.glb", new FbxImporter(),
+            new MeshAnimatedModelProcessor()
+            {
+                Scale = 100.0f
+            }
+        );
+        */
 
         return contentCollection;
     }

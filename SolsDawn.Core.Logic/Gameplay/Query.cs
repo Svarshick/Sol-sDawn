@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
-using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -50,7 +49,7 @@ public static class Query
         if (!enabled)
             return;
 
-        void Drawer() => Game.SpriteBatch.DrawShape(shape, position, rotation, color);
-        Game.AnimationsPool.Add( new DelegatedAnimation(Drawer, time));
+        //void Drawer() => SolsDawn.SpriteBatch.DrawShape(shape, position, rotation, color);
+        //SolsDawn.AnimationsPool.Add( new DelegatedAnimation(Drawer, time));
     }
 }

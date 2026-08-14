@@ -101,8 +101,6 @@ public static class Collision
     }
 }
 
-public delegate void FixtureDrawer(FixtureCollection fixtureList, Vector2 position, float rotation);
-
 public sealed class Collider : Component
 {
     public bool Enabled
@@ -125,10 +123,19 @@ public sealed class Collider : Component
         remove => _body.OnCollision -= value;
     }
     
-    public FixtureCollection FixtureList => _body.FixtureList;
-    
-    private FixtureDrawer DebugDrawer { get; set; }
-    
+    private Animation Animation
+    {
+        get;
+        set
+        {
+            field?.Kill();
+            value.Transform.Position = _body.Position;
+            value.Transform.Rotation = _body.Rotation;
+            SolsDawn.AnimationsPool.Add(value);
+            field = value;
+        }
+    }
+
     private double _activationTime;
     private Body _body;
 
@@ -154,7 +161,14 @@ public sealed class Collider : Component
         Collision.World.Add(_body);
         _activationTime = Time.TotalGameTime.TotalSeconds;
         
-        DebugDrawer = DefaultDraw;
+        Animation = new ColliderAnimation(_body.FixtureList, Debug.ColliderColor, 1);
+    }
+
+    public override void Update()
+    {
+        Animation.Transform.Position = _body.Position;
+        Animation.Transform.Rotation = _body.Rotation;
+        Animation.IsVisible = _body.Enabled;
     }
 
     public override void OnDestroyImmediate()
@@ -162,33 +176,26 @@ public sealed class Collider : Component
         var timeToEnd = _activationTime + Debug.ColliderMinimalTime - Time.TotalGameTime.TotalSeconds;
         if (timeToEnd > 0)
         {
-            var fixtureList = _body.FixtureList;
-            var position = _body.Position;
-            var rotation = _body.Rotation;
-            var drawer = DebugDrawer;
-
-            Game.AnimationsPool.Add(new DelegatedAnimation(
-                () => drawer(fixtureList, position, rotation),
-                (float)timeToEnd
-            ));
+            Animation.Transform.Position = _body.Position;
+            Animation.Transform.Rotation = _body.Rotation;
+            Animation.TimeToKill = timeToEnd;
         }
 
         Collision.World.Remove(_body);
         _body = null;
     }
+}
 
-    public static void DefaultDraw(FixtureCollection fixtureList, Vector2 position, float rotation)
-    {
-        if (!Debug.ColliderEnabled)
-            return;
-        Game.SpriteBatch.DrawFixtures(fixtureList, position, rotation, Debug.ColliderColor);
-    }
-
+public class ColliderAnimation(
+    FixtureCollection fixtureList, 
+    Color color,
+    float layer = 0) : Animation
+{
     public override void Draw()
     {
-        if (_body.Enabled)
+        foreach (var fixture in fixtureList)
         {
-            DebugDrawer(_body.FixtureList, _body.Position, _body.Rotation);
+            SolsDawn.Painter.BorderShape(layer, fixture.Shape, Transform.WorldPosition, Transform.Rotation, color);
         }
     }
 }

@@ -19,9 +19,10 @@
   
   <ItemGroup>
     <PackageReference Include="Aether.Physics2D.MG" Version="2.2.0" />
+    <PackageReference Include="Apos.Shapes" Version="0.8.1" />
     <PackageReference Include="Gum.MonoGame" Version="2026.5.8.1" />
     <PackageReference Include="MonoGame.Extended" Version="6.0.0" />
-    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5-preview.4">
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="ObservableCollections.R3" Version="3.3.4" />

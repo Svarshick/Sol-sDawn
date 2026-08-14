@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
-using MonoGame.Extended;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
 using SolsDawn.Core.Logic.Animations;
@@ -29,16 +28,12 @@ public class PlayerStats
     public Color HitBlinkColor;
 
     public float BladeAttackDistance;
-    [Euler] public float BladeAttackEdgeAngle;
-    public float BladeAttackEdgeLength;
-    public float BladeAttackEdgeWidth;
+    public float BladeAttackWidth;
     public float BladeDashDistance;
     public float BladeDashWidth;
     public float BladeTraceDuration;
     public Color BladeTraceStartColor;
-    public Color BladeTraceEndColor;
 
-    //[Euler] public float BladeParryAngle;
     public float BladeParryPushDistance;
     public float BladeParryPushVelocity;
     public float BladeParryTraceDuration;
@@ -164,15 +159,15 @@ public sealed class Player : Component
         public Vector2 ScreenPosition = input.Teleport.ScreenPosition;
         public double ElapsedTime;
 
-        private LineIdle _teleportLine;
+        private LineIdleAnimation _teleportLine;
 
         public override void Enter(State from)
         {
             ScreenPosition = input.Teleport.ScreenPosition;
-            var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
+            var mousePosition = SolsDawn.Camera.ScreenToWorld(ScreenPosition);
             var endPosition = TeleportPosition(mousePosition, 0);
-            _teleportLine = new(player.GameObject.Transform, endPosition, player.Stats.TeleportWidth, player.Stats.TeleportStartColor);
-            Game.AnimationsPool.Add(_teleportLine);
+            _teleportLine = new(player.GameObject.Transform.Position, endPosition, player.Stats.TeleportWidth, player.Stats.TeleportStartColor);
+            SolsDawn.AnimationsPool.Add(_teleportLine);
         }
         
         public override async Task Update()
@@ -181,8 +176,9 @@ public sealed class Player : Component
             {
                 ScreenPosition = input.Teleport.ScreenPosition;
                 ElapsedTime += Time.ElapsedGameTime.TotalSeconds;
-                var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
+                var mousePosition = SolsDawn.Camera.ScreenToWorld(ScreenPosition);
                 var lerp = TeleportLerp(ElapsedTime);
+                _teleportLine.Transform.Position = player.GameObject.Transform.Position;
                 _teleportLine.End = TeleportPosition(mousePosition, lerp);
                 _teleportLine.Color = Color.Lerp(player.Stats.TeleportStartColor, player.Stats.TeleportEndColor, lerp);
                 await NextFrame();
@@ -192,18 +188,17 @@ public sealed class Player : Component
         public override void Exit(State to)
         {
             ScreenPosition = input.Teleport.ScreenPosition;
-            _teleportLine.IsFinished = true;
-            var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
+            _teleportLine.Kill();
+            var mousePosition = SolsDawn.Camera.ScreenToWorld(ScreenPosition);
             var lerp = TeleportLerp(ElapsedTime);
             var endPosition = TeleportPosition(mousePosition, lerp);
 
-            Game.AnimationsPool.Add(new LineTrace(
-                new Transform2 { Position = player.GameObject.Transform.Position },
+            SolsDawn.AnimationsPool.Add(new LineTraceAnimation(
+                player.GameObject.Transform.Position,
                 endPosition,
                 player.Stats.TeleportTraceWidth,
                 player.Stats.TeleportTraceDuration,
-                player.Stats.TeleportTraceStartColor,
-                player.Stats.TeleportTraceEndColor));
+                player.Stats.TeleportTraceStartColor));
 
             player.GameObject.Transform.Position = endPosition;
             player.LastTeleportUsage = Time.TotalGameTime.TotalSeconds;
@@ -223,64 +218,6 @@ public sealed class Player : Component
         }
     }
 
-    public class BladeParryState(
-        Player player,
-        Vector2 endPosition)
-        : State
-    {
-        public Vector2 PushPosition;
-        
-        public override void Enter(State from)
-        {
-            var crash = endPosition - player.GameObject.Transform.Position;
-            var crashDistance = crash.Length();
-            var direction = Vector2.Normalize(crash);
-
-            var dashDistance = crashDistance > player.Stats.BladeDashDistance
-                ? player.Stats.BladeDashDistance
-                : 0;
-
-            var bladeDistance = crashDistance > player.Stats.BladeDashDistance
-                ? crashDistance - player.Stats.BladeDashDistance
-                : crashDistance;
-
-            Helper.DrawDashAttack(
-                player.GameObject.Transform.Position,
-                direction,
-                dashDistance,
-                player.Stats.BladeDashWidth,
-                bladeDistance,
-                player.Stats.BladeAttackEdgeAngle,
-                player.Stats.BladeAttackEdgeLength,
-                player.Stats.BladeAttackEdgeWidth,
-                player.Stats.BladeParryTraceDuration,
-                player.Stats.BladeParryTraceStartColor,
-                player.Stats.BladeParryTraceEndColor);
-
-            if (dashDistance > 0)
-            {
-                player.GameObject.Transform.Position += direction * dashDistance;
-            }
-            
-            PushPosition = player.GameObject.Transform.Position - direction * player.Stats.BladeParryPushDistance;
-        }
-
-        public override async Task Update()
-        {
-            if (player.GameObject.Transform.Position != PushPosition)
-            {
-                var transform = player.GameObject.Transform;
-                var shift = (float)(Time.ElapsedGameTime.TotalSeconds * player.Stats.BladeParryPushVelocity);
-                transform.Position = SDMath.MoveTo(transform.Position, PushPosition, shift);
-                return;
-            }
-            
-            var pending = new IdleState(player);
-            Intend(player.GameObject, pending);
-            await BehaviourAPI.NextFrame();
-        }
-    }
-
     public class BladeState(
         Player player,
         Vector2 lookPosition) 
@@ -290,13 +227,13 @@ public sealed class Player : Component
         {
             var direction= lookPosition - player.GameObject.Transform.Position;
             direction.Normalize();
-            var bladeVertices = Helper.ArchVertices(
+            var bladeVertices = Helper.ArrowPentagonVertices(
                 Vector2.Zero,
                 new Vector2(1, 0),
-                player.Stats.BladeDashDistance + player.Stats.BladeAttackDistance,
-                player.Stats.Width,
-                player.Stats.BladeAttackEdgeAngle,
-                player.Stats.BladeAttackEdgeLength);
+                player.Stats.BladeDashDistance,
+                player.Stats.BladeDashWidth,
+                player.Stats.BladeAttackDistance,
+                player.Stats.BladeAttackWidth);
 
             var vertices = new Vertices(bladeVertices);
             var shape = new PolygonShape(vertices, 1f);
@@ -320,18 +257,17 @@ public sealed class Player : Component
             atk.End();
             if (!parry)
             {
-                Helper.DrawDashAttack(
-                    player.GameObject.Transform.Position,
-                    direction,
-                    player.Stats.BladeDashDistance,
-                    player.Stats.BladeDashWidth,
-                    player.Stats.BladeAttackDistance,
-                    player.Stats.BladeAttackEdgeAngle,
-                    player.Stats.BladeAttackEdgeLength,
-                    player.Stats.BladeAttackEdgeWidth,
-                    player.Stats.BladeTraceDuration,
-                    player.Stats.BladeTraceStartColor,
-                    player.Stats.BladeTraceEndColor);
+                SolsDawn.AnimationsPool.Add(
+                    new ArrowPentagonTraceAnimation(
+                        player.Stats.BladeTraceDuration,
+                        player.GameObject.Transform.Position,
+                        direction,
+                        player.Stats.BladeDashDistance,
+                        player.Stats.BladeDashWidth,
+                        player.Stats.BladeAttackDistance,
+                        player.Stats.BladeAttackWidth,
+                        player.Stats.BladeTraceStartColor
+                    ));
 
                 player.GameObject.Transform.Position += direction * player.Stats.BladeDashDistance;
             }

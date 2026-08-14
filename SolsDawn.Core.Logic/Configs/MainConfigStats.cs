@@ -69,14 +69,11 @@ public static partial class MainConfig
         HitBlinkColor = Color.Red,
 
         BladeAttackDistance = 1,
-        BladeAttackEdgeAngle = 40,
-        BladeAttackEdgeLength = 2,
-        BladeAttackEdgeWidth = 0.5f,
+        BladeAttackWidth = 2f,
         BladeDashDistance = 2,
         BladeDashWidth = 1f,
         BladeTraceDuration = 0.4f,
         BladeTraceStartColor = Color.Aquamarine,
-        BladeTraceEndColor = Color.Transparent,
         
         BladeParryTraceDuration = 0.7f,
         BladeParryTraceStartColor = Color.White,

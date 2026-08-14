@@ -37,8 +37,6 @@ public class Behaviour
         var warningAnimation = BehaviourAPI.Animations.CircleIdle(
             attackPosition,
             attackRadius,
-            20,
-            attackRadius,
             warningColor,
             0);
 
@@ -56,7 +54,7 @@ public class Behaviour
                 var t = Timer(parriedTime);
                 warningAnimation.Color = parriedColor;
                 await t;
-                warningAnimation.Cancel();
+                warningAnimation.Kill();
                 end.Fire();
             },
             _ => true);
@@ -77,7 +75,7 @@ public class Behaviour
         branch.OnWinner(atkBegin).OnFire(() =>
         {
             Console.WriteLine("Atk");
-            warningAnimation.Cancel();
+            warningAnimation.Kill();
             end.Fire();
         });
 
@@ -103,8 +101,6 @@ public class Behaviour
 
         var animation = BehaviourAPI.Animations.CircleIdle(
             Vector2.Zero,
-            3,
-            20,
             3,
             firstColor,
             0);

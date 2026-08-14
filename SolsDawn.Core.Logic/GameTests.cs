@@ -1,79 +1,28 @@
-using System;
+using Apos.Shapes;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended;
-using nkast.Aether.Physics2D.Collision;
-using nkast.Aether.Physics2D.Collision.Shapes;
-using nkast.Aether.Physics2D.Dynamics;
-using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic;
 
 public class GameTests : IUpdatable, IDrawable
 {
     public bool IsActive = false;
-    private StarBlink _starBlink;
+    private readonly SolsDawn _game;
+    private readonly ShapeBatch _shapeBatch;
+    private readonly SpriteBatch _spriteBatch;
 
-    public GameTests()
+    public GameTests(SolsDawn game)
     {
-        var world = new World(Vector2.Zero);
-        var shape1 = new CircleShape(10, 1.0f);
-        var body1 = new Body { BodyType = BodyType.Kinematic };
-        world.Add(body1);
-        var fixture1 = body1.CreateFixture(shape1);
-        fixture1.IsSensor = true;
-        world.Step(1f / 60f);
-        
-        var shape2 = new CircleShape(1, 1.0f);
-        var queryTransform = new nkast.Aether.Physics2D.Common.Transform(Vector2.Zero, 0f);
-        shape2.ComputeAABB(out var aabb, ref queryTransform, 0);
-        
-        bool didIntersect = false;
-        world.QueryAABB(fixture =>
-        {
-            fixture.Body.GetTransform(out var bodyTransform);
-            if (nkast.Aether.Physics2D.Collision.Collision.TestOverlap(
-                    shape2,
-                    0,
-                    fixture.Shape,
-                    0,
-                    ref queryTransform,
-                    ref bodyTransform))
-            {
-                didIntersect = true;
-            }
-
-            return true;
-        }, ref aabb);
-        
-        Console.WriteLine(didIntersect);
-        
-        if (!IsActive)
-            return;
+        _game = game;
+        _shapeBatch = new(game.GraphicsDevice, game.Content);
+        _spriteBatch = new (game.GraphicsDevice);
     }
 
-    private double _lastTime;
     public void Update()
     {
          if (!IsActive)
             return;
-
-         if (Time.TotalGameTime.TotalSeconds - _lastTime > 2)
-         {
-             _lastTime = Time.TotalGameTime.TotalSeconds;
-             var trans = new Transform2();
-             trans.Position = new Vector2(-100, -100);
-             _starBlink = new StarBlink(
-                 trans,
-                 0.3f,
-                 (float)Math.PI,
-                 20,
-                 200,
-                 5,
-                 1,
-                 true,
-                 Color.Yellow,
-                 Color.White);
-         }
     }
 
     public void LateUpdate()
@@ -86,8 +35,23 @@ public class GameTests : IUpdatable, IDrawable
     {
         if (!IsActive)
             return;
+
+        _spriteBatch.Begin(
+            sortMode: SpriteSortMode.FrontToBack,
+            rasterizerState: RasterizerState.CullNone,
+            transformMatrix: SolsDawn.Camera.CreateViewMatrix());
         
-        if (_starBlink is not null && !_starBlink.IsFinished)
-            _starBlink.Draw();
+        _shapeBatch.Begin(
+            view: SolsDawn.Camera.CreateViewMatrix(),
+            rasterizerState: RasterizerState.CullClockwise
+        );
+        
+        _shapeBatch.FillRectangle(new Vector2(0, 0), new Vector2(3, 1), Color.Red);
+        _shapeBatch.FillRectangle(new Vector2(0, 0), new Vector2(3, 1), Color.Blue, 0, 1);
+        _spriteBatch.DrawCircle(new Vector2(0, 0), 2, 20, Color.Green, 0.2f);
+        _shapeBatch.FillCircle(new Vector2(0, 0), 0.2f, Color.Yellow);
+        
+        _shapeBatch.End();
+        _spriteBatch.End();
     }
 }

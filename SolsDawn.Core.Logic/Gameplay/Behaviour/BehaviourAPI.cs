@@ -6,8 +6,6 @@ using nkast.Aether.Physics2D.Common;
 using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Gameplay.Animations;
-using CircleIdle = SolsDawn.Core.Logic.Animations.Lua.CircleIdle;
-using LineTrace = SolsDawn.Core.Logic.Animations.Lua.LineTrace;
 
 namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
 
@@ -132,37 +130,34 @@ public static class BehaviourAPI
     
     public static class Animations
     {
-        public static LineTrace LineTrace(
+        public static LineTraceAnimation LineTrace(
             Vector2 point1,
             Vector2 point2,
             float thickness,
             float duration,
             Color startColor,
-            Color endColor,
             float layerDepth = 0)
         {
-            var trace = new LineTrace(
+            var trace = new LineTraceAnimation(
                 point1,
                 point2,
                 thickness,
                 duration,
                 startColor,
-                endColor,
                 layerDepth);
-            Game.AnimationsPool.Add(trace);
+            SolsDawn.AnimationsPool.Add(trace);
             return trace;
         }
 
-        public static CircleIdle CircleIdle(
+        public static CircleIdleAnimation CircleIdle(
             Vector2 position,
             float radius,
-            int sides,
-            float thickness,
             Color color,
             float layerDepth = 0)
         {
-            var animation = new CircleIdle(position, radius, sides, thickness, color, layerDepth);
-            Game.AnimationsPool.Add(animation);
+            var animation = new CircleIdleAnimation( radius, color, layerDepth);
+            animation.Transform.Position = position;
+            SolsDawn.AnimationsPool.Add(animation);
             return animation;
         }
     }

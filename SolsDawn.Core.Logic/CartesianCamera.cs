@@ -71,7 +71,7 @@ public class CartesianCamera
 
     public Vector2 WorldToScreen(Vector2 worldPosition)
     {
-        return Vector2.Transform(worldPosition, GetViewMatrix());
+        return Vector2.Transform(worldPosition, CreateViewMatrix());
     }
 
     public Vector2 ScreenToWorld(Vector2 screenPosition)
@@ -79,7 +79,7 @@ public class CartesianCamera
         return Vector2.Transform(screenPosition, GetInverseViewMatrix());
     }
 
-    public Matrix GetViewMatrix()
+    public Matrix CreateViewMatrix()
     {
         var viewport = _graphicsDevice.Viewport;
         return Matrix.CreateTranslation(new Vector3(-Position.X, -Position.Y, 0))
@@ -89,12 +89,12 @@ public class CartesianCamera
 
     public Matrix GetInverseViewMatrix()
     {
-        return Matrix.Invert(GetViewMatrix());
+        return Matrix.Invert(CreateViewMatrix());
     }
 
     public BoundingFrustum GetBoundingFrustum()
     {
-        Matrix viewMatrix = GetViewMatrix();
+        Matrix viewMatrix = CreateViewMatrix();
         Matrix projection = Matrix.CreateOrthographicOffCenter(0f, _graphicsDevice.Viewport.Width,
             _graphicsDevice.Viewport.Height, 0f, -1f, 1f);
         return new BoundingFrustum(viewMatrix * projection);

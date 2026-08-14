@@ -1,7 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using MonoGame.Extended;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Configs.Utils;
@@ -11,7 +10,7 @@ using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
 namespace SolsDawn.Core.Logic;
 
-public sealed class Game : Microsoft.Xna.Framework.Game
+public sealed class SolsDawn : Game
 {
     public readonly static bool IsMobile = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
 
@@ -20,14 +19,14 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
     public static AnimationsPool AnimationsPool { get; private set; }
     public static CartesianCamera Camera { get; private set; }
-    public static SpriteBatch SpriteBatch { get; private set; }
+    public static Painter Painter { get; private set; }
 
     private GraphicsDeviceManager _graphicsDeviceManager;
     private Input _input;
     private PlayerController _playerController;
     private GameTests _gameTests;
 
-    public Game()
+    public SolsDawn()
     {
         _graphicsDeviceManager = new GraphicsDeviceManager(this);
     }
@@ -36,11 +35,11 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     {
         base.Initialize();
         InitScreen();
-        SpriteBatch = new SpriteBatch(GraphicsDevice);
+        Painter = new Painter(GraphicsDevice);
         InitSystems();
 
         var playerGo = new GameObject();
-        var playerShape = new CircleShape(100, 1);
+        var playerShape = new CircleShape(1, 1);
         new Collider(playerGo, playerShape, Collision.Player);
         new HP(playerGo, 10);
         new Animator<PlayerAnimations>(playerGo, new PlayerAnimations());
@@ -51,7 +50,8 @@ public sealed class Game : Microsoft.Xna.Framework.Game
 
         BehaviourController.Player = player;
         _playerController = new(player, _input);
-        _gameTests = new();
+        _gameTests = new(this);
+        _gameTests.IsActive = false;
         return;
 
         void InitSystems()
@@ -110,19 +110,16 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     {
         GraphicsDevice.Clear(Color.Gray);
         
-        SpriteBatch.Begin(
-            sortMode: SpriteSortMode.FrontToBack,
-            rasterizerState: RasterizerState.CullNone,
-            transformMatrix: Camera.GetViewMatrix()
-        );
-        
-        SpriteBatch.DrawCircle(Vector2.Zero, 0.2f, 10, Color.Azure, 0.2f);
-        
         AnimationsPool.Draw();
         _gameTests.Draw();
         GameObjectPool.Draw();
         
-        SpriteBatch.End();
+        Painter.Begin(
+            view: Camera.CreateViewMatrix(),
+            rasterizerState: RasterizerState.CullClockwise
+        );
+        Painter.DoDraws();
+        Painter.End();
         base.Draw(gameTime);
     }
 }

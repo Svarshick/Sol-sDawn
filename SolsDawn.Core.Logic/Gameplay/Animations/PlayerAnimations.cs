@@ -9,8 +9,8 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
     public const string Idle = "Idle";
     public const string Hit = "Hit";
 
-    private IAnimation _baseAnimation;
-    private IAnimation _overlayAnimation;
+    private Animation _baseAnimation;
+    private Animation _overlayAnimation;
     private readonly PlayerStats _stats = MainConfig.PlayerStats;
 
     public override void TryPlay(string animationName)
@@ -18,13 +18,13 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
         switch (animationName)
         {
             case Idle:
-                _baseAnimation = new RectangleIdle(
-                    Transform,
+                _baseAnimation = new RectangleIdleAnimation(
                     _stats.Width,
                     _stats.Height,
                     _stats.Color);
+                _baseAnimation.Transform.Parent = Transform;
                 break;
-            case Hit:
+            case Hit:/*
                 _overlayAnimation = new RectangleBlink(
                     Transform,
                     _stats.Width,
@@ -32,22 +32,29 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
                     _stats.HitInvulnerabilityDuration,
                     true,
                     _stats.Color,
-                    _stats.HitBlinkColor);
+                    _stats.HitBlinkColor);*/
                 break;
         }
     }
-    
-    public override void Draw()
+
+    public override void Update()
+    { 
+        _baseAnimation?.Update();
+    }
+
+    public override void LateUpdate()
     {
+        _overlayAnimation?.LateUpdate();
+    }
+
+    public override void Draw()
+    {/*
         if (_overlayAnimation is { IsFinished: false })
         {
             _overlayAnimation.Draw();
         }
-        else
-        {
-            if (_baseAnimation is null)
-                TryPlay(DefaultAnimation);
-            _baseAnimation.Draw();
-        }
+        else*/
+        
+        _baseAnimation?.Draw();
     }
 }
