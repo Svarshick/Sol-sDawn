@@ -131,7 +131,7 @@ public sealed class Collider : Component
             field?.Kill();
             value.Transform.Position = _body.Position;
             value.Transform.Rotation = _body.Rotation;
-            SolsDawn.AnimationsPool.Add(value);
+            Game.AnimationsPool.Add(value);
             field = value;
         }
     }
@@ -195,7 +195,7 @@ public class ColliderAnimation(
     {
         foreach (var fixture in fixtureList)
         {
-            SolsDawn.Painter.BorderShape(layer, fixture.Shape, Transform.WorldPosition, Transform.Rotation, color);
+            Game.Painter.BorderShape(layer, fixture.Shape, Transform.WorldPosition, Transform.Rotation, color);
         }
     }
 }

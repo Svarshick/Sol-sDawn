@@ -1,61 +1,58 @@
-using Microsoft.Xna.Framework;
-
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Gameplay.Entities;
 
 public class PlayerController
 {
     private readonly Player _player;
-    private readonly Input _input;
     
-    public PlayerController(Player player, Input input)
+    public PlayerController(Player player)
     {
         _player = player;
-        _input = input;
     }
 
     public void Update()
     {
-        if (_player.State is Player.TeleportState &&
-            _input.Teleport.State == Input.TeleportState.Released)
+        if (_player.State is null ||
+            _player.State is TeleportState &&
+            Input.Teleport.State == InputTeleportState.Released)
         {
-            var idleState = new Player.IdleState(_player);
+            var idleState = new IdleState(_player);
             IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, idleState));
             return;   
         }
         
-        if (_player.State is Player.IdleState or Player.MoveState)
+        if (_player.State is IdleState or MoveState)
         {
-            if (_input.Blade.IsPressed)
+            if (Input.Blade.IsPressed)
             {
                 IntendBlade();
                 return;
             }
 
-            if (_input.Fire.IsPressed)
+            if (Input.Fire.IsPressed)
             {
                 //IntendFire();
                 return;
             }
 
-            if (_input.Teleport.State == Input.TeleportState.Started)
+            if (Input.Teleport.State == InputTeleportState.Started)
             {
                 IntendTeleport();
                 return;
             }
         }
 
-        if (_player.State is Player.MoveState &&
-            _input.Move == Vector2.Zero)
+        if (_player.State is MoveState &&
+            Input.Move == Vector2.Zero)
         {
-            var idleState = new Player.IdleState(_player);
+            var idleState = new IdleState(_player);
             IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, idleState));
             return;
         }
         
-        if (_player.State is Player.IdleState &&
-                 _input.Move != Vector2.Zero)
+        if (_player.State is IdleState &&
+                 Input.Move != Vector2.Zero)
         {
-            var moveState = new Player.MoveState(_player, _input);
+            var moveState = new MoveState(_player);
             IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, moveState));
             return;
         }
@@ -63,20 +60,20 @@ public class PlayerController
 
     private void IntendTeleport()
     {
-        var teleportState = new Player.TeleportState(_player, _input);
+        var teleportState = new TeleportState(_player);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, teleportState));
     }
 
     private void IntendBlade()
     {
-        if (!_player.BladeCharged)
+        if (!_player.Board.BladeCharged)
             return;
-        _player.LastBladeUsage = Time.TotalGameTime.TotalSeconds;
+        _player.Board.LastBladeUsage = TotalSeconds;
 
-        var screenPosition = _input.Blade.ScreenPosition;
-        var lookPosition = SolsDawn.Camera.ScreenToWorld(screenPosition);
+        var screenPosition = Input.Blade.ScreenPosition;
+        var lookPosition = Camera.ScreenToWorld(screenPosition);
         
-        var bladeState = new Player.BladeState(_player, lookPosition);
+        var bladeState = new BladeState(_player, lookPosition);
         IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));
     }
 

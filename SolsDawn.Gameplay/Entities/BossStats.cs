@@ -1,9 +1,6 @@
-using Microsoft.Xna.Framework;
-using SolsDawn.Core.Logic.Configs.Utils;
+namespace SolsDawn.Gameplay.Entities;
 
-namespace SolsDawn.Core.Logic.Configs;
-
-public class BossStats
+public class BossBoard
 {
     public Color Color;
     public float Width;
@@ -19,12 +16,12 @@ public class BossStats
     public Color BladeTelegraphStarColor;
     public float BladeTelegraphStarOuterRadius;
     public float BladeTelegraphStarInnerRadius;
-    [Euler] public float BladeTelegraphStarStartAngle;
-    [Euler] public float BladeTelegraphStarDeltaAngle;
+    public float BladeTelegraphStarStartAngle;
+    public float BladeTelegraphStarDeltaAngle;
     public float BladeTelegraphStarThickness;
 
     public float BladeAttackDistance;
-    [Euler] public float BladeAttackEdgeAngle;
+    public float BladeAttackEdgeAngle;
     public float BladeAttackEdgeLength;
     public float BladeAttackEdgeWidth;
     public float BladeDashDistance;

@@ -2,23 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 public class EventRace
 {
-    public Routine OnFinish(Callback callback) => Finished.OnFire(callback);
-    public Routine OnCancel(Callback callback) => Finished.OnCancel(callback);
-    public Routine OnEnd(Callback callback)    => Finished.OnEnd(callback);
-    public void OnFinish(Action callback) => Finished.OnFire(callback);
-    public void OnCancel(Action callback) => Finished.OnCancel(callback);
-    public void OnEnd(Action callback) => Finished.OnEnd(callback);
+    public Job OnFinish(JobMethod method) => Finished.OnFire(method);
+    public Job OnCancel(JobMethod method) => Finished.OnCancel(method);
+    public Job OnEnd(JobMethod method) => Finished.OnEnd(method);
+    public void OnFinish(Action action) => Finished.OnFire(action);
+    public void OnCancel(Action action) => Finished.OnCancel(action);
+    public void OnEnd(Action action) => Finished.OnEnd(action);
 
     public Event Finished { get; }
     public Event Winner { get; private set; }
         
     private readonly Event[] _racers;
    
-    public EventRace(Routine owner, IEnumerable<Event> racers)
+    public EventRace(Job owner, IEnumerable<Event> racers)
     {
         Finished = new(owner);
         _racers = racers.ToArray();
@@ -53,7 +53,7 @@ public class EventRace
 
     public Event OnWinner(Event racer)
     {
-        var evt = new Event(Finished.OwnerRoutine);
+        var evt = new Event(Finished.Owner);
         Finished.OnFire(() =>
         {
             if (Winner == racer)

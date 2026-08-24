@@ -10,7 +10,8 @@
     <MonoGamePlatform>DesktopVK</MonoGamePlatform>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SolsDawn.Core.Logic\SolsDawn.Core.Logic.csproj" />
+    <ProjectReference Include="../SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />
+    <ProjectReference Include="../SolsDawn.Gameplay/SolsDawn.Gameplay.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" />
@@ -18,5 +19,5 @@
     <PackageReference Include="MonoGame.Runtime.Linux.Vulkan" Version="3.8.5" />
     <PackageReference Include="MonoGame.Runtime.Mac.Vulkan" Version="3.8.5" />
   </ItemGroup>
-  <Import Project="..\SolsDawn.Content\BuildContent.targets" />
+  <Import Project="../SolsDawn.Content/BuildContent.targets" />
 </Project>

@@ -1,5 +1,4 @@
-﻿using SolsDawn.Core;
-using SolsDawn.Core.Logic;
+﻿using SolsDawn.Core.Logic;
 
 internal class Program
 {
@@ -10,7 +9,7 @@ internal class Program
     /// <param name="args">Command-line arguments passed to the application.</param>
     private static void Main(string[] args)
     {
-        using var game = new SolsDawn.Core.Logic.SolsDawn();
+        using var game = new Game(SolsDawn.Gameplay.Main.RootJob);
         game.Run();
     }
 }

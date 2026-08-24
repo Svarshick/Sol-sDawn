@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Platforms>AnyCPU</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" >
+      <PrivateAssets>All</PrivateAssets>
+    </PackageReference>
+    <ProjectReference Include="../SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />
+    <PackageReference Include="Aether.Physics2D.MG" Version="2.2.0" />
+    
+    <Using Include="Microsoft.Xna.Framework.Color" Alias="Color"/>
+    <Using Include="Microsoft.Xna.Framework.Vector2" Alias="Vector2"/>
+    <Using Include="Microsoft.Xna.Framework.MathHelper" Alias="MathHelper"/>
+    
+    <Using Include="SolsDawn.Core.Component" Alias="Component" />
+    <Using Include="SolsDawn.Core.GameObject" Alias="GameObject" />
+           
+    <Using Include="SolsDawn.Core.Logic.Gameplay.GameplayAPI" Static="true" />
+    <Using Include="SolsDawn.Core.Logic.Game" Alias="Game" />
+    <Using Include="SolsDawn.Core.Logic.Helper" Alias="Helper" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.EnterStateIntention" Alias="EnterStateIntention" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.ParryIntention" Alias="ParryIntention" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.HitByPlayerIntention" Alias="HitByPlayerIntention" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.HitByEnemyIntention" Alias="HitByEnemyIntention" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.Entity" Alias="Entity" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.State" Alias="State" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.Intention" Alias="Intention" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.Input.TeleportState" Alias="InputTeleportState" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job"/>
+    <Using Include="SolsDawn.Core.Logic.Animations" />
+  </ItemGroup>
+  
+  <Target Name="ForbidCoreUsings" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_UserSourceFiles Include="**/*.cs" Exclude="obj/**/*.cs;bin/**/*.cs" />
+      <ForbiddenFiles Include="@(_UserSourceFiles)" 
+                      Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($([System.IO.File]::ReadAllText('%(_UserSourceFiles.FullPath)')), 'using\s+SolsDawn\.Core'))" />
+    </ItemGroup>
+    <Error Condition="'@(ForbiddenFiles)' != ''" 
+           Text="Forbidden using found in: %(ForbiddenFiles.Identity). You cannot 'using SolsDawn.Core.*'. Use GameplayAPI or .csproj aliases." />
+  </Target>
+</Project>

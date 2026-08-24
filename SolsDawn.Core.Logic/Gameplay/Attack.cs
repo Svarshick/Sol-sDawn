@@ -1,8 +1,7 @@
-using System.Threading.Tasks;
 using MonoGame.Extended;
 using nkast.Aether.Physics2D.Dynamics;
 using nkast.Aether.Physics2D.Dynamics.Contacts;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
@@ -19,8 +18,7 @@ public record struct HitByPlayerContext(
     Fixture TargetFixture,
     Contact Contact);
 
-public delegate Task HitByPlayerReaction(HitByPlayerContext context);
-
+public delegate Job HitByPlayerReaction(HitByPlayerContext context);
 public delegate bool HitByPlayerPredicate(HitByPlayerContext context);
 
 public class PlayerAttack : Component
@@ -28,26 +26,26 @@ public class PlayerAttack : Component
     public Transform2 Transform => GameObject.Transform;
     
     public readonly AttackType Type;
-    public readonly Routine Routine;
-    public readonly HitByPlayerReaction HitExecuter;
-    public readonly HitByPlayerPredicate HitDeterminer;
-    public readonly ParryReaction ParryExecuter;
+    public readonly Job Job;
+    private readonly HitByPlayerReaction? _hitExecuter;
+    private readonly HitByPlayerPredicate? _hitDeterminer;
+    private readonly ParryReaction? _parryExecuter;
     private readonly Collider _collider;
     
     public PlayerAttack(
         GameObject go,
         AttackType type,
-        Routine routine,
-        HitByPlayerReaction hitExecuter,
-        HitByPlayerPredicate hitDeterminer,
-        ParryReaction parryExecuter) 
+        Job job,
+        HitByPlayerReaction? hitExecuter,
+        HitByPlayerPredicate? hitDeterminer,
+        ParryReaction? parryExecuter) 
         : base(go, true)
     {
         Type = type;
-        Routine = routine;
-        HitExecuter = hitExecuter;
-        HitDeterminer = hitDeterminer;
-        ParryExecuter = parryExecuter;
+        Job = job;
+        _hitExecuter = hitExecuter;
+        _hitDeterminer = hitDeterminer;
+        _parryExecuter = parryExecuter;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
         _collider.OnCollision += (sender, other, contact) =>
         {
@@ -56,12 +54,12 @@ public class PlayerAttack : Component
             if (collider.GameObject.TryGetComponent(out ParryWindow parryWindow))
             {
                 var context = new ParryContext(this, parryWindow, sender, other, contact);
-                IntentionsPool.AddIntention(new ParryIntention(context));
+                Game.IntentionsPool.AddIntention(new ParryIntention(context));
             }
             else
             {
                 var context = new HitByPlayerContext(this, collider, sender, other, contact);
-                IntentionsPool.AddIntention(new HitByPlayerIntention(context));
+                Game.IntentionsPool.AddIntention(new HitByPlayerIntention(context));
             }
             return false;
         };
@@ -75,6 +73,36 @@ public class PlayerAttack : Component
         _collider.Enabled = true;
     }
 
+    public bool DetermineHit(HitByPlayerContext context)
+    {
+        if (_hitDeterminer is null)
+            return true;
+        using (JobContext.Use(Job))
+        {
+            return _hitDeterminer(context);
+        }
+    }
+
+    public Job ExecuteHit(HitByPlayerContext context)
+    {
+        if (_hitExecuter is null)
+            return Job.CompletedJob;
+        using (JobContext.Use(Job))
+        {
+            return _hitExecuter(context);
+        }
+    }
+
+    public Job ExecuteParry(ParryContext context)
+    {
+        if (_parryExecuter is null)
+            return Job.CompletedJob;
+        using (JobContext.Use(Job))
+        {
+            return _parryExecuter(context);
+        }
+    }
+
     public void End() => Destroy();
 }
 
@@ -85,8 +113,7 @@ public record struct HitByEnemyContext(
     Fixture TargetFixture,
     Contact Contact);
 
-
-public delegate Task HitByEnemyReaction(HitByEnemyContext context);
+public delegate Job HitByEnemyReaction(HitByEnemyContext context);
 
 public delegate bool HitByEnemyPredicate(HitByEnemyContext context);
 
@@ -95,36 +122,56 @@ public class EnemyAttack : Component
     public Transform2 Transform => GameObject.Transform;
 
     public readonly AttackType Type;
-    public readonly Routine Routine;
-    public readonly HitByEnemyReaction HitExecuter;
-    public readonly HitByEnemyPredicate HitDeterminer;
+    public readonly Job Job;
+    private readonly HitByEnemyReaction? _hitExecuter;
+    private readonly HitByEnemyPredicate? _hitDeterminer;
     private readonly Collider _collider;
 
 
     public EnemyAttack(
         GameObject go,
         AttackType type,
-        Routine routine,
-        HitByEnemyReaction hitExecuter,
-        HitByEnemyPredicate hitDeterminer) 
+        Job job,
+        HitByEnemyReaction? hitExecuter,
+        HitByEnemyPredicate? hitDeterminer) 
         : base(go, true)
     {
         Type = type;
-        Routine = routine;
-        HitExecuter = hitExecuter;
-        HitDeterminer = hitDeterminer;
+        Job = job;
+        _hitExecuter = hitExecuter;
+        _hitDeterminer = hitDeterminer;
         _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
         _collider.OnCollision += (sender, other, contact) =>
         {
             if (other.Tag is not Collider collider)
                 return false;
             var context = new HitByEnemyContext(this, collider, sender, other, contact);
-            IntentionsPool.AddIntention(new HitByEnemyIntention(context));
+            Game.IntentionsPool.AddIntention(new HitByEnemyIntention(context));
             return false;
         };
         _collider.Enabled = false;
     }
+    
+    public bool DetermineHit(HitByEnemyContext context)
+    {
+        if (_hitDeterminer is null)
+            return true;
+        using (JobContext.Use(Job))
+        {
+            return _hitDeterminer(context);
+        }
+    }
 
+    public Job ExecuteHit(HitByEnemyContext context)
+    {
+        if (_hitExecuter is null)
+            return Job.CompletedJob;
+        using (JobContext.Use(Job))
+        {
+            return _hitExecuter(context);
+        }
+    }
+    
     public void Start()
     {
         if (GameObject.IsDestroyed)

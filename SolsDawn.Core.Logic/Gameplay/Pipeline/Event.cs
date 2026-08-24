@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 public enum EventState
 {
@@ -11,43 +10,14 @@ public enum EventState
     Canceled
 }
 
-public readonly struct EventAwaiter : INotifyCompletion
-{
-    private readonly Event _event;
-    private readonly Routine _routine;
-    
-    public EventAwaiter(Event @event, Routine routine)
-    {
-        _event = @event;
-        _routine = routine;
-    }
-    
-    public bool IsCompleted => _event.IsEnded;
-    
-    public void OnCompleted(Action continuation)
-    {
-        var routine = _routine;
-        _event.OnEnd(() =>
-        {
-            using (ExecutionContext.Use(routine))
-            {
-                continuation();
-            }
-        });
-    }
-
-    public void GetResult()
-    {
-    }
-}
-
+public delegate Job JobMethod();
 
 public class Timer : Event
 {
     public double Delay { get; }
-    public double TimeRemaining { get; set; }
+    public double TimeRemaining { get; internal set; }
     
-    public Timer(Routine owner, double delay) : base(owner)
+    public Timer(Job owner, double delay) : base(owner)
     {
         Delay = delay;
         TimeRemaining = delay;
@@ -55,13 +25,13 @@ public class Timer : Event
 
     protected override void OnParentFired()
     {
-        OwnerRoutine.StartTimer(this);
+        Owner.StartTimer(this);
     }
 }
 
 public class Event
 {
-    public readonly Routine OwnerRoutine;
+    public readonly Job Owner;
 
     public EventState State { get; protected set; }
     public bool IsFired => State == EventState.Fired;
@@ -72,19 +42,21 @@ public class Event
     private readonly List<object> _fireCallbacks = new();
     private readonly List<object> _cancelCallbacks = new();
 
-    public Event(Routine ownerRoutine)
+    public Event(Job owner)
     {
-        OwnerRoutine = ownerRoutine;
+        Owner = owner;
     }
     
     public EventAwaiter GetAwaiter()
     {
-        return new EventAwaiter(this, ExecutionContext.CurrentRoutine);
+        if (!AwaiterUtils.ValidContext())
+            throw new JobException();
+        return new EventAwaiter(JobContext.CurrentJob!, this);
     }
     
     public Timer After(double time)
     {
-        var t = new Timer(OwnerRoutine, time);
+        var t = new Timer(Owner, time);
         ChainEvent(t);
         return t;
     }
@@ -105,99 +77,111 @@ public class Event
         }
     }
 
-    public Routine OnFire(Callback callback)
+    public Job OnFire(JobMethod method)
     {
-        var routine = new Routine(callback);
+        var job = new Job(); 
         switch (State)
         {
             case EventState.Fired:
-                OwnerRoutine.StartSubroutine(routine);
+                using (JobContext.Use(Owner))
+                {
+                    JobAsyncMethodBuilder.PreallocatedJob = job;
+                    method();
+                }
                 break;
             case EventState.Pending:
-                _fireCallbacks.Add(routine);
+                _fireCallbacks.Add((job, method));
+                break;
+            case EventState.Canceled:
+                job.Kill();
+                break;
+        }
+
+        return job;
+    }
+
+    public void OnFire(Action action)
+    {
+        switch (State)
+        {
+            case EventState.Fired:
+                action();
+                break;
+            case EventState.Pending:
+                _fireCallbacks.Add(action);
+                break;
+        }
+    }
+
+    public Job OnCancel(JobMethod method)
+    {
+        var job = new Job();
+        switch (State)
+        {
+            case EventState.Canceled:
+                using (JobContext.Use(Owner))
+                {
+                    JobAsyncMethodBuilder.PreallocatedJob = job;
+                    method();
+                }
+                break;
+            case EventState.Pending:
+                _cancelCallbacks.Add((job, method));
                 break;
             default:
-                routine.Kill();
+                job.Kill();
                 break;
         }
 
-        return routine;
+        return job;
     }
 
-    public void OnFire(Action callback)
-    {
-        switch (State)
-        {
-            case EventState.Fired:
-                callback();
-                break;
-            case EventState.Pending:
-                _fireCallbacks.Add(callback);
-                break;
-        }
-    }
-
-    public Routine OnCancel(Callback callback)
-    {
-        var routine = new Routine(callback);
-        switch (State)
-        {
-            case EventState.Canceled:
-                OwnerRoutine.StartSubroutine(routine);
-                break;
-            case EventState.Pending:
-                _cancelCallbacks.Add(routine);
-                break;
-            default:
-                routine.Kill();
-                break;
-        }
-
-        return routine;
-    }
-
-    public void OnCancel(Action callback)
+    public void OnCancel(Action action)
     {
         switch (State)
         {
             case EventState.Canceled:
-                callback();
+                action();
                 break;
             case EventState.Pending:
-                _cancelCallbacks.Add(callback);
+                _cancelCallbacks.Add(action);
                 break;
         }
     }
 
-    public Routine OnEnd(Callback callback)
+    public Job OnEnd(JobMethod method)
     {
-        var routine = new Routine(callback);
+        var job = new Job();
         switch (State)
         {
             case EventState.Fired:
             case EventState.Canceled:
-                OwnerRoutine.StartSubroutine(routine);
+                using (JobContext.Use(Owner))
+                {
+                    JobAsyncMethodBuilder.PreallocatedJob = job;
+                    method();
+                }
                 break;
             case EventState.Pending:
-                _fireCallbacks.Add(routine);
-                _cancelCallbacks.Add(routine);
+                _fireCallbacks.Add((job, method));
+                _cancelCallbacks.Add((job, method));
                 break;
         }
 
-        return routine;
+        return job;
     }
 
-    public void OnEnd(Action callback)
+    public void OnEnd(Action action)
     {
         switch (State)
         {
             case EventState.Fired:
             case EventState.Canceled:
-                callback();
+                action();
                 break;
             case EventState.Pending:
-                _fireCallbacks.Add(callback);
-                _cancelCallbacks.Add(callback);
+                _fireCallbacks.Add(action);
+                _cancelCallbacks.Add(action);
                 break;
         }
     }
@@ -208,12 +192,12 @@ public class Event
 
     public void Fire()
     {
-        if (State != EventState.Pending)
+        if (IsEnded)
             return;
 
         State = EventState.Fired;
 
-        using (ExecutionContext.Use(OwnerRoutine))
+        using (JobContext.Use(Owner))
         {
             foreach (var callback in _fireCallbacks)
             {
@@ -233,11 +217,11 @@ public class Event
 
     public void Cancel()
     {
-        if (State != EventState.Pending)
+        if (IsEnded)
             return;
 
         State = EventState.Canceled;
-        using (ExecutionContext.Use(OwnerRoutine))
+        using (JobContext.Use(Owner))
         {
             foreach (var callback in _cancelCallbacks)
             {
@@ -259,8 +243,9 @@ public class Event
     {
         switch (callback)
         {
-            case Routine routine:
-                OwnerRoutine.StartSubroutine(routine);
+            case (Job job, JobMethod method):
+                JobAsyncMethodBuilder.PreallocatedJob = job;
+                method();
                 break;
             case Action action:
                 action();

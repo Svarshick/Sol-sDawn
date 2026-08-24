@@ -4,6 +4,7 @@
     <Project Path="SolsDawn.DesktopGL/SolsDawn.DesktopGL.csproj" />
   </Folder>
   <Project Path="SolsDawn.Content/SolsDawn.Content.csproj" />
-  <Project Path="SolsDawn.Core.Logic\SolsDawn.Core.Logic.csproj" />
-  <Project Path="SolsDawn.Core\SolsDawn.Core.csproj" />
+  <Project Path="SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />
+  <Project Path="SolsDawn.Core/SolsDawn.Core.csproj" />
+  <Project Path="SolsDawn.Gameplay/SolsDawn.Gameplay.csproj" />
 </Solution>

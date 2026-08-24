@@ -11,7 +11,7 @@ public class RectangleIdleAnimation(
 {
     public override void Draw()
     {
-        SolsDawn.Painter.FillRectangle(
+        Game.Painter.FillRectangle(
             layer,
             Transform.WorldPosition,
             new (width, height),

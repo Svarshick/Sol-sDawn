@@ -8,11 +8,11 @@ namespace SolsDawn.Core.Logic;
 public class GameTests : IUpdatable, IDrawable
 {
     public bool IsActive = false;
-    private readonly SolsDawn _game;
+    private readonly Game _game;
     private readonly ShapeBatch _shapeBatch;
     private readonly SpriteBatch _spriteBatch;
 
-    public GameTests(SolsDawn game)
+    public GameTests(Game game)
     {
         _game = game;
         _shapeBatch = new(game.GraphicsDevice, game.Content);
@@ -39,10 +39,10 @@ public class GameTests : IUpdatable, IDrawable
         _spriteBatch.Begin(
             sortMode: SpriteSortMode.FrontToBack,
             rasterizerState: RasterizerState.CullNone,
-            transformMatrix: SolsDawn.Camera.CreateViewMatrix());
+            transformMatrix: Game.Camera.CreateViewMatrix());
         
         _shapeBatch.Begin(
-            view: SolsDawn.Camera.CreateViewMatrix(),
+            view: Game.Camera.CreateViewMatrix(),
             rasterizerState: RasterizerState.CullClockwise
         );
         

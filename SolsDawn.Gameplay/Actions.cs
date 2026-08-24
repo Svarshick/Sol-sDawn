@@ -1,25 +1,10 @@
 using System;
-using System.Threading.Tasks;
-using Microsoft.Xna.Framework;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
-using static SolsDawn.Core.Logic.Gameplay.Behaviour.BehaviourAPI;
 
-namespace SolsDawn.Core.Logic.Configs;
+namespace SolsDawn.Gameplay;
 
-public class Behaviour
+public static class Actions
 {
-    public static async Task Init()
-    {
-        var boss = CreateEntity();
-        
-        while (true)
-        {
-            await SimpleAttack(boss);
-            await Timer(2);
-        }
-    }
-
-    public static async Task SimpleAttack(Entity entity)
+    public static async Job SimpleAttack(Entity entity)
     {
         var attackPosition = Vector2.Zero;
         var attackRadius = 1;
@@ -34,12 +19,12 @@ public class Behaviour
 
         Console.WriteLine("Atk started");
 
-        var warningAnimation = BehaviourAPI.Animations.CircleIdle(
+        var warningAnimation = Animations.CircleIdle(
             attackPosition,
             attackRadius,
             warningColor,
             0);
-
+        
         var end = Event();
         var pwBegin = Timer(warningTime);
         var atkBegin = pwBegin.After(parryWindowTime);
@@ -66,10 +51,7 @@ public class Behaviour
         });
 
         var branch = Race(pw.Parried, atkBegin);
-        branch.OnEnd(() =>
-        {
-            pw.Destroy();
-        });
+        branch.OnEnd(pw.Destroy);
 
         branch.OnWinner(pw.Parried).OnFire(() => Console.WriteLine("Parried"));
         branch.OnWinner(atkBegin).OnFire(() =>
@@ -81,38 +63,5 @@ public class Behaviour
 
         await end;
         Console.WriteLine("Atk ended");
-    }
-
-    public static async Task Slide(Entity entity, Vector2 direction, float speed, float time)
-    {
-        var timer = Timer(time);
-        while (!timer.IsEnded)
-        {
-            entity.Transform.Position += direction * speed * ElapsedSeconds;
-            await NextFrame();
-        }
-    }
-    
-    public static async Task AnimationTest()
-    {
-        var scale = 1;
-        var firstColor = Color.Yellow;
-        var secondColor = Color.Green;
-
-        var animation = BehaviourAPI.Animations.CircleIdle(
-            Vector2.Zero,
-            3,
-            firstColor,
-            0);
-
-        var ticks = 0;
-        
-        while (true)
-        {
-            var phase = (ticks / 60) % 2;
-            animation.Color = phase == 0 ? firstColor : secondColor;
-            ticks++;
-            await NextFrame();
-        }
-    }
+    }   
 }

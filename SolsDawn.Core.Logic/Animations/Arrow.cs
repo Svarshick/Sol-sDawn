@@ -59,7 +59,7 @@ public class ArrowTraceAnimation : Animation
 
     public override void Draw()
     {
-        SolsDawn.Painter.FillArrow(
+        Game.Painter.FillArrow(
             Layer,
             Transform.WorldPosition,
             Direction,
@@ -128,7 +128,7 @@ public class ArrowPentagonTraceAnimation : Animation
 
     public override void Draw()
     {
-        SolsDawn.Painter.FillArrowPentagon(
+        Game.Painter.FillArrowPentagon(
             Layer,
             Transform.WorldPosition,
             Direction,

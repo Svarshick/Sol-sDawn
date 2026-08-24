@@ -1,17 +1,13 @@
-using SolsDawn.Core.Logic.Animations;
-using SolsDawn.Core.Logic.Configs;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Gameplay.Entities;
 
-namespace SolsDawn.Core.Logic.Gameplay.Animations;
-
-public class PlayerAnimations() : AnimationPlayer(Idle)
+public class DefaultAnimation() : AnimationPlayer(Idle)
 {
     public const string Idle = "Idle";
     public const string Hit = "Hit";
 
     private Animation _baseAnimation;
     private Animation _overlayAnimation;
-    private readonly PlayerStats _stats = MainConfig.PlayerStats;
+    private readonly PlayerBoard _board = Main.PlayerBoard;
 
     public override void TryPlay(string animationName)
     {
@@ -19,9 +15,9 @@ public class PlayerAnimations() : AnimationPlayer(Idle)
         {
             case Idle:
                 _baseAnimation = new RectangleIdleAnimation(
-                    _stats.Width,
-                    _stats.Height,
-                    _stats.Color);
+                    _board.Config.Width,
+                    _board.Config.Height,
+                    _board.Config.Color);
                 _baseAnimation.Transform.Parent = Transform;
                 break;
             case Hit:/*

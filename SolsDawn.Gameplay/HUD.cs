@@ -1,8 +1,7 @@
 using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision;
-using SolsDawn.Core.Logic.Gameplay.Behaviour;
 
-namespace SolsDawn.Core.Logic.Gameplay;
+namespace SolsDawn.Gameplay;
 
 public sealed class HUD : Component
 {
@@ -17,42 +16,42 @@ public sealed class HUD : Component
     {
         var indicatorRadius = 0.5f;
         var indicatorPadding = 0.3f;
-        var indicatorY = SolsDawn.Camera.TopLeft.Y - indicatorRadius - indicatorPadding;
-        var indicatorX = SolsDawn.Camera.TopLeft.X + indicatorRadius + indicatorPadding;
+        var indicatorY = Camera.TopLeft.Y - indicatorRadius - indicatorPadding;
+        var indicatorX = Camera.TopLeft.X + indicatorRadius + indicatorPadding;
         
-        if (_player.TeleportCharged)
+        if (_player.Board.TeleportCharged)
         {
-            SolsDawn.Painter.FillCircle(
+            Painter.FillCircle(
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Stats.TeleportEndColor,
+                _player.Board.Config.TeleportEndColor,
                 indicatorRadius);
         }
 
         indicatorX += (indicatorRadius * 2 + indicatorPadding);
-        if (_player.BladeCharged)
+        if (_player.Board.BladeCharged)
         {
-            SolsDawn.Painter.FillCircle(
+            Painter.FillCircle(
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Stats.BladeTraceStartColor);
+                _player.Board.Config.BladeTraceStartColor);
         }
         
         indicatorX += (indicatorRadius * 2 + indicatorPadding);
-        if (_player.FireCharged)
+        if (_player.Board.FireCharged)
         {
-            SolsDawn.Painter.FillCircle(
+            Painter.FillCircle(
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Stats.FireTraceStartColor);
+                _player.Board.Config.FireTraceStartColor);
         }
 
-        if (SolsDawn.Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)
+        if (Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)
         {
-            var bounds = SolsDawn.Camera.BoundingBox;
+            var bounds = Camera.BoundingBox;
             var start = Vector2.Zero;
             var end = _player.GameObject.Transform.Position;
             var input = new RayCastInput
@@ -65,7 +64,7 @@ public sealed class HUD : Component
             if (bounds.RayCast(out var output, ref input))
             {
                 var hitPoint = start + output.Fraction * (end - start);
-                SolsDawn.Painter.FillCircle(
+                Painter.FillCircle(
                     1,
                     hitPoint,
                     0.5f,

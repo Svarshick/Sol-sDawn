@@ -26,7 +26,7 @@ public class LineIdleAnimation
     
     public override void Draw()
     {
-        SolsDawn.Painter.FillLine(
+        Game.Painter.FillLine(
             Layer,
             Transform.WorldPosition,
             End,
@@ -85,7 +85,7 @@ public class LineTraceAnimation : Animation
 
     public override void Draw()
     {
-        SolsDawn.Painter.FillLine(
+        Game.Painter.FillLine(
             _layer,
             Transform.Position,
             End,

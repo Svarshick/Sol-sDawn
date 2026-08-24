@@ -5,51 +5,52 @@ using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
 using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic.Animations;
-using SolsDawn.Core.Logic.Gameplay.Animations;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
 
-namespace SolsDawn.Core.Logic.Gameplay.Behaviour;
+namespace SolsDawn.Core.Logic.Gameplay;
 
-public static class BehaviourAPI
+public static class GameplayAPI
 {
-    public static Entity CreateEntity(EntityStats stats = null)
+    public static CartesianCamera Camera { get; internal set; }
+    public static Painter Painter { get; internal set; }
+    public static Input Input { get; internal set; }
+    public static AnimationsPool AnimationsPool { get; internal set; }
+    public static IntentionsPool IntentionsPool { get; internal set; }
+    
+    private static Job GetCurrentJob() => JobContext.CurrentJob ?? throw new NullReferenceException("Current Job is null");
+    
+    public static GameObject CreateObject()
     {
-        stats ??= new EntityStats
-        {
-            Color = Color.Magenta,
-            Width = 0.8f,
-            Height = 1.6f
-        };
+        return new GameObject();
+    }
+    
+    /*public static Entity CreateEntity(object stats, AnimationPlayer animationPlayer)
+    {
         var go = new GameObject();
         var shape = Shapes.Rectangle(stats.Width, stats.Height);
         new Collider(go, shape, Collision.Enemy);
         new Animator<EntityAnimations>(go, new EntityAnimations(stats));
         return new Entity(go, stats);
-    }
+    }*/
 
     public static float Angle(this Vector2 v) => (float)Math.Atan2(v.Y, v.X);
     
-    public static Routine.NextFrameAwaiter NextFrame() => new();
+    public static YieldAwaiter NextFrame() => new(GetCurrentJob());
 
-    public static Routine Subroutine(Callback callback)
-    {
-        var routine = ExecutionContext.CurrentRoutine;
-        var subroutine = new Routine(callback);
-        routine.StartSubroutine(subroutine);
-        return subroutine;
-    }
-    
     public static Timer Timer(double delay)
     {
-        var routine = ExecutionContext.CurrentRoutine ?? throw new NullReferenceException("Cannot create a timer outside of an active LuaRoutine execution context.");
-        var timer = new Timer(routine, delay);
-        routine.StartTimer(timer);
+        var job = GetCurrentJob();
+        var timer = new Timer(job, delay);
+        job.StartTimer(timer);
         return timer;
     }
 
     public static Event Event()
     {
-        var routine = ExecutionContext.CurrentRoutine ?? throw new NullReferenceException("Cannot create a timer outside of an active LuaRoutine execution context.");
-        return new Event(routine);
+        var job = GetCurrentJob();
+        var @event = new Event(job);
+        job.TrackResource(@event);
+        return @event;
     }
 
     public static float ElapsedSeconds => (float)Time.ElapsedGameTime.TotalSeconds;
@@ -59,23 +60,25 @@ public static class BehaviourAPI
     
     public static EventRace Race(params object[] args)
     {
+        var job = GetCurrentJob();
         var racers = new List<Event>();
         foreach(var arg in args)
         {
             switch (arg)
             {
-                case Event evt:
-                    racers.Add(evt);
+                case Event evtArg:
+                    racers.Add(evtArg);
                     break;
-                case Routine routine:
-                    racers.Add(routine.Completed);
+                case Job jobArg:
+                    racers.Add(jobArg.Completed);
                     break;
                 default:
                     throw new ArgumentException("race() expects events or routines");
             }
         }
 
-        var race = new EventRace(ExecutionContext.CurrentRoutine, racers);
+        var race = new EventRace(job, racers);
+        job.TrackResource(race);
         return race;
     }
 
@@ -86,13 +89,13 @@ public static class BehaviourAPI
         ParryReaction parryExecuter,
         ParryPredicate parryDeterminer)
     {
-        var routine = ExecutionContext.CurrentRoutine
-                      ?? throw new NullReferenceException("Expected not null CurrentRoutine");
+        var job = GetCurrentJob();
         var go = new GameObject();
         go.Transform.Position = position;
         go.Transform.Rotation = rotation;
         new Collider(go, shape, Collision.Parry, BodyType.Dynamic, true);
-        return new ParryWindow(go, ParryType.Blade, routine, parryExecuter, parryDeterminer);
+        job.TrackResource(go);
+        return new ParryWindow(go, ParryType.Blade, job, parryExecuter, parryDeterminer);
     }
 
     public static PlayerAttack PlayerAttack(
@@ -103,13 +106,13 @@ public static class BehaviourAPI
         HitByPlayerPredicate hitDeterminer,
         ParryReaction parryExecuter)
     {
-        var routine = ExecutionContext.CurrentRoutine
-                      ?? throw new NullReferenceException("Expected not null CurrentRoutine");
+        var job = GetCurrentJob();
         var go = new GameObject();
         go.Transform.Position = position;
         go.Transform.Rotation = rotation;
         new Collider(go, shape, Collision.Enemy | Collision.Parry, BodyType.Dynamic, true);
-        return new PlayerAttack(go, AttackType.Blade, routine, hitExecuter, hitDeterminer, parryExecuter);
+        job.TrackResource(go);
+        return new PlayerAttack(go, AttackType.Blade, job, hitExecuter, hitDeterminer, parryExecuter);
     }
 
     public static EnemyAttack EnemyAttack(
@@ -119,13 +122,13 @@ public static class BehaviourAPI
         HitByEnemyReaction hitExecuter,
         HitByEnemyPredicate hitDeterminer)
     {
-        var routine = ExecutionContext.CurrentRoutine
-                      ?? throw new NullReferenceException("Expected not null CurrentRoutine");
+        var job = GetCurrentJob();
         var go = new GameObject();
         go.Transform.Position = position;
         go.Transform.Rotation = rotation;
         new Collider(go, shape, Collision.Player, BodyType.Dynamic, true);
-        return new EnemyAttack(go, AttackType.Blade, routine, hitExecuter, hitDeterminer);
+        job.TrackResource(go);
+        return new EnemyAttack(go, AttackType.Blade, job, hitExecuter, hitDeterminer);
     }
     
     public static class Animations
@@ -145,7 +148,7 @@ public static class BehaviourAPI
                 duration,
                 startColor,
                 layerDepth);
-            SolsDawn.AnimationsPool.Add(trace);
+            AnimationsPool.Add(trace);
             return trace;
         }
 
@@ -155,9 +158,11 @@ public static class BehaviourAPI
             Color color,
             float layerDepth = 0)
         {
+            var job = GetCurrentJob();
             var animation = new CircleIdleAnimation( radius, color, layerDepth);
             animation.Transform.Position = position;
-            SolsDawn.AnimationsPool.Add(animation);
+            AnimationsPool.Add(animation);
+            job.TrackResource(animation);
             return animation;
         }
     }
@@ -176,5 +181,16 @@ public static class BehaviourAPI
         }
 
         public static Shape Square(float side) => Rectangle(side, side);
+
+        public static Shape PolygonShape(Vertices vertices)
+        {
+            return new PolygonShape(vertices, 1.0f);
+        }
+        
+        public static Shape PolygonShape(Vector2[] vertices)
+        {
+            var nkastVertices = new Vertices(vertices);
+            return new PolygonShape(nkastVertices, 1.0f);
+        }
     }
 }

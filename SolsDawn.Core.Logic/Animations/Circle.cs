@@ -21,7 +21,7 @@ public class CircleIdleAnimation
     
     public override void Draw()
     {
-        SolsDawn.Painter.FillCircle(
+        Game.Painter.FillCircle(
             Layer,
             Transform.WorldPosition,
             Radius,
