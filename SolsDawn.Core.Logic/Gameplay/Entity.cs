@@ -1,22 +1,28 @@
 using System;
-using Microsoft.Xna.Framework;
 using MonoGame.Extended;
 using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
-public class EntityStats
+public abstract class State
 {
-    public Color Color;
-    public float Width;
-    public float Height;
+    public virtual void Enter(State? from)
+    {
+    }
+
+    public virtual Job Update() => Job.CompletedJob;
+
+    public virtual void Exit(State? to)
+    {
+    }
 }
 
 public class Entity : Component
 {
     public Transform2 Transform => GameObject.Transform;
-    
+
+    public readonly Job RootJob;
     public State? State { get; private set; }
     public Job? UpdateJob { get; private set; }
     
@@ -39,13 +45,17 @@ public class Entity : Component
             }
         }
 
-        state.Enter(State);
-        State = state;
-        UpdateJob = state.Update();
+        using (JobContext.Use(RootJob))
+        {
+            state.Enter(State);
+            State = state;
+            UpdateJob = state.Update();
+        }
     }
     
     public Entity(GameObject go) : base(go, true)
     {
+        RootJob = JobContext.CurrentJob ?? throw new LogicException($"Entity created out of Job");
         //HP = go.GetComponent<HP>() ?? throw new ComponentNotFoundException<HP>();
     }
 
@@ -57,9 +67,9 @@ public class Entity<TBoard, TAnimation> : Entity where TAnimation : AnimationPla
     public readonly Animator<TAnimation> Animator;
     public readonly TBoard Board;
     
-    public Entity(GameObject go, TBoard board) : base(go)
+    public Entity(GameObject go, TBoard board, TAnimation animationPlayer) : base(go)
     {
         Board = board;
-        Animator = go.GetComponent<Animator<TAnimation>>() ?? throw new ComponentNotFoundException<Animator<TAnimation>>();
+        Animator = new Animator<TAnimation>(go, animationPlayer);
     }
 }

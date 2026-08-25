@@ -2,71 +2,6 @@ using System;
 
 namespace SolsDawn.Gameplay.Entities;
 
-public class PlayerBoard
-{
-    public float LastBladeUsage;
-    public float LastTeleportUsage;
-    public float LastFireUsage;
-    public bool BladeCharged => TotalSeconds - LastBladeUsage >= Config.BladeRechargeDuration;
-    public bool TeleportCharged => TotalSeconds - LastTeleportUsage >= Config.TeleportRechargeDuration;
-    public bool FireCharged => TotalSeconds - LastFireUsage >= Config.FireRechargeDuration;
-
-    public PlayerConfig Config = new();
-}
-
-public class PlayerConfig
-{
-
-    public float TeleportRechargeDuration;
-    public float BladeRechargeDuration;
-    public float FireRechargeDuration;
-
-    public Color Color;
-    public float Width;
-    public float Height;
-    public float Velocity;
-    public float CursorRadius;
-    public Color CursorColor;
-
-    public float HitInvulnerabilityDuration;
-    public Color HitBlinkColor;
-
-    public float BladeAttackDistance;
-    public float BladeAttackWidth;
-    public float BladeDashDistance;
-    public float BladeDashWidth;
-    public float BladeTraceDuration;
-    public Color BladeTraceStartColor;
-
-    public float BladeParryPushDistance;
-    public float BladeParryPushVelocity;
-    public float BladeParryTraceDuration;
-    public Color BladeParryTraceStartColor;
-    public Color BladeParryTraceEndColor;
-
-    public float FireDistance;
-    public float FireWidth;
-    public float FireTraceDuration;
-    public float FireTraceWidth;
-    public Color FireTraceStartColor;
-    public Color FireTraceEndColor;
-
-    public float FireParryTraceDuration;
-    public Color FireParryTraceStartColor;
-    public Color FireParryTraceEndColor;
-
-    public float TeleportMinDistance;
-    public float TeleportMaxDistance;
-    public float TeleportHoldDuration;
-    public float TeleportWidth;
-    public Color TeleportStartColor;
-    public Color TeleportEndColor;
-    public float TeleportTraceWidth;
-    public float TeleportTraceDuration;
-    public Color TeleportTraceStartColor;
-    public Color TeleportTraceEndColor;
-}
-
 public class IdleState(Player player) : State
 {
     public override void Enter(State from)
@@ -141,7 +76,7 @@ public class TeleportState(Player player) : State
             endPosition,
             player.Board.Config.TeleportTraceWidth,
             player.Board.Config.TeleportTraceDuration,
-            player.Board.Config.TeleportTraceStartColor));
+            player.Board.Config.TeleportTraceColor));
 
         player.GameObject.Transform.Position = endPosition;
         player.Board.LastTeleportUsage = TotalSeconds;
@@ -209,7 +144,7 @@ public class BladeState(
                     player.Board.Config.BladeDashWidth,
                     player.Board.Config.BladeAttackDistance,
                     player.Board.Config.BladeAttackWidth,
-                    player.Board.Config.BladeTraceStartColor
+                    player.Board.Config.BladeTraceColor
                 ));
 
             player.GameObject.Transform.Position += direction * player.Board.Config.BladeDashDistance;

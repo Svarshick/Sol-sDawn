@@ -1,10 +1,10 @@
 using System;
 
-namespace SolsDawn.Gameplay;
+namespace SolsDawn.Gameplay.Actions;
 
-public static class Actions
+public static class SimpleActions
 {
-    public static async Job SimpleAttack(Entity entity)
+    public static async Job Attack(Entity entity)
     {
         var attackPosition = Vector2.Zero;
         var attackRadius = 1;

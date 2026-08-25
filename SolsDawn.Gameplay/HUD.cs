@@ -36,7 +36,7 @@ public sealed class HUD : Component
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Board.Config.BladeTraceStartColor);
+                _player.Board.Config.BladeTraceColor);
         }
         
         indicatorX += (indicatorRadius * 2 + indicatorPadding);
@@ -46,7 +46,7 @@ public sealed class HUD : Component
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Board.Config.FireTraceStartColor);
+                _player.Board.Config.FireTraceColor);
         }
 
         if (Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)

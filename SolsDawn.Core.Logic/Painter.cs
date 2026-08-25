@@ -51,7 +51,7 @@ public class Painter
         float thickness = 0.1f,
         float rotation = 0.0f,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.DrawCircle(center, radius, fill, border, thickness, rotation, aaSize, dash),
             layer));
@@ -75,7 +75,7 @@ public class Painter
         float thickness = 0.1f,
         float rotation = 0.0f,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.BorderCircle(center, radius, g, thickness, rotation, aaSize, dash),
             layer));
@@ -94,7 +94,7 @@ public class Painter
         CornerRadii cornerRadii = default(CornerRadii),
         float rotation = 0.0f,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.DrawRectangle(xy, size, fill, border, thickness, cornerRadii, rotation, aaSize, dash),
             layer));
@@ -137,7 +137,7 @@ public class Painter
         float thickness = 0.1f,
         float rounded = 0.0f,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.DrawTriangle(a, b, c, fill, border, thickness, rounded, aaSize, dash),
             layer));
@@ -157,7 +157,7 @@ public class Painter
         float miterLimit = 4f,
         float aaSize = 1.5f,
         bool closed = false,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.FillPath(points, radius, g, join, cap, capEnd, miterLimit, aaSize, closed, dash),
             layer));
@@ -175,7 +175,7 @@ public class Painter
         float miterLimit = 4f,
         float aaSize = 1.5f,
         bool closed = false,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.DrawPath(points, radius, fill, border, thickness, join, cap, capEnd, miterLimit, aaSize,
                 closed, dash),
@@ -192,7 +192,7 @@ public class Painter
         float radius,
         Gradient g,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.FillLine(a, b, radius, g, aaSize, dash),
             layer));
@@ -206,7 +206,7 @@ public class Painter
         Gradient border,
         float thickness = 0.1f,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.DrawLine(a, b, radius, fill, border, thickness, aaSize, dash),
             layer));
@@ -224,7 +224,7 @@ public class Painter
         float radius2,
         Gradient g,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.FillRing(center, angle1, angle2, radius1, radius2, g, aaSize, dash),
             layer));
@@ -240,7 +240,7 @@ public class Painter
         Gradient border,
         float thickness = 0.1f,
         float aaSize = 1.5f,
-        DashStyle dash = default(DashStyle))
+        DashStyle dash = default)
         => _drawCommands.Add((
             () => _shapeBatch.DrawRing(center, angle1, angle2, radius1, radius2, fill, border, thickness, aaSize, dash),
             layer));
@@ -292,7 +292,7 @@ public class Painter
                         vertices[i].X * cos - vertices[i].Y * sin + position.X,
                         vertices[i].X * sin + vertices[i].Y * cos + position.Y
                     );
-                    _shapeBatch.FillLine(previous, current, thickness, color);
+                    _shapeBatch.FillLine(previous, current, thickness/2, color);
                     previous = current;
                 }
             },

@@ -34,7 +34,19 @@ public static class GameplayAPI
     }*/
 
     public static float Angle(this Vector2 v) => (float)Math.Atan2(v.Y, v.X);
-    
+
+    public static Vector2 Rotated(this Vector2 v, float radians)
+    {
+        float cos = MathF.Cos(radians);
+        float sin = MathF.Sin(radians);
+
+        return new Vector2(
+            v.X * cos - v.Y * sin,
+            v.X * sin + v.Y * cos
+        );
+    }
+
+    public static float PI => MathF.PI;
     public static YieldAwaiter NextFrame() => new(GetCurrentJob());
 
     public static Timer Timer(double delay)
@@ -85,9 +97,9 @@ public static class GameplayAPI
     public static ParryWindow ParryWindow(
         Shape shape,
         Vector2 position,
-        float rotation,
-        ParryReaction parryExecuter,
-        ParryPredicate parryDeterminer)
+        float rotation = 0,
+        ParryReaction? parryExecuter = null,
+        ParryPredicate? parryDeterminer = null)
     {
         var job = GetCurrentJob();
         var go = new GameObject();

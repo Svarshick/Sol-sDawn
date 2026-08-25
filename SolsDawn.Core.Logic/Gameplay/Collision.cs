@@ -114,6 +114,7 @@ public sealed class Collider : Component
             }
 
             _body.Enabled = value;
+            Animation.IsVisible = value;
         }
     }
 
@@ -123,7 +124,7 @@ public sealed class Collider : Component
         remove => _body.OnCollision -= value;
     }
     
-    private Animation Animation
+    private ColliderAnimation Animation
     {
         get;
         set
@@ -131,6 +132,7 @@ public sealed class Collider : Component
             field?.Kill();
             value.Transform.Position = _body.Position;
             value.Transform.Rotation = _body.Rotation;
+            value.IsVisible = _body.Enabled;
             Game.AnimationsPool.Add(value);
             field = value;
         }
@@ -161,7 +163,7 @@ public sealed class Collider : Component
         Collision.World.Add(_body);
         _activationTime = Time.TotalGameTime.TotalSeconds;
         
-        Animation = new ColliderAnimation(_body.FixtureList, Debug.ColliderColor, 1);
+        Animation = new ColliderAnimation(Debug.Collider.Category.Default, _body.FixtureList, 1);
     }
 
     public override void Update()
@@ -173,29 +175,72 @@ public sealed class Collider : Component
 
     public override void OnDestroyImmediate()
     {
-        var timeToEnd = _activationTime + Debug.ColliderMinimalTime - Time.TotalGameTime.TotalSeconds;
+        float minimalTime = Animation.Category switch
+        {
+            Debug.Collider.Category.Default => Debug.Collider.DefaultMinimalTime,
+            Debug.Collider.Category.Attack => Debug.Collider.AttackMinimalTime,
+            Debug.Collider.Category.Parry => Debug.Collider.ParryMinimalTime,
+            _ => throw new LogicException()
+        };
+
+        var timeToEnd = _activationTime + minimalTime - Time.TotalGameTime.TotalSeconds;
         if (timeToEnd > 0)
         {
             Animation.Transform.Position = _body.Position;
             Animation.Transform.Rotation = _body.Rotation;
             Animation.TimeToKill = timeToEnd;
         }
+        else
+        {
+            Animation.Kill();
+        }
 
         Collision.World.Remove(_body);
-        _body = null;
     }
 }
 
-public class ColliderAnimation(
-    FixtureCollection fixtureList, 
-    Color color,
-    float layer = 0) : Animation
+public class ColliderAnimation : Animation
 {
+    public Debug.Collider.Category Category;
+    public float Layer;
+    public FixtureCollection FixtureList;
+
+    public ColliderAnimation(
+        Debug.Collider.Category category,
+        FixtureCollection fixtureList,
+        float layer = 0)
+    {
+        Category = category;
+        Layer = layer;
+        FixtureList = fixtureList;
+    }
+    
     public override void Draw()
     {
-        foreach (var fixture in fixtureList)
+        Color color;
+        float thickness;
+        
+        switch (Category)
         {
-            Game.Painter.BorderShape(layer, fixture.Shape, Transform.WorldPosition, Transform.Rotation, color);
+            case Debug.Collider.Category.Default:
+                color = Debug.Collider.DefaultColor;
+                thickness = Debug.Collider.DefaultThickness;
+                break;
+            case Debug.Collider.Category.Parry:
+                color =  Debug.Collider.ParryColor;
+                thickness = Debug.Collider.ParryThickness;
+                break;
+            case Debug.Collider.Category.Attack:
+                color = Debug.Collider.AttackColor;
+                thickness = Debug.Collider.AttackThickness;
+                break;
+            default:
+                throw new LogicException();
+        }
+        
+        foreach (var fixture in FixtureList)
+        {
+            Game.Painter.BorderShape(Layer, fixture.Shape, Transform.WorldPosition, Transform.Rotation, color, thickness);
         }
     }
 }

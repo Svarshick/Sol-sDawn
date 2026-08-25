@@ -7,7 +7,7 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public static class Query
 {
-    public static void Overlap(
+    /*public static void Overlap(
         Shape shape,
         Vector2 position,
         float rotation,
@@ -51,5 +51,5 @@ public static class Query
 
         //void Drawer() => SolsDawn.SpriteBatch.DrawShape(shape, position, rotation, color);
         //SolsDawn.AnimationsPool.Add( new DelegatedAnimation(Drawer, time));
-    }
+    }*/
 }

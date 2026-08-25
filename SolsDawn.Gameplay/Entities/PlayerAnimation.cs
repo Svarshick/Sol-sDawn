@@ -7,17 +7,17 @@ public class DefaultAnimation() : AnimationPlayer(Idle)
 
     private Animation _baseAnimation;
     private Animation _overlayAnimation;
-    private readonly PlayerBoard _board = Main.PlayerBoard;
 
     public override void TryPlay(string animationName)
     {
+        var board = G.Player.Board;
         switch (animationName)
         {
             case Idle:
                 _baseAnimation = new RectangleIdleAnimation(
-                    _board.Config.Width,
-                    _board.Config.Height,
-                    _board.Config.Color);
+                    board.Config.Width,
+                    board.Config.Height,
+                    board.Config.Color);
                 _baseAnimation.Transform.Parent = Transform;
                 break;
             case Hit:/*

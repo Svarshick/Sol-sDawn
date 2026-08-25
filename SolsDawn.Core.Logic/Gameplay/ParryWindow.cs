@@ -37,8 +37,8 @@ public class ParryWindow : Component
         GameObject go,
         ParryType type,
         Job job,
-        ParryReaction parryExecuter,
-        ParryPredicate parryDeterminer) : base(go, true)
+        ParryReaction? parryExecuter,
+        ParryPredicate? parryDeterminer) : base(go, true)
     {
         Type = type;
         Job = job;

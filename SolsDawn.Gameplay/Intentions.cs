@@ -7,8 +7,8 @@ public static class Intentions
 {
     public static void ResolveLogic(List<Intention> intentions)
     {
-        var player = Main.Player;
-        var playerGO = Main.Player.GameObject;
+        var player = G.Player;
+        var playerGO = G.Player.GameObject;
         
         EnterStateIntention playerStateEnter = null;
         
