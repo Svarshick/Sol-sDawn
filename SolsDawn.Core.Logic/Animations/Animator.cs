@@ -2,9 +2,11 @@ using MonoGame.Extended;
 
 namespace SolsDawn.Core.Logic.Animations;
 
-public abstract class AnimationPlayer(string defaultAnimation) : IDrawable, IUpdatable
+public abstract class AnimationPlayer : IDrawable, IUpdatable
 {
-    public readonly string DefaultAnimation = defaultAnimation;
+    public const string Hit = "Hit";
+    public const string Idle = "Idle";
+    
     public Transform2 Transform;
     public virtual void Update() { }
     public virtual void LateUpdate() { }
@@ -20,7 +22,7 @@ public class Animator<T> : Component
     {
         Player = player;
         Player.Transform = GameObject.Transform;
-        Player.TryPlay(Player.DefaultAnimation);
+        Player.TryPlay(AnimationPlayer.Idle);
     }
 
     public override void Update() => Player.Update();

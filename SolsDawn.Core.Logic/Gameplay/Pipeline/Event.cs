@@ -23,7 +23,7 @@ public class Timer : Event
         TimeRemaining = delay;
     }
 
-    protected override void OnParentFired()
+    internal override void OnParentFired()
     {
         Owner.StartTimer(this);
     }
@@ -41,6 +41,8 @@ public class Event
     private readonly List<Event> _nextEvents = new();
     private readonly List<object> _fireCallbacks = new();
     private readonly List<object> _cancelCallbacks = new();
+    
+    private readonly List<object> _buff = new(); //todo
 
     public Event(Job owner)
     {
@@ -128,7 +130,7 @@ public class Event
             case EventState.Pending:
                 _cancelCallbacks.Add((job, method));
                 break;
-            default:
+            case EventState.Fired:
                 job.Kill();
                 break;
         }
@@ -186,9 +188,9 @@ public class Event
         }
     }
 
-    protected virtual void OnParentFired() => Fire();
+    internal virtual void OnParentFired() => Fire();
 
-    protected virtual void OnParentCanceled() => Cancel();
+    internal virtual void OnParentCanceled() => Cancel();
 
     public void Fire()
     {
@@ -224,14 +226,10 @@ public class Event
         using (JobContext.Use(Owner))
         {
             foreach (var callback in _cancelCallbacks)
-            {
                 InvokeCallback(callback);
-            }
 
             foreach (var next in _nextEvents)
-            {
                 next.OnParentCanceled();
-            }
         }
 
         _fireCallbacks.Clear();

@@ -1,10 +1,7 @@
 namespace SolsDawn.Gameplay.Entities;
 
-public class BossAnimations(BossBoard board) : AnimationPlayer(Idle)
+public class BossAnimations(BossBoard board) : AnimationPlayer
 {
-    public const string Idle = "Idle";
-    public const string Hit = "Hit";
-    
     private Animation _baseAnimation;
     private Animation _overlayAnimation;
     

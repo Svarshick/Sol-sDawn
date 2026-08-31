@@ -1,8 +1,7 @@
 namespace SolsDawn.Gameplay.Entities;
 
-public class OrbAnimations(OrbBoard board) : AnimationPlayer(Idle)
+public class OrbAnimations(OrbBoard board) : AnimationPlayer
 {
-    public const string Idle = "Idle";
     private Animation _animation;
 
     public override void TryPlay(string animationName)

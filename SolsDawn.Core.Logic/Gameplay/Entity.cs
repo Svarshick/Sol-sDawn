@@ -73,3 +73,9 @@ public class Entity<TBoard, TAnimation> : Entity where TAnimation : AnimationPla
         Animator = new Animator<TAnimation>(go, animationPlayer);
     }
 }
+
+public interface IHittable
+{
+    public uint MaxHP { get; set; }
+    public void ChangeHP(int delta);
+}

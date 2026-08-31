@@ -31,14 +31,14 @@ public static class GameplayAPI
     }
 
     #endregion
-    
+
     public static GameObject CreateObject(Vector2 position = default, float rotation = 0)
     {
         var job = GetCurrentJob();
         var go = CreateGameObject(job, position, rotation);
         return go;
     }
-    
+
     /*public static Entity CreateEntity(object stats, AnimationPlayer animationPlayer)
     {
         var go = new GameObject();
