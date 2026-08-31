@@ -25,7 +25,7 @@ public sealed class HUD : Component
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Board.Config.TeleportEndColor,
+                _player.Board.Specs.TeleportEndColor,
                 indicatorRadius);
         }
 
@@ -36,7 +36,7 @@ public sealed class HUD : Component
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Board.Config.BladeTraceColor);
+                _player.Board.Specs.BladeTraceColor);
         }
         
         indicatorX += (indicatorRadius * 2 + indicatorPadding);
@@ -46,7 +46,7 @@ public sealed class HUD : Component
                 1,
                 new Vector2(indicatorX, indicatorY),
                 indicatorRadius,
-                _player.Board.Config.FireTraceColor);
+                _player.Board.Specs.FireTraceColor);
         }
 
         if (Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)

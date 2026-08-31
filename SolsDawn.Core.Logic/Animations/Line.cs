@@ -89,8 +89,7 @@ public class LineTraceAnimation : Animation
             _layer,
             Transform.Position,
             End,
-            0,
-            _lerpedColor,
-            _thickness);
+            _thickness/2,
+            _lerpedColor);
     }
 }

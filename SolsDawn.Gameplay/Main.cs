@@ -1,3 +1,4 @@
+using System;
 using SolsDawn.Gameplay.Entities;
 
 namespace SolsDawn.Gameplay;
@@ -6,8 +7,6 @@ public static class Main
 {
     public static async Job RootJob()
     {
-        IntentionsPool.ResolveLogic = Intentions.ResolveLogic;
-        
         BeforeGameLoop();
         GameLoop();
         AfterGameLoop();
@@ -21,16 +20,16 @@ public static class Main
     private static async Job BeforeGameLoop()
     {
         var playerObj = CreateObject();
-        G.Player = new Player(playerObj, new PlayerBoard(), new DefaultAnimation());
+        var playerBoard = new PlayerBoard();
+        G.Player = new Player(playerObj, playerBoard, new PlayerAnimations(playerBoard));
         var playerController = new PlayerController(G.Player);
         
         var hudObj = CreateObject();
         new HUD(hudObj, G.Player);
-
+        
         while (true)
         {
             playerController.Update();
-            IntentionsPool.Resolve();
             await NextFrame();
         }
     }
@@ -38,12 +37,13 @@ public static class Main
     private static async Job GameLoop()
     {
         var bossObj = CreateObject();
-        var boss = new Boss(bossObj, new BossBoard(), new DefaultAnimation());
-        
+        var bossBoard = new BossBoard();
+        var boss = new Boss(bossObj, bossBoard, new BossAnimations(bossBoard));
+
+        Actions.Tests.OrbSpam();
         while (true)
         {
-            await Actions.SimpleActions.Attack(boss);
-            //await Actions.Tests.Collider();
+            await Actions.SimpleActions.FireAttack(boss);
             await Timer(2);
         }
     }

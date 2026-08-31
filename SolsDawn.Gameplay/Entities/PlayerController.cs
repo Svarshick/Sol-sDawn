@@ -16,7 +16,7 @@ public class PlayerController
             Input.Teleport.State == InputTeleportState.Released)
         {
             var idleState = new IdleState(_player);
-            IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, idleState));
+            _player.Enter(idleState);
             return;   
         }
         
@@ -30,7 +30,7 @@ public class PlayerController
 
             if (Input.Fire.IsPressed)
             {
-                //IntendFire();
+                IntendFire();
                 return;
             }
 
@@ -45,7 +45,7 @@ public class PlayerController
             Input.Move == Vector2.Zero)
         {
             var idleState = new IdleState(_player);
-            IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, idleState));
+            _player.Enter(idleState);
             return;
         }
         
@@ -53,15 +53,19 @@ public class PlayerController
                  Input.Move != Vector2.Zero)
         {
             var moveState = new MoveState(_player);
-            IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, moveState));
+            _player.Enter(moveState);
             return;
         }
     }
 
     private void IntendTeleport()
     {
+        if (!_player.Board.TeleportCharged)
+            return;
+        _player.Board.LastTeleportUsage = TotalSeconds;
+        
         var teleportState = new TeleportState(_player);
-        IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, teleportState));
+        _player.Enter(teleportState);
     }
 
     private void IntendBlade()
@@ -72,39 +76,22 @@ public class PlayerController
 
         var screenPosition = Input.Blade.ScreenPosition;
         var lookPosition = Camera.ScreenToWorld(screenPosition);
-        
         var bladeState = new BladeState(_player, lookPosition);
-        IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, bladeState));
+        _player.Enter(bladeState);
     }
 
-    /*private void IntendFire()
+    private void IntendFire()
     {
-        if (!_player.FireCharged)
+        if (!_player.Board.FireCharged)
             return;
-        _player.LastFireUsage = Time.TotalGameTime.TotalSeconds;
+        _player.Board.LastFireUsage = TotalSeconds;
 
-        var screenPosition = _input.Fire.ScreenPosition;
+        var screenPosition = Input.Fire.ScreenPosition;
         var lookPosition = Game.Camera.ScreenToWorld(screenPosition);
         var direction = lookPosition - _player.GameObject.Transform.Position;
         direction.Normalize();
-        var fireEnd = _player.GameObject.Transform.Position + direction * _player.Stats.FireDistance;
-
-        var vertices = PolygonTools.CreateRectangle(
-            _player.Stats.FireDistance / 2f,
-            _player.Stats.FireWidth / 2f);
         
-        var shape = new PolygonShape(vertices, 1f);
-        var targets = new List<GameObject>();
-        var rotation = (float)Math.Atan2(direction.Y, direction.X);
-        Query.Overlap(
-            shape, 
-            (_player.GameObject.Transform.Position + fireEnd) / 2, 
-            rotation,
-            Collision.Enemy, 
-            targets,
-            DebugCategory.Attack);
-
-        var fireState = new Player.FireExecuteState(_player, lookPosition, targets);
-        IntentionsPool.AddIntention(new EnterStateIntention(_player.GameObject, fireState));
-    }*/
+        var fireState = new FireState(_player, direction);
+        _player.Enter(fireState);
+    }
 }

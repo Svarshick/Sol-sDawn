@@ -1,0 +1,56 @@
+blade attack (parry case):
+	-------------------------------------------
+	phys:
+	atk collides with pw => creates intention
+	[atk collides with hitbox => creates intention]
+	-------------------------------------------
+	intentions:
+	[atk hit intention declined]
+	atk parry intention runs
+	pw fires
+	-------------------------------------------
+	affects:
+	...
+	-------------------------------------------
+	update routine
+
+fire attack
+
+
+
+
+---------------------------------------------------------
+ParryWindow:
+	m ParryDetermine(ParryContext)
+	m ParryExecute(ParryContext)
+
+ParryContext:
+	f Attack	//???
+	f ParryWindow
+	f AttackFixture	
+	f ParryWindowFixture
+	f Contaxt
+
+---------------------------------------------------------
+Attack:
+	m HitDetermine(HitContext)
+	m HitExecute(HitContext)
+
+HitContext
+	f Attack	//???
+	f Entity
+	f AttackFixtute
+	f TargetFixture
+
+--------------------------------------------------------
+PAttack:
+	m HitDetermine(HitContext)
+	m HitExecute(HitContext)
+	m ParryExecute(ParryContext)
+
+--------------------------------------------------------
+FireAttack:
+	m HitDetermine(HitContext)
+	m HitExecute(HitContext)
+	m ParryExecute(ParryContext)
+	m FireToPoint(Vector2)

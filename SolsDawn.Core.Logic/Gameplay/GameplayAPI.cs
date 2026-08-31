@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
@@ -15,13 +16,27 @@ public static class GameplayAPI
     public static Painter Painter { get; internal set; }
     public static Input Input { get; internal set; }
     public static AnimationsPool AnimationsPool { get; internal set; }
-    public static IntentionsPool IntentionsPool { get; internal set; }
+    
+    #region Utils
     
     private static Job GetCurrentJob() => JobContext.CurrentJob ?? throw new NullReferenceException("Current Job is null");
-    
-    public static GameObject CreateObject()
+
+    private static GameObject CreateGameObject(Job job, Vector2 position, float rotation = 0)
     {
-        return new GameObject();
+        var go = new GameObject();
+        go.Transform.Position = position;
+        go.Transform.Rotation = rotation;
+        job.TrackResource(go);
+        return go;
+    }
+
+    #endregion
+    
+    public static GameObject CreateObject(Vector2 position = default, float rotation = 0)
+    {
+        var job = GetCurrentJob();
+        var go = CreateGameObject(job, position, rotation);
+        return go;
     }
     
     /*public static Entity CreateEntity(object stats, AnimationPlayer animationPlayer)
@@ -94,53 +109,120 @@ public static class GameplayAPI
         return race;
     }
 
-    public static ParryWindow ParryWindow(
-        Shape shape,
-        Vector2 position,
-        float rotation = 0,
-        ParryReaction? parryExecuter = null,
-        ParryPredicate? parryDeterminer = null)
+    public static class Fight
     {
-        var job = GetCurrentJob();
-        var go = new GameObject();
-        go.Transform.Position = position;
-        go.Transform.Rotation = rotation;
-        new Collider(go, shape, Collision.Parry, BodyType.Dynamic, true);
-        job.TrackResource(go);
-        return new ParryWindow(go, ParryType.Blade, job, parryExecuter, parryDeterminer);
-    }
+        public struct FireParryCastResult
+        {
+            public FireParryWindow ParryWindow;
+            public Vector2 Position;
+        }
 
-    public static PlayerAttack PlayerAttack(
-        Shape shape,
-        Vector2 position,
-        float rotation,
-        HitByPlayerReaction hitExecuter,
-        HitByPlayerPredicate hitDeterminer,
-        ParryReaction parryExecuter)
-    {
-        var job = GetCurrentJob();
-        var go = new GameObject();
-        go.Transform.Position = position;
-        go.Transform.Rotation = rotation;
-        new Collider(go, shape, Collision.Enemy | Collision.Parry, BodyType.Dynamic, true);
-        job.TrackResource(go);
-        return new PlayerAttack(go, AttackType.Blade, job, hitExecuter, hitDeterminer, parryExecuter);
-    }
+        public static bool FireParryCast(
+            Vector2 start,
+            Vector2 end,
+            float width,
+            out FireParryCastResult result)
+        {
+            result = default;
+            if (!Collision.LineCast(start, end, width, Collision.FireParry, out var hit))
+                return false;
 
-    public static EnemyAttack EnemyAttack(
-        Shape shape,
-        Vector2 position,
-        float rotation,
-        HitByEnemyReaction hitExecuter,
-        HitByEnemyPredicate hitDeterminer)
-    {
-        var job = GetCurrentJob();
-        var go = new GameObject();
-        go.Transform.Position = position;
-        go.Transform.Rotation = rotation;
-        new Collider(go, shape, Collision.Player, BodyType.Dynamic, true);
-        job.TrackResource(go);
-        return new EnemyAttack(go, AttackType.Blade, job, hitExecuter, hitDeterminer);
+            if (hit.Fixture.Body.Tag is not Collider collider ||
+                !collider.GameObject.TryGetComponent<FireParryWindow>(out var parryWindow))
+                throw new LogicException();
+
+            result.Position = hit.HitPoint;
+            result.ParryWindow = parryWindow;
+            return true;
+        }
+        
+        public static Attack PlayerBladeAttack(
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            HitPredicate? hitDeterminer,
+            HitReaction? hitExecuter)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new Attack(go, job, shape, Collision.BladeAttack, Collision.Enemy, hitDeterminer, hitExecuter);
+        }
+        
+        public static PlayerBladeParryingAttack PlayerBladeParryingAttack(
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            HitPredicate? hitDeterminer,
+            HitReaction? hitExecuter,
+            BladeParryReaction? parryReaction)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new PlayerBladeParryingAttack(go, job, shape, hitDeterminer, hitExecuter, parryReaction);
+        }
+        
+        public static Attack PlayerFireAttack(
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            HitPredicate? hitDeterminer,
+            HitReaction? hitExecuter)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new Attack(go, job, shape, Collision.FireAttack, Collision.Enemy, hitDeterminer, hitExecuter);
+        }
+
+        public static Attack EnemyBladeAttack(
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            HitPredicate? hitDeterminer,
+            HitReaction? hitExecuter)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new Attack(go, job, shape, Collision.BladeAttack, Collision.Player, hitDeterminer, hitExecuter);
+        }
+       
+        public static Attack EnemyFireAttack(
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            HitPredicate? hitDeterminer,
+            HitReaction? hitExecuter)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new Attack(go, job, shape, Collision.FireAttack, Collision.Player, hitDeterminer, hitExecuter);
+        }
+
+        public static BladeParryWindow BladeParryWindow(
+            Entity? owner,
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            BladeParryReaction parriedReaction,
+            BladeParryPredicate? parryDeterminer = null)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new BladeParryWindow(go, owner, job, shape, parriedReaction, parryDeterminer);
+        }
+
+        public static FireParryWindow FireParryWindow(
+            Entity? owner,
+            Shape shape,
+            Vector2 position,
+            float rotation,
+            FireParryReaction parryBumpReaction,
+            FireParryReaction parriedReaction,
+            FireParryPredicate? parryDeterminer = null)
+        {
+            var job = GetCurrentJob();
+            var go = CreateGameObject(job, position, rotation);
+            return new FireParryWindow(go, owner, job, shape, parriedReaction, parryBumpReaction, parryDeterminer);
+        }
     }
     
     public static class Animations

@@ -6,9 +6,9 @@ public abstract class AnimationPlayer(string defaultAnimation) : IDrawable, IUpd
 {
     public readonly string DefaultAnimation = defaultAnimation;
     public Transform2 Transform;
-    public abstract void Update();
-    public abstract void LateUpdate();
-    public abstract void Draw();
+    public virtual void Update() { }
+    public virtual void LateUpdate() { }
+    public virtual void Draw() { }
     public abstract void TryPlay(string animationName);
 }
 
@@ -20,6 +20,7 @@ public class Animator<T> : Component
     {
         Player = player;
         Player.Transform = GameObject.Transform;
+        Player.TryPlay(Player.DefaultAnimation);
     }
 
     public override void Update() => Player.Update();

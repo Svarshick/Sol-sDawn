@@ -2,6 +2,11 @@ namespace SolsDawn.Gameplay.Entities;
 
 public class BossBoard
 {
+    public BossSpecs Specs = new();
+}
+
+public record BossSpecs
+{
     public Color Color;
     public float Width;
     public float Height;

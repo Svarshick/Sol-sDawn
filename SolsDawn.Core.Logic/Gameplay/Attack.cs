@@ -1,79 +1,71 @@
-using MonoGame.Extended;
+using System;
+using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
 using nkast.Aether.Physics2D.Dynamics.Contacts;
 using SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
-public enum AttackType
-{
-    Blade,
-    Fire,
-}
-
-public record struct HitByPlayerContext(
-    PlayerAttack Attack,
-    Collider Target,
+public record struct HitContext(
+    Attack Attack,
+    Entity Target,
     Fixture AttackFixture,
     Fixture TargetFixture,
     Contact Contact);
 
-public delegate Job HitByPlayerReaction(HitByPlayerContext context);
-public delegate bool HitByPlayerPredicate(HitByPlayerContext context);
+public delegate Job HitReaction(HitContext context);
+public delegate bool HitPredicate(HitContext context);
 
-public class PlayerAttack : Component
+public class Attack : Component
 {
-    public Transform2 Transform => GameObject.Transform;
-    
-    public readonly AttackType Type;
     public readonly Job Job;
-    private readonly HitByPlayerReaction? _hitExecuter;
-    private readonly HitByPlayerPredicate? _hitDeterminer;
-    private readonly ParryReaction? _parryExecuter;
-    private readonly Collider _collider;
-    
-    public PlayerAttack(
-        GameObject go,
-        AttackType type,
+    protected readonly Collider _collider;
+    private readonly HitPredicate? _hitDeterminer;
+    private readonly HitReaction? _hitExecuter;
+
+    public Attack(
+        GameObject go, 
         Job job,
-        HitByPlayerReaction? hitExecuter,
-        HitByPlayerPredicate? hitDeterminer,
-        ParryReaction? parryExecuter) 
-        : base(go, true)
+        Shape shape,
+        Category selfLayer,
+        Category collidesLayer,
+        HitPredicate? hitDeterminer,
+        HitReaction? hitExecuter) : base(go, true)
     {
-        Type = type;
         Job = job;
-        _hitExecuter = hitExecuter;
-        _hitDeterminer = hitDeterminer;
-        _parryExecuter = parryExecuter;
-        _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _collider.OnCollision += (sender, other, contact) =>
-        {
-            if (other.Tag is not Collider collider)
-                return false;
-            if (collider.GameObject.TryGetComponent(out ParryWindow parryWindow))
-            {
-                var context = new ParryContext(this, parryWindow, sender, other, contact);
-                Game.IntentionsPool.AddIntention(new ParryIntention(context));
-            }
-            else
-            {
-                var context = new HitByPlayerContext(this, collider, sender, other, contact);
-                Game.IntentionsPool.AddIntention(new HitByPlayerIntention(context));
-            }
-            return false;
-        };
+        _collider = new Collider(go, shape, selfLayer, collidesLayer, BodyType.Dynamic, true);
+        _collider.OnCollision += OnCollision;
         _collider.Enabled = false;
+        _hitDeterminer = hitDeterminer;
+        _hitExecuter = hitExecuter;
     }
-    
-    public void Start()
+
+    public virtual bool OnCollision(Fixture sender, Fixture other, Contact contact)
+    {
+        if (other.Tag is not Collider collider)
+            return true;
+        
+        if (collider.GameObject.TryGetComponent(out Entity entity))
+        {
+            var context = new HitContext(this, entity, sender, other, contact);
+            Game.CollisionsPool.Add(new HitCollision(context));
+        }
+        else
+        {
+            Console.WriteLine("[Warning] attack collides collider without entity");
+        }
+        
+        return true;
+    }
+
+    public void Open()
     {
         if (GameObject.IsDestroyed)
             return;
         _collider.Enabled = true;
     }
 
-    public bool DetermineHit(HitByPlayerContext context)
+    public bool DetermineHit(HitContext context)
     {
         if (_hitDeterminer is null)
             return true;
@@ -83,7 +75,7 @@ public class PlayerAttack : Component
         }
     }
 
-    public Job ExecuteHit(HitByPlayerContext context)
+    public Job ExecuteHit(HitContext context)
     {
         if (_hitExecuter is null)
             return Job.CompletedJob;
@@ -92,92 +84,60 @@ public class PlayerAttack : Component
             return _hitExecuter(context);
         }
     }
-
-    public Job ExecuteParry(ParryContext context)
-    {
-        if (_parryExecuter is null)
-            return Job.CompletedJob;
-        using (JobContext.Use(Job))
-        {
-            return _parryExecuter(context);
-        }
-    }
-
-    public void End() => Destroy();
 }
 
-public record struct HitByEnemyContext(
-    EnemyAttack Attack,
-    Collider Target,
-    Fixture AttackFixture,
-    Fixture TargetFixture,
-    Contact Contact);
-
-public delegate Job HitByEnemyReaction(HitByEnemyContext context);
-
-public delegate bool HitByEnemyPredicate(HitByEnemyContext context);
-
-public class EnemyAttack : Component
+public class PlayerBladeParryingAttack : Attack
 {
-    public Transform2 Transform => GameObject.Transform;
-
-    public readonly AttackType Type;
-    public readonly Job Job;
-    private readonly HitByEnemyReaction? _hitExecuter;
-    private readonly HitByEnemyPredicate? _hitDeterminer;
-    private readonly Collider _collider;
-
-
-    public EnemyAttack(
-        GameObject go,
-        AttackType type,
-        Job job,
-        HitByEnemyReaction? hitExecuter,
-        HitByEnemyPredicate? hitDeterminer) 
-        : base(go, true)
-    {
-        Type = type;
-        Job = job;
-        _hitExecuter = hitExecuter;
-        _hitDeterminer = hitDeterminer;
-        _collider = GameObject.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
-        _collider.OnCollision += (sender, other, contact) =>
-        {
-            if (other.Tag is not Collider collider)
-                return false;
-            var context = new HitByEnemyContext(this, collider, sender, other, contact);
-            Game.IntentionsPool.AddIntention(new HitByEnemyIntention(context));
-            return false;
-        };
-        _collider.Enabled = false;
-    }
+    private readonly BladeParryReaction? _parryReaction;
     
-    public bool DetermineHit(HitByEnemyContext context)
+    public PlayerBladeParryingAttack(
+        GameObject go, 
+        Job job,
+        Shape shape,
+        HitPredicate? hitDeterminer,
+        HitReaction? hitExecuter,
+        BladeParryReaction? parryReaction)
+        : base(go, job, shape, Collision.BladeAttack, Collision.Enemy | Collision.BladeParry, hitDeterminer, hitExecuter)
     {
-        if (_hitDeterminer is null)
-            return true;
-        using (JobContext.Use(Job))
-        {
-            return _hitDeterminer(context);
-        }
+        _parryReaction = parryReaction;
     }
 
-    public Job ExecuteHit(HitByEnemyContext context)
+    public override bool OnCollision(Fixture sender, Fixture other, Contact contact)
     {
-        if (_hitExecuter is null)
+        if (other.Tag is not Collider collider)
+            return true;
+        
+        var resolved = false;
+
+        if (collider.GameObject.TryGetComponent(out BladeParryWindow parryWindow))
+        {
+            var context = new BladeParryContext(this, parryWindow, sender, other, contact);
+            Game.CollisionsPool.Add(new BladeParryCollision(context));
+            resolved = true;
+        }
+        
+        if (collider.GameObject.TryGetComponent(out Entity entity))
+        {
+            var context = new HitContext(this, entity, sender, other, contact);
+            Game.CollisionsPool.Add(new HitCollision(context));
+            resolved = true;
+        }
+        
+        if (!resolved)
+        {
+            Console.WriteLine("[Warning] attack collides collider without entity");
+        }
+
+        return true;
+    }
+
+    public Job ExecuteParry(BladeParryContext context)
+    {
+        if (_parryReaction is null)
             return Job.CompletedJob;
         using (JobContext.Use(Job))
         {
-            return _hitExecuter(context);
+            return _parryReaction(context);
         }
     }
-    
-    public void Start()
-    {
-        if (GameObject.IsDestroyed)
-            return;
-        _collider.Enabled = true;
-    }
-    
-    public void End() => Destroy();
 }

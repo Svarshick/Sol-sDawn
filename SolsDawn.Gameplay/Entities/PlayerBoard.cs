@@ -5,14 +5,14 @@ public record PlayerBoard
     public float LastBladeUsage;
     public float LastTeleportUsage;
     public float LastFireUsage;
-    public bool BladeCharged => TotalSeconds - LastBladeUsage >= Config.BladeRechargeDuration;
-    public bool TeleportCharged => TotalSeconds - LastTeleportUsage >= Config.TeleportRechargeDuration;
-    public bool FireCharged => TotalSeconds - LastFireUsage >= Config.FireRechargeDuration;
+    public bool BladeCharged => TotalSeconds - LastBladeUsage >= Specs.BladeRechargeDuration;
+    public bool TeleportCharged => TotalSeconds - LastTeleportUsage >= Specs.TeleportRechargeDuration;
+    public bool FireCharged => TotalSeconds - LastFireUsage >= Specs.FireRechargeDuration;
 
-    public PlayerConfig Config = new();
+    public PlayerSpecs Specs = new();
 }
 
-public record PlayerConfig
+public record PlayerSpecs
 {
     public float TeleportRechargeDuration = 1;
     public float BladeRechargeDuration = 1;
@@ -39,15 +39,14 @@ public record PlayerConfig
     public Color BladeParryTraceStartColor;
     public Color BladeParryTraceEndColor;
 
-    public float FireDistance;
-    public float FireWidth;
-    public float FireTraceDuration;
-    public float FireTraceWidth;
+    public float FireDistance = 10;
+    public float FireWidth = 1;
+    public float FireTraceDuration = 1;
+    public float FireTraceWidth = 1;
     public Color FireTraceColor = Color.Fuchsia;
 
-    public float FireParryTraceDuration;
-    public Color FireParryTraceStartColor;
-    public Color FireParryTraceEndColor;
+    public float FireParryTraceDuration = 1;
+    public Color FireParryTraceColor = Color.White;
 
     public float TeleportMinDistance = 4;
     public float TeleportMaxDistance = 9;

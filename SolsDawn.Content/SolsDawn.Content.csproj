@@ -19,4 +19,7 @@
     <PackageReference Include="MonoGame.Tool.FFmpeg" Version="7.0.0.*" />
     <PackageReference Include="MonoGame.Tool.FFprobe" Version="7.0.0.*" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Assets\Board.fx" />
+  </ItemGroup>
 </Project>

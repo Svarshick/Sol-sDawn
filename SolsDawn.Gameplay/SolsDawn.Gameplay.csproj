@@ -21,13 +21,10 @@
     <Using Include="SolsDawn.Core.Logic.Gameplay.GameplayAPI" Static="true" />
     <Using Include="SolsDawn.Core.Logic.Game" Alias="Game" />
     <Using Include="SolsDawn.Core.Logic.Helper" Alias="Helper" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.EnterStateIntention" Alias="EnterStateIntention" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.ParryIntention" Alias="ParryIntention" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.HitByPlayerIntention" Alias="HitByPlayerIntention" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.HitByEnemyIntention" Alias="HitByEnemyIntention" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Entity" Alias="Entity" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.State" Alias="State" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.Intention" Alias="Intention" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.FireParryContext" Alias="FireParryContext" />
+    
     <Using Include="SolsDawn.Core.Logic.Gameplay.Input.TeleportState" Alias="InputTeleportState" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job"/>
     <Using Include="SolsDawn.Core.Logic.Animations" />

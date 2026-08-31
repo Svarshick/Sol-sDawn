@@ -1,23 +1,22 @@
 namespace SolsDawn.Gameplay.Entities;
 
-public class DefaultAnimation() : AnimationPlayer(Idle)
+public class BossAnimations(BossBoard board) : AnimationPlayer(Idle)
 {
     public const string Idle = "Idle";
     public const string Hit = "Hit";
-
+    
     private Animation _baseAnimation;
     private Animation _overlayAnimation;
-
+    
     public override void TryPlay(string animationName)
     {
-        var board = G.Player.Board;
         switch (animationName)
         {
             case Idle:
                 _baseAnimation = new RectangleIdleAnimation(
-                    board.Config.Width,
-                    board.Config.Height,
-                    board.Config.Color);
+                    board.Specs.Width,
+                    board.Specs.Height,
+                    board.Specs.Color);
                 _baseAnimation.Transform.Parent = Transform;
                 break;
             case Hit:/*
@@ -32,7 +31,7 @@ public class DefaultAnimation() : AnimationPlayer(Idle)
                 break;
         }
     }
-
+    
     public override void Update()
     { 
         _baseAnimation?.Update();

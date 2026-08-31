@@ -51,6 +51,8 @@ public readonly struct EventAwaiter(Job awaiterJob, Event @event) : INotifyCompl
         var job = awaiterJob;
         @event.OnEnd(() =>
         {
+            if (job.IsEnded)
+                return;
             using (JobContext.Use(job))
             {
                 if (!AwaiterUtils.ValidContext(job))

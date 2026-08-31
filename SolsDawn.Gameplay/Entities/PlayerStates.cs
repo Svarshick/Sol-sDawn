@@ -6,7 +6,7 @@ public class IdleState(Player player) : State
 {
     public override void Enter(State from)
     {
-        player.Animator.Player.TryPlay(DefaultAnimation.Idle);
+        player.Animator.Player.TryPlay(PlayerAnimations.Idle);
     }
 }
 
@@ -25,7 +25,7 @@ public class MoveState(Player player) : State
         {
             Direction = Input.Move;
             player.GameObject.Transform.Position +=
-                Direction * player.Board.Config.Velocity * ElapsedSeconds;
+                Direction * player.Board.Specs.Velocity * ElapsedSeconds;
             await NextFrame();
         }
     }
@@ -43,8 +43,8 @@ public class TeleportState(Player player) : State
         ScreenPosition = Input.Teleport.ScreenPosition;
         var mousePosition = Game.Camera.ScreenToWorld(ScreenPosition);
         var endPosition = TeleportPosition(mousePosition, 0);
-        _teleportLine = new(player.GameObject.Transform.Position, endPosition, player.Board.Config.TeleportWidth,
-            player.Board.Config.TeleportStartColor);
+        _teleportLine = new(player.GameObject.Transform.Position, endPosition, player.Board.Specs.TeleportWidth,
+            player.Board.Specs.TeleportStartColor);
         Game.AnimationsPool.Add(_teleportLine);
     }
 
@@ -58,7 +58,7 @@ public class TeleportState(Player player) : State
             var lerp = TeleportLerp(ElapsedTime);
             _teleportLine.Transform.Position = player.GameObject.Transform.Position;
             _teleportLine.End = TeleportPosition(mousePosition, lerp);
-            _teleportLine.Color = Color.Lerp(player.Board.Config.TeleportStartColor, player.Board.Config.TeleportEndColor, lerp);
+            _teleportLine.Color = Color.Lerp(player.Board.Specs.TeleportStartColor, player.Board.Specs.TeleportEndColor, lerp);
             await NextFrame();
         }
     }
@@ -74,9 +74,9 @@ public class TeleportState(Player player) : State
         Game.AnimationsPool.Add(new LineTraceAnimation(
             player.GameObject.Transform.Position,
             endPosition,
-            player.Board.Config.TeleportTraceWidth,
-            player.Board.Config.TeleportTraceDuration,
-            player.Board.Config.TeleportTraceColor));
+            player.Board.Specs.TeleportTraceWidth,
+            player.Board.Specs.TeleportTraceDuration,
+            player.Board.Specs.TeleportTraceColor));
 
         player.GameObject.Transform.Position = endPosition;
         player.Board.LastTeleportUsage = TotalSeconds;
@@ -84,15 +84,15 @@ public class TeleportState(Player player) : State
 
     private float TeleportLerp(double elapsedTime)
     {
-        return MathHelper.Clamp((float)(elapsedTime / player.Board.Config.TeleportHoldDuration), 0f, 1f);
+        return MathHelper.Clamp((float)(elapsedTime / player.Board.Specs.TeleportHoldDuration), 0f, 1f);
     }
 
     private Vector2 TeleportPosition(Vector2 pointPosition, float lerp)
     {
         var teleportDirection = pointPosition - player.GameObject.Transform.Position;
         teleportDirection.Normalize();
-        var delta = lerp * (player.Board.Config.TeleportMaxDistance - player.Board.Config.TeleportMinDistance);
-        return player.GameObject.Transform.Position + teleportDirection * (player.Board.Config.TeleportMinDistance + delta);
+        var delta = lerp * (player.Board.Specs.TeleportMaxDistance - player.Board.Specs.TeleportMinDistance);
+        return player.GameObject.Transform.Position + teleportDirection * (player.Board.Specs.TeleportMinDistance + delta);
     }
 }
 
@@ -108,50 +108,93 @@ public class BladeState(
         var vertices = Helper.ArrowPentagonVertices(
             Vector2.Zero,
             new Vector2(1, 0),
-            player.Board.Config.BladeDashDistance,
-            player.Board.Config.BladeDashWidth,
-            player.Board.Config.BladeAttackDistance,
-            player.Board.Config.BladeAttackWidth);
+            player.Board.Specs.BladeDashDistance,
+            player.Board.Specs.BladeDashWidth,
+            player.Board.Specs.BladeAttackDistance,
+            player.Board.Specs.BladeAttackWidth);
 
         var shape = Shapes.PolygonShape(vertices);
-        var parry = false;
-        var atk = PlayerAttack(
+        var atk = Fight.PlayerBladeParryingAttack(
             shape,
             player.GameObject.Transform.Position,
             direction.Angle(),
-            async _ => Console.WriteLine("hit"),
-            _ => true,
+            null,
             async _ =>
             {
-                parry = true;
-                Console.WriteLine("parry");
-                var intention = new EnterStateIntention(player.GameObject, new SlideState(player, -direction, 20, 0.05f));
-                IntentionsPool.AddIntention(intention);
+                Console.WriteLine("player attack"); 
+            },
+            async _ =>
+            {
+                Console.WriteLine("player parry");
+                player.Enter(new IdleState(player));
             });
 
-        atk.Start();
-
+        atk.Open();
         await NextFrame();
-        atk.End();
-        if (!parry)
+        Game.AnimationsPool.Add(
+            new ArrowPentagonTraceAnimation(
+                player.Board.Specs.BladeTraceDuration,
+                player.GameObject.Transform.Position,
+                direction,
+                player.Board.Specs.BladeDashDistance,
+                player.Board.Specs.BladeDashWidth,
+                player.Board.Specs.BladeAttackDistance,
+                player.Board.Specs.BladeAttackWidth,
+                player.Board.Specs.BladeTraceColor
+            ));
+        player.GameObject.Transform.Position += direction * player.Board.Specs.BladeDashDistance;
+        atk.Destroy();
+        player.Enter(new IdleState(player));
+    }
+}
+
+public class FireState(
+    Player player,
+    Vector2 direction)
+    : State
+{
+    public override async Job Update()
+    {
+        var fromPosition = player.Transform.Position;
+        var toPosition = fromPosition + direction * player.Board.Specs.FireDistance;
+        var width = player.Board.Specs.FireWidth;
+        var fireDuration = 0.5f;
+        var fireColor = player.Board.Specs.FireTraceColor;
+        var parryTraceDuration = player.Board.Specs.FireParryTraceDuration;
+        var parryTraceColor = player.Board.Specs.FireParryTraceColor;
+
+        if (Fight.FireParryCast(
+                fromPosition,
+                toPosition,
+                width,
+                out var result))
         {
-            Game.AnimationsPool.Add(
-                new ArrowPentagonTraceAnimation(
-                    player.Board.Config.BladeTraceDuration,
-                    player.GameObject.Transform.Position,
-                    direction,
-                    player.Board.Config.BladeDashDistance,
-                    player.Board.Config.BladeDashWidth,
-                    player.Board.Config.BladeAttackDistance,
-                    player.Board.Config.BladeAttackWidth,
-                    player.Board.Config.BladeTraceColor
-                ));
-
-            player.GameObject.Transform.Position += direction * player.Board.Config.BladeDashDistance;
+            var parryContext = new FireParryContext((fromPosition + result.Position) / 2);
+            result.ParryWindow.Execute(
+                parryContext,
+                async context =>
+                {
+                    Game.AnimationsPool.Add(new LineTraceAnimation(
+                        fromPosition,
+                        context.BumpPoint,
+                        width,
+                        parryTraceDuration,
+                        parryTraceColor));
+                });
         }
-
-        var intention = new EnterStateIntention(player.GameObject, new IdleState(player));
-        IntentionsPool.AddIntention(intention);
+        else
+        {
+            Animations.LineTrace(
+                fromPosition,
+                toPosition,
+                width,
+                fireDuration,
+                fireColor);
+            
+            await Timer(fireDuration);
+        }
+        
+        player.Enter(new IdleState(player));
     }
 }
 
@@ -171,41 +214,6 @@ public class SlideState(
             await NextFrame();
         }
 
-        var intention = new EnterStateIntention(player.GameObject, new IdleState(player));
-        IntentionsPool.AddIntention(intention);
+        player.Enter(new IdleState(player));
     }
 }
-
-/*
-public class FireExecuteState(
-    Player player,
-    Vector2 lookPosition,
-    IReadOnlyList<GameObject> targets)
-    : State
-{
-    public readonly IReadOnlyList<GameObject> Targets = targets;
-    public readonly Vector2 LookPosition = lookPosition;
-
-    public override void Enter(State from)
-    {
-        var direction = LookPosition - player.GameObject.Transform.Position;
-        direction.Normalize();
-        var fireEnd = player.GameObject.Transform.Position + direction * player.Stats.FireDistance;
-
-        Game.AnimationsPool.Add(new LineTrace(
-            new Transform2 { Position = player.GameObject.Transform.Position },
-            fireEnd,
-            player.Stats.FireTraceWidth,
-            player.Stats.FireTraceDuration,
-            player.Stats.FireTraceStartColor,
-            player.Stats.FireTraceEndColor));
-
-        if (Targets.Count > 0)
-        {
-            AffectsPool.Add(new DamageAffect(player.GameObject, Targets, 1));
-        }
-
-        var pending = new IdleState(player);
-        IntentionsPool.AddIntention(Intend(player.GameObject, pending));
-    }
-}*/

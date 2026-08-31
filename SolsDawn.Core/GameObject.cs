@@ -134,7 +134,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IComparable<GameObject>
         return null;
     }
 
-    public bool TryGetComponent<T>(out T? component) where T : Component
+    public bool TryGetComponent<T>(out T component) where T : Component
     {
         if (IsDestroyed)
             throw new Exception("Access to destroyed GameObject");
