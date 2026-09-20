@@ -1,6 +1,17 @@
 using System;
 using System.Collections.Generic;
 
+//need to add Event<T>. It works in different way (try to look at gemini chat)
+//Event<T> is not Event inheritor (because we can't use Event<T> as Event, e.g. Fire without argument T)
+//Event<T> can't be "just chained" by Event<D>:
+//Event -> Event OK, no args
+//Event -> Event<T> NOT OK, args required. We can chain Event<T> by providing Func<T> that allows evt.Fire(func())
+//Event -> Event OK, no args
+//Event<T> -> Event<T> OK, args the same
+//Event<T> -> Event<D> NOT OK, args required. We can chain Event<D> by providing Func<T, D> that allows evt.Fire(func(t))
+//similar with EventStream<T>
+//race just contains object[] and winner is private field (API already allows to control winner by OnWinner)
+
 namespace SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 public enum EventState

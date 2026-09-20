@@ -1,16 +1,12 @@
-//DEVELOPING
-
-/*using System;
+using System;
 using System.Collections.Generic;
 
 namespace SolsDawn.Core.Logic.Gameplay.Pipeline;
 
 public enum EventStreamState
-{
+{ 
     Idle,
-    FiringCallbacks,
-    FiringEvents,
-    FiringStreams,
+    Firing,
     Canceled
 }
 
@@ -19,7 +15,7 @@ public sealed class EventStream
     public readonly Job Owner;
     public bool IsActive => _state != EventStreamState.Canceled;
     
-    private int _delayedSignals = 0;
+    private int _delayedFire = 0;
     private EventStreamState _state;
         
     private readonly List<object> _fireCallbacks = new();
@@ -44,7 +40,7 @@ public sealed class EventStream
             return;
         }
 
-        if (_state == EventStreamState.FiringEvents)
+        if (_state == EventStreamState.Firing)
         {
             _buff.Add(nextEvent);
         }
@@ -62,7 +58,7 @@ public sealed class EventStream
             return;
         }
 
-        if (_state == EventStreamState.FiringStreams)
+        if (_state == EventStreamState.Firing)
         {
             _buff.Add(stream);
         }
@@ -75,13 +71,16 @@ public sealed class EventStream
     #endregion
 
     #region On{Fire,Cancel,Next}
+    //Event returns Job for JobMethod. But EventStream Fires several times and creates several JobMethods.
+    //I decided it to return void instead of Job
+    //If Job tracking required, I will add "JobSource" class, that contains field for Job and updated every Fire
     
     public void OnFire(Action action)
     {
         if (!IsActive)
             return;
 
-        if (_state == EventStreamState.FiringCallbacks)
+        if (_state == EventStreamState.Firing)
         {
             _buff.Add(action);
         }
@@ -91,25 +90,19 @@ public sealed class EventStream
         }
     }
 
-    public Job OnFire(JobMethod method)
+    public void OnFire(JobMethod method)
     {
-        var job = new Job();
         if (!IsActive)
-        {
-            job.Kill();
-            return job;
-        }
+            return;
 
-        if (_state == EventStreamState.FiringCallbacks)
+        if (_state == EventStreamState.Firing)
         {
-            _buff.Add((job, method));
+            _buff.Add(method);
         }
         else
         {
-            _fireCallbacks.Add((job, method));
+            _fireCallbacks.Add(method);
         }
-        
-        return job;
     }
 
     public void OnCancel(Action action)
@@ -124,23 +117,19 @@ public sealed class EventStream
         }
     }
 
-    public Job OnCancel(JobMethod method)
+    public void OnCancel(JobMethod method)
     {
-        var job = new Job();
         if (!IsActive)
         {
             using (JobContext.Use(Owner))
             {
-                JobAsyncMethodBuilder.PreallocatedJob = job;
                 method();
             }
         }
         else
         {
-            _cancelCallbacks.Add((job, method));
+            _cancelCallbacks.Add(method);
         }
-
-        return job;
     }
 
     public void OnNext(Action action)
@@ -151,7 +140,7 @@ public sealed class EventStream
             return;
         }
 
-        if (_state == EventStreamState.FiringCallbacks)
+        if (_state == EventStreamState.Firing)
         {
             _buff.Add(action);
             _cancelCallbacks.Add(action);
@@ -163,93 +152,110 @@ public sealed class EventStream
         }
     }
         
-    public Job OnNext(JobMethod method)
+    public void OnNext(JobMethod method)
     {
-        var job = new Job();
         if (!IsActive)
         {
             using (JobContext.Use(Owner))
             {
-                JobAsyncMethodBuilder.PreallocatedJob = job;
                 method();
             }
-            return job;
+
+            return;
         }
 
-        if (_state == EventStreamState.FiringCallbacks)
+        if (_state == EventStreamState.Firing)
         {
-            _buff.Add((job, method));
-            _cancelCallbacks.Add((job, method));
+            _buff.Add(method);
+            _cancelCallbacks.Add(method);
         }
         else
         {
-            _fireCallbacks.Add((job, method));
-            _cancelCallbacks.Add((job, method));
+            _fireCallbacks.Add(method);
+            _cancelCallbacks.Add(method);
         }
-        
-        return job;
     }
 
     #endregion
 
     #region Fire&Cancel
-    
+
     public void Fire()
     {
         if (!IsActive)
             return;
 
-        using (JobContext.Use(Owner))
+        _delayedFire++;
+        if (_delayedFire > 1)
+            return;
+
+        _state = EventStreamState.Firing;
+        while (_delayedFire > 0)
         {
-            _state = EventStreamState.FiringCallbacks;
-            for (int i = 0; i < _fireCallbacks.Count; i++)
+            using (JobContext.Use(Owner))
             {
-                InvokeCallback(_fireCallbacks[i]);
-                if (!IsActive)
-                    return;
-            }
-
-            _state = EventStreamState.FiringEvents;
-            for (int i = 0; i < _nextEvents.Count; i++)
-            {
-                _nextEvents[i].Fire();
-                if (!IsActive)
-                    return;
-            }
-
-            _state = EventStreamState.FiringStreams;
-            for (int i = 0; i < _nextStreams.Count; i++) //add clearing form canceled streams (like job and timers/subjobs)
-            {
-                _nextStreams[i].Fire();
-                if (!IsActive)
-                    return;
-            }
-
-            _state = EventStreamState.Idle;
-            _nextEvents.Clear();
-            foreach (var e in _buff)
-            {
-                switch (e)
+                for (int i = 0; i < _fireCallbacks.Count; i++)
                 {
-                    case (Job job, JobMethod method):
-                        _fireCallbacks.Add((job, method));
-                        break;
-                    case Action action:
-                        _fireCallbacks.Add(action);
-                        break;
-                    case Event @event:
-                        _nextEvents.Add(@event);
-                        break;
-                    case EventStream stream:
-                        _nextStreams.Add(stream);
-                        break;
-                    default:
-                        throw new NotImplementedException($"Can't work with {e.GetType()} type");
+                    InvokeCallback(_fireCallbacks[i]);
+                    if (!IsActive)
+                        return;
                 }
+
+                for (int i = 0; i < _nextEvents.Count; i++)
+                {
+                    _nextEvents[i].Fire();
+                    if (!IsActive)
+                        return;
+                }
+
+                int streamOffset = 0;
+                for (int i = 0; i + streamOffset < _nextStreams.Count;)
+                {
+                    var stream = _nextStreams[i + streamOffset];
+                    if (!stream.IsActive)
+                    {
+                        streamOffset++;
+                    }
+                    else
+                    {
+                        stream.Fire();
+                        if (!IsActive)
+                            return;
+                        _nextStreams[i] = stream;
+                        i++;
+                    }
+                }
+                _nextStreams.RemoveRange(_nextStreams.Count - streamOffset, streamOffset);
+
+                _nextEvents.Clear();
+                foreach (var e in _buff)
+                {
+                    switch (e)
+                    {
+                        case JobMethod method:
+                            _fireCallbacks.Add(method);
+                            break;
+                        case Action action:
+                            _fireCallbacks.Add(action);
+                            break;
+                        case Event @event:
+                            _nextEvents.Add(@event);
+                            break;
+                        case EventStream stream:
+                            _nextStreams.Add(stream);
+                            break;
+                        default:
+                            throw new NotImplementedException($"Can't work with {e.GetType()} type");
+                    }
+                }
+
+                _buff.Clear();
             }
 
-            _buff.Clear();
+            _delayedFire--;
         }
+
+        _state = EventStreamState.Idle;
     }
 
     public void Cancel()
@@ -262,6 +268,19 @@ public sealed class EventStream
         {
             foreach (var callback in _cancelCallbacks)
                 InvokeCallback(callback);
+
+            foreach (var e in _buff)
+            {
+                switch (e)
+                {
+                    case Event @event:
+                        _nextEvents.Add(@event);
+                        break;
+                    case EventStream stream:
+                        _nextStreams.Add(stream);
+                        break;
+                }
+            }
 
             foreach (var @event in _nextEvents)
                 @event.Cancel();
@@ -281,8 +300,7 @@ public sealed class EventStream
     {
         switch (callback)
         {
-            case (Job job, JobMethod method):
-                JobAsyncMethodBuilder.PreallocatedJob = job;
+            case JobMethod method:
                 method();
                 break;
             case Action action:
@@ -294,4 +312,4 @@ public sealed class EventStream
     }
     
     #endregion
-}*/
+}

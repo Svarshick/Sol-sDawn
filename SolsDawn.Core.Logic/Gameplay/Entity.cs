@@ -21,6 +21,7 @@ public abstract class State
 public class Entity : Component
 {
     public Transform2 Transform => GameObject.Transform;
+    public readonly EventStream Damaged;
 
     public readonly Job RootJob;
     public State? State { get; private set; }
@@ -56,13 +57,16 @@ public class Entity : Component
     public Entity(GameObject go) : base(go, true)
     {
         RootJob = JobContext.CurrentJob ?? throw new LogicException($"Entity created out of Job");
-        //HP = go.GetComponent<HP>() ?? throw new ComponentNotFoundException<HP>();
+        Damaged = new(RootJob);
+        var collider = go.GetComponent<Collider>() ?? throw new ComponentNotFoundException<Collider>();
     }
-
+    
     public void Kill() => Destroy();
 }
 
-public class Entity<TBoard, TAnimation> : Entity where TAnimation : AnimationPlayer
+public class Entity<TBoard, TAnimation> : Entity 
+    where TBoard : class
+    where TAnimation : AnimationPlayer
 { 
     public readonly Animator<TAnimation> Animator;
     public readonly TBoard Board;
@@ -72,10 +76,4 @@ public class Entity<TBoard, TAnimation> : Entity where TAnimation : AnimationPla
         Board = board;
         Animator = new Animator<TAnimation>(go, animationPlayer);
     }
-}
-
-public interface IHittable
-{
-    public uint MaxHP { get; set; }
-    public void ChangeHP(int delta);
 }

@@ -1,0 +1,124 @@
+input => switch current state => maybe enter new state
+
+==============================
+0 State
+==============================
+enter:
+	[parameters]
+	what to do
+
+task:
+	what to do
+
+exit:
+	what to do
+
+
+==============================
+1 Movement
+==============================
+Movement is controlled by state. Simple movement by running, jumping, e.t.c. states
+
+
+==============================
+1.1 Running
+==============================
+task:
+	loop:
+		//apply force or set velocity
+		//lets set velocity
+		P.LinearVelocity = Input.MoveDirection * speed;
+
+		//animation control
+
+
+==============================
+1.2 Jump
+==============================
+enter:
+	[direction: left/right]
+
+task:
+	//gives big impulse (in direction). P could easy stop it or make longer
+
+	//here is example of variables
+	var max = direction * maxSpeed
+	var current = direction * startSpeed
+
+	P.ApplyForce(Vector2.Up * verticalForce)
+	loop:
+		//force could be controlled while jump ups. Enters fall state after reaching jump peak
+		//gamedesign nuances: does it starts with max speed or accelerates? Does start sets force or velocity? E.t.c
+		//every loop could change velocity directly
+		P.Body.LinearVelocity = ...
+		//or apply forces
+		P.Body.ApplyForce(...)
+			
+		//animation control
+
+
+==============================
+1.3 Falling
+==============================
+task:
+	//player body could already have impuls. Impuls ends with air resistance. 
+	//Player could move left-right, but with limit
+	loop:
+		//apply force or add velocity
+		//some algorithm
+
+		//animation control
+
+
+==============================
+2 Attacks
+==============================
+Each attack has it's own state
+
+
+==============================
+2.1 Blade
+==============================
+enter:
+	[direction]
+
+task:
+	create collider as child go
+		[shape]
+		[job when hit]
+		[job when parry]
+
+	animation controll
+	collider/player position
+
+
+==============================
+2.2 Leg down
+==============================
+State
+
+task:
+	create collider as child go
+		[shape]
+		[job when hit]
+		[job when parry]
+
+	animation controll
+	move player down
+
+
+==============================
+2.3 Fire attack
+==============================
+State
+
+enter:
+	[direction]
+
+task:
+	q collision with enemhy
+		[shape]
+	if collided:
+		parry process
+	else:
+		atk process
