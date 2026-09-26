@@ -1,6 +1,6 @@
 namespace SolsDawn.Gameplay.Entities;
 
-public class OrbAnimations(OrbBoard board) : AnimationPlayer
+public class OrbAnimations(OrbBoard board) : AnimationSet
 {
     private Animation _animation;
 

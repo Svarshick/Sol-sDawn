@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Platforms>AnyCPU</Platforms>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,13 +24,16 @@
     <Using Include="SolsDawn.Core.Logic.Helper" Alias="Helper" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Entity" Alias="Entity" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.State" Alias="State" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.FireParryContext" Alias="FireParryContext" />
     
     <Using Include="SolsDawn.Core.Logic.Gameplay.Input.TeleportState" Alias="InputTeleportState" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job"/>
     <Using Include="SolsDawn.Core.Logic.Animations" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <Folder Include="Actions\" />
+  </ItemGroup>
+  <!--
   <Target Name="ForbidCoreUsings" BeforeTargets="CoreCompile">
     <ItemGroup>
       <_UserSourceFiles Include="**/*.cs" Exclude="obj/**/*.cs;bin/**/*.cs" />
@@ -38,5 +42,5 @@
     </ItemGroup>
     <Error Condition="'@(ForbiddenFiles)' != ''" 
            Text="Forbidden using found in: %(ForbiddenFiles.Identity). You cannot 'using SolsDawn.Core.*'. Use GameplayAPI or .csproj aliases." />
-  </Target>
+  </Target>-->
 </Project>

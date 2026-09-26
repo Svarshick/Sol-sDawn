@@ -9,20 +9,22 @@ namespace SolsDawn.Core.Logic.Gameplay;
 public class Input : IUpdatable
 {
     public Vector2 Move { get; private set; } 
+    public bool Jump { get; private set; }
+    
     public enum TeleportState { None, Started, Updated, Released }
     public (Vector2 ScreenPosition, double ElapsedTime, TeleportState State) Teleport { get; private set; }
     public (Vector2 ScreenPosition, bool IsPressed) Fire { get; private set; }
     public (Vector2 ScreenPosition, bool IsPressed) Blade { get; private set; }
     
-    public event Action<Vector2> OnMove; // (Direction)
+    public event Action<Vector2>? OnMove; // (Direction)
+    public event Action? OnJump; // void
     
-    public event Action<Vector2> OnTeleportStarted; // (ScreenPoint)
-    public event Action<Vector2, double> OnTeleportUpdated; // (ScreenPoint, ElapsedTime)
-    public event Action<Vector2, double> OnTeleportReleased; // (ScreenPoint, ElapsedTime)
-    private double _teleportStartTime;
+    public event Action<Vector2>? OnTeleportStarted; // (ScreenPoint)
+    public event Action<Vector2, double>? OnTeleportUpdated; // (ScreenPoint, ElapsedTime)
+    public event Action<Vector2, double>? OnTeleportReleased; // (ScreenPoint, ElapsedTime)
     
-    public event Action<Vector2> OnFire; // (ScreenPosition)
-    public event Action<Vector2> OnBlade; // (ScreenPosition)
+    public event Action<Vector2>? OnFire; // (ScreenPosition)
+    public event Action<Vector2>? OnBlade; // (ScreenPosition)
 
     public void Update()
     {
@@ -30,30 +32,18 @@ public class Input : IUpdatable
         MouseExtended.Update();
         var keyboardState = KeyboardExtended.GetState();
         var mouseState = MouseExtended.GetState();
-        UpdateMove(mouseState, keyboardState);
+        UpdateMovement(mouseState, keyboardState);
         UpdateTeleport(mouseState, keyboardState);
         UpdateAttacks(mouseState, keyboardState);
     }
     
     public void LateUpdate() { }
 
-    private void UpdateMove(
+    private void UpdateMovement(
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState)
     {
         var moveDirection = Vector2.Zero;
-        if (keyboardState.IsKeyDown(Keys.W) ||
-            keyboardState.IsKeyDown(Keys.Up))
-        {
-            moveDirection.Y += 1;
-        }
-
-        if (keyboardState.IsKeyDown(Keys.S) ||
-            keyboardState.IsKeyDown(Keys.Down))
-        {
-            moveDirection.Y -= 1;
-        }
-
         if (keyboardState.IsKeyDown(Keys.D) ||
             keyboardState.IsKeyDown(Keys.Right))
         {
@@ -66,24 +56,32 @@ public class Input : IUpdatable
             moveDirection.X -= 1;
         }
 
-        if (moveDirection != Vector2.Zero)
-            moveDirection.Normalize();
         Move = moveDirection;
         OnMove?.Invoke(moveDirection);
+        
+        if (keyboardState.WasKeyPressed(Keys.Space))
+        {
+            Jump = true;
+            OnJump?.Invoke();
+        }
+        else
+        {
+            Jump = false;
+        }
     }
 
     private void UpdateTeleport(
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState)
     {
-        var spaceDown = keyboardState.IsKeyDown(Keys.Space); 
+        var tpDown = keyboardState.IsKeyDown(Keys.T); 
         var mousePosition = mouseState.Position.ToVector2();
         var elapsedTime = Teleport.ElapsedTime + Time.ElapsedGameTime.TotalSeconds;
         
         switch (Teleport.State)
         {
             case TeleportState.None:
-                if (spaceDown)
+                if (tpDown)
                 {
                     Teleport = (mousePosition, 0, TeleportState.Started);
                     OnTeleportStarted?.Invoke(mousePosition);
@@ -92,7 +90,7 @@ public class Input : IUpdatable
             
             case TeleportState.Started:
             case TeleportState.Updated:
-                if (spaceDown)
+                if (tpDown)
                 {
                     Teleport = (mousePosition, elapsedTime, TeleportState.Updated);
                     OnTeleportUpdated?.Invoke(mousePosition, elapsedTime);

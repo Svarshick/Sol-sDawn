@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision;
+using SolsDawn.Gameplay.Entities;
 
 namespace SolsDawn.Gameplay;
 
@@ -14,41 +15,6 @@ public sealed class HUD : Component
 
     public override void Draw()
     {
-        var indicatorRadius = 0.5f;
-        var indicatorPadding = 0.3f;
-        var indicatorY = Camera.TopLeft.Y - indicatorRadius - indicatorPadding;
-        var indicatorX = Camera.TopLeft.X + indicatorRadius + indicatorPadding;
-        
-        if (_player.Board.TeleportCharged)
-        {
-            Painter.FillCircle(
-                1,
-                new Vector2(indicatorX, indicatorY),
-                indicatorRadius,
-                _player.Board.Specs.TeleportEndColor,
-                indicatorRadius);
-        }
-
-        indicatorX += (indicatorRadius * 2 + indicatorPadding);
-        if (_player.Board.BladeCharged)
-        {
-            Painter.FillCircle(
-                1,
-                new Vector2(indicatorX, indicatorY),
-                indicatorRadius,
-                _player.Board.Specs.BladeTraceColor);
-        }
-        
-        indicatorX += (indicatorRadius * 2 + indicatorPadding);
-        if (_player.Board.FireCharged)
-        {
-            Painter.FillCircle(
-                1,
-                new Vector2(indicatorX, indicatorY),
-                indicatorRadius,
-                _player.Board.Specs.FireTraceColor);
-        }
-
         if (Camera.Contains(Vector2.Zero) == ContainmentType.Disjoint)
         {
             var bounds = Camera.BoundingBox;

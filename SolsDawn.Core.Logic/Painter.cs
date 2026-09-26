@@ -1,5 +1,6 @@
 using Apos.Shapes;
 using nkast.Aether.Physics2D.Collision.Shapes;
+using SolsDawn.Core.Logic.Gameplay;
 
 namespace SolsDawn.Core.Logic;
 
@@ -262,6 +263,9 @@ public class Painter
                 break;
             case CircleShape circleShape:
                 BorderCircle(layer, position, circleShape.Radius, color, thickness);
+                break;
+            case EdgeShape edge:
+                FillLine(layer, position + edge.Vertex1.Rotated(rotation), position + edge.Vertex2.Rotated(rotation), thickness / 2, color);
                 break;
         }
     }

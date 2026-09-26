@@ -1,6 +1,6 @@
 namespace SolsDawn.Gameplay.Entities;
 
-public class PlayerAnimations(PlayerBoard board) : AnimationPlayer
+public class PlayerAnimations(PlayerBoard board) : AnimationSet
 {
     private Animation _baseAnimation;
     private Animation _overlayAnimation;

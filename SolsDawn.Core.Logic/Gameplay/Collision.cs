@@ -5,20 +5,13 @@ using nkast.Aether.Physics2D.Collision;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
 using nkast.Aether.Physics2D.Dynamics;
+using nkast.Aether.Physics2D.Dynamics.Contacts;
 using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
 public static class Collision
 {
-    public static Category Default => Category.Cat1;
-    public static Category Player => Category.Cat2;
-    public static Category Enemy => Category.Cat3;
-    public static Category BladeAttack => Category.Cat4;
-    public static Category FireAttack => Category.Cat5;
-    public static Category BladeParry => Category.Cat6;
-    public static Category FireParry => Category.Cat7;
-
     public static readonly World World;
 
     static Collision()
@@ -195,8 +188,20 @@ public static class Collision
     }
 }
 
+public record struct CollisionData(Fixture SenderFixture, Fixture OtherFixture, Contact Contact)
+{
+    public Collider Sender => SenderFixture.Tag as Collider ?? throw new LogicException("Fixture tag must be Collider");
+    public Collider Other => OtherFixture.Tag as Collider ?? throw new LogicException("Fixture tag must be Collider");
+}
+
+public delegate bool OnCollisionHandler(CollisionData data);
+public delegate void OnSeparationHandler(CollisionData data);
+
 public sealed class Collider : Component
 {
+    public event OnCollisionHandler? OnCollision;
+    public event OnSeparationHandler? OnSeparation;
+    
     public bool Enabled
     {
         get => _body.Enabled;
@@ -210,12 +215,6 @@ public sealed class Collider : Component
             _body.Enabled = value;
             Animation.IsVisible = value;
         }
-    }
-
-    public event OnCollisionEventHandler OnCollision
-    {
-        add => _body.OnCollision += value;
-        remove => _body.OnCollision -= value;
     }
     
     private ColliderAnimation Animation
@@ -233,7 +232,7 @@ public sealed class Collider : Component
     }
 
     private double _activationTime;
-    private Body _body;
+    public Body _body; //SHOULD BE PRIVATE. TEMPORARY FOR TESTS
 
     public Collider(
         GameObject go,
@@ -250,6 +249,8 @@ public sealed class Collider : Component
             BodyType = bodyType,
             Tag = this
         };
+        _body.OnCollision += HandleBodyCollision;
+        _body.OnSeparation += HandleBodySeparation;
         Fixture fixture = _body.CreateFixture(shape);
         fixture.Tag = this;
         fixture.CollisionCategories = selfLayer;
@@ -258,7 +259,30 @@ public sealed class Collider : Component
         Collision.World.Add(_body);
         _activationTime = Time.TotalGameTime.TotalSeconds;
         
+        
         Animation = new ColliderAnimation(Debug.Collider.Category.Default, _body.FixtureList, 1);
+    }
+
+    private bool HandleBodyCollision(Fixture sender, Fixture other, Contact collision)
+    {
+        if (OnCollision is null)
+            return true;
+        
+        var data = new CollisionData(sender, other, collision);
+        bool result = true;
+        foreach (OnCollisionHandler invocation in OnCollision.GetInvocationList())
+        {
+            result &= invocation(data);
+            if (!result)
+                return result;
+        }
+
+        return result;
+    }
+
+    private void HandleBodySeparation(Fixture sender, Fixture other, Contact collision)
+    {
+        OnSeparation?.Invoke(new CollisionData(sender, other, collision));
     }
 
     public override void Update()

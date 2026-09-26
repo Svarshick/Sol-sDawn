@@ -5,8 +5,8 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public abstract record CollisionRecord;
 
-public record HitCollision(HitContext Context) : CollisionRecord;
-public record BladeParryCollision(BladeParryContext Context) : CollisionRecord;
+//public record HitCollision(HitContext Context) : CollisionRecord;
+//public record BladeParryCollision(BladeParryContext Context) : CollisionRecord;
 
 public class CollisionsPool
 {
@@ -25,7 +25,7 @@ public class CollisionsPool
         foreach (var collision in _collisions)
         {
             switch (collision)
-            {
+            {/*
                 case HitCollision hit:
                 {
                     var context = hit.Context;
@@ -38,7 +38,7 @@ public class CollisionsPool
                     context.Attack.ExecuteParry(context);
                     context.ParryWindow.Execute(context);
                     break;
-                }
+                }*/
                 default:
                 {
                     throw new LogicException();

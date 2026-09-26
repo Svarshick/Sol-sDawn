@@ -7,7 +7,7 @@ public abstract class Component : IUpdatable, IDrawable
     public readonly GameObject GameObject;
     public readonly bool IsSticky;
     public bool IsDestroyed { get; internal set; }
-    
+    public Transform2 Transform => GameObject.Transform;
 
     public Component(GameObject gameObject, bool isSticky = false)
     {

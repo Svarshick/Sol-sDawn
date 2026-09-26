@@ -11,87 +11,34 @@ public class PlayerController
 
     public void Update()
     {
-        if (_player.State is null ||
-            _player.State is TeleportState &&
-            Input.Teleport.State == InputTeleportState.Released)
+        if (_player.Board.OnGround)
         {
-            var idleState = new IdleState(_player);
-            _player.Enter(idleState);
-            return;   
-        }
-        
-        if (_player.State is IdleState or MoveState)
-        {
-            if (Input.Blade.IsPressed)
+            if (Input.Jump)
             {
-                IntendBlade();
+                _player.Enter(new JumpState(_player));
+                return;
+            }
+            
+            if (_player.State is RunState &&
+                Input.Move == Vector2.Zero)
+            {
+                var idleState = new IdleState(_player);
+                _player.Enter(idleState);
                 return;
             }
 
-            if (Input.Fire.IsPressed)
+            if (_player.State is IdleState &&
+                Input.Move != Vector2.Zero)
             {
-                IntendFire();
-                return;
-            }
-
-            if (Input.Teleport.State == InputTeleportState.Started)
-            {
-                IntendTeleport();
+                var moveState = new RunState(_player);
+                _player.Enter(moveState);
                 return;
             }
         }
-
-        if (_player.State is MoveState &&
-            Input.Move == Vector2.Zero)
+        else
         {
-            var idleState = new IdleState(_player);
-            _player.Enter(idleState);
-            return;
+            if (_player.State is not (FallState or JumpState))
+                _player.Enter(new FallState(_player));
         }
-        
-        if (_player.State is IdleState &&
-                 Input.Move != Vector2.Zero)
-        {
-            var moveState = new MoveState(_player);
-            _player.Enter(moveState);
-            return;
-        }
-    }
-
-    private void IntendTeleport()
-    {
-        if (!_player.Board.TeleportCharged)
-            return;
-        _player.Board.LastTeleportUsage = TotalSeconds;
-        
-        var teleportState = new TeleportState(_player);
-        _player.Enter(teleportState);
-    }
-
-    private void IntendBlade()
-    {
-        if (!_player.Board.BladeCharged)
-            return;
-        _player.Board.LastBladeUsage = TotalSeconds;
-
-        var screenPosition = Input.Blade.ScreenPosition;
-        var lookPosition = Camera.ScreenToWorld(screenPosition);
-        var bladeState = new BladeState(_player, lookPosition);
-        _player.Enter(bladeState);
-    }
-
-    private void IntendFire()
-    {
-        if (!_player.Board.FireCharged)
-            return;
-        _player.Board.LastFireUsage = TotalSeconds;
-
-        var screenPosition = Input.Fire.ScreenPosition;
-        var lookPosition = Game.Camera.ScreenToWorld(screenPosition);
-        var direction = lookPosition - _player.GameObject.Transform.Position;
-        direction.Normalize();
-        
-        var fireState = new FireState(_player, direction);
-        _player.Enter(fireState);
     }
 }

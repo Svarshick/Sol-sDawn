@@ -1,5 +1,5 @@
-using System;
 using SolsDawn.Gameplay.Entities;
+using SolsDawn.Gameplay.Utils;
 
 namespace SolsDawn.Gameplay;
 
@@ -19,9 +19,25 @@ public static class Main
 
     private static async Job BeforeGameLoop()
     {
-        var playerObj = CreateObject();
+        G.Floor = new Platform(CreateObject(), 100);
+        G.Floor.Transform.Position = new Vector2(0, -1);
+        
+        var slope = new Platform(CreateObject(), 10);
+        slope.Transform.Position = new Vector2(-5, 0);
+        slope.Transform.Rotation = -PI * 1 / 4;
+        var negSlope = new Platform(CreateObject(), 10);
+        negSlope.Transform.Position = new Vector2(-7, 3);
+        negSlope.Transform.Rotation = -PI * 5 / 8;
+        var highPlatform = new Platform(CreateObject(), 10);
+        highPlatform.Transform.Position = new Vector2(0, 4);
+        
         var playerBoard = new PlayerBoard();
-        G.Player = new Player(playerObj, playerBoard, new PlayerAnimations(playerBoard));
+        var playerAnimations = new PlayerAnimations(playerBoard);
+        G.Player = new Player(
+            CreateObject(),
+            playerBoard,
+            playerAnimations);
+        
         var playerController = new PlayerController(G.Player);
         
         var hudObj = CreateObject();
@@ -36,15 +52,9 @@ public static class Main
     
     private static async Job GameLoop()
     {
-        var bossObj = CreateObject();
-        var bossBoard = new BossBoard();
-        var boss = new Boss(bossObj, bossBoard, new BossAnimations(bossBoard));
-
-        Actions.Tests.OrbSpam();
         while (true)
         {
-            await Actions.SimpleActions.FireAttack(boss);
-            await Timer(2);
+            await NextFrame();
         }
     }
 
@@ -52,7 +62,8 @@ public static class Main
     {
         while (true)
         {
-            Camera.Position = G.Player.GameObject.Transform.Position;
+            var playerPosition = G.Player.GameObject.Transform.Position;
+            Camera.Position = playerPosition;
             await NextFrame();
         }
     }
@@ -60,5 +71,6 @@ public static class Main
 
 public static class G
 {
+    public static Platform Floor;
     public static Player Player;
 }
