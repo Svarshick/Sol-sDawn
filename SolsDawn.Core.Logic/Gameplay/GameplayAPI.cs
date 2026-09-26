@@ -32,6 +32,11 @@ public static class GameplayAPI
     public static AnimationsPool AnimationsPool { get; internal set; }
     public static float ElapsedSeconds => (float)Time.ElapsedGameTime.TotalSeconds;
     public static float TotalSeconds => (float)Time.TotalGameTime.TotalSeconds;
+    public static Action ImGuiDrawer
+    {
+        get => Game.ImGuiDrawer;
+        set => Game.ImGuiDrawer = value;
+    }
     
     #endregion
     

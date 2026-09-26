@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SolsDawn.Core.Logic;
 using SolsDawn.Core.Logic.Gameplay;
 using SolsDawn.Gameplay.Utils;
 
@@ -55,14 +56,14 @@ public record PlayerSpecs
     public float Width = 0.7f;
     public float Height = 1.3f;
     
-    public float RunSpeed = 15;
+    [Inspect] public float RunSpeed = 15;
 
-    public float JumpHorizontalStartSpeed = 20;
-    public float JumpVerticalStartSpeed = 15;
-    public float JumpHorizontalSpeed = 10;
-    public float JumpVerticalAcceleration = -10;
+    [Inspect] public float JumpHorizontalStartSpeed = 20;
+    [Inspect] public float JumpVerticalStartSpeed = 15;
+    [Inspect] public float JumpHorizontalSpeed = 10;
+    [Inspect] public float JumpVerticalAcceleration = -10;
     
-    public float FallHorizontalSpeed = 10;
-    public float FallVerticalAcceleration = -15;
-    public float FallVerticalSpeedLimit = -30;
+    [Inspect] public float FallHorizontalSpeed = 10;
+    [Inspect] public float FallVerticalAcceleration = -15;
+    [Inspect] public float FallVerticalSpeedLimit = -30;
 }

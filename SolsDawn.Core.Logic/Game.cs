@@ -18,14 +18,17 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     public static Painter Painter { get; private set; }
     public static AnimationsPool AnimationsPool { get; private set; }
     public static CollisionsPool CollisionsPool { get; private set; }
+    public static Action? ImGuiDrawer { get; set; }
     
     private GraphicsDeviceManager _graphicsDeviceManager;
+    private ImGuiRenderer _imGuiRenderer;
     private Func<Job> _mainJobRunner;
     private Job _mainJob;
     private Input _input;
     private BoardBackground _background;
     
-    private GameTests _gameTests;
+    public Vector2 TestVector { get; set; } = Vector2.Zero;
+    public int TestInt { get; set; } = 10;
 
     public Game(Func<Job> mainJobRunner)
     {
@@ -38,8 +41,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         base.Initialize();
         InitScreen();
         InitSystems();
-        _gameTests = new(this);
-        _gameTests.IsActive = false;
         return;
 
         void InitScreen()
@@ -58,10 +59,13 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         
         void InitSystems()
         {
+            
             _input = new Input();
             Painter = new Painter(GraphicsDevice);
             AnimationsPool = new AnimationsPool();
             CollisionsPool = new CollisionsPool();
+            _imGuiRenderer = new(this);
+            _imGuiRenderer.RebuildFontAtlas();
 
             GameplayAPI.Camera = Camera;
             GameplayAPI.Painter = Painter;
@@ -84,8 +88,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         GameObjectPool.Update();
         AnimationsPool.Update();
         
-        _gameTests.Update();
-        
         base.Update(gameTime);
         LateUpdate();
     }
@@ -95,24 +97,30 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         _input.LateUpdate();
         AnimationsPool.LateUpdate();
 
-        _gameTests.LateUpdate();
         GameObjectPool.LateUpdate();
     }
 
     protected override void Draw(GameTime gameTime)
     {
         _background.Draw(Camera);
-        
+
         AnimationsPool.Draw();
-        _gameTests.Draw();
         GameObjectPool.Draw();
-        
+
         Painter.Begin(
             view: Camera.CreateViewMatrix(),
             rasterizerState: RasterizerState.CullClockwise
         );
         Painter.DoDraws();
         Painter.End();
+
+        if (ImGuiDrawer is not null)
+        {
+            _imGuiRenderer.BeforeLayout(gameTime);
+            ImGuiDrawer();
+            _imGuiRenderer.AfterLayout();
+        }
+
         base.Draw(gameTime);
     }
 }

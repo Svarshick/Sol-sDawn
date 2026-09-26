@@ -7,6 +7,7 @@ public static class Main
 {
     public static async Job RootJob()
     {
+        ImGuiDrawer = DebugDrawer.Draw;
         BeforeGameLoop();
         GameLoop();
         AfterGameLoop();
@@ -39,9 +40,6 @@ public static class Main
             playerAnimations);
         
         var playerController = new PlayerController(G.Player);
-        
-        var hudObj = CreateObject();
-        new HUD(hudObj, G.Player);
         
         while (true)
         {
