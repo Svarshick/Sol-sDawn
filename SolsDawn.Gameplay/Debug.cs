@@ -63,6 +63,8 @@ public static class Debug
         
         ImGui.Separator();
         
+        ImGui.Text("Fall");
+        AutoInspector.Draw(pSpecs.Fall);
         
         ImGui.End();
     }

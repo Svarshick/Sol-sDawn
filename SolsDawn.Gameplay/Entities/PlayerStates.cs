@@ -1,8 +1,11 @@
+using SolsDawn.Core.Logic;
+using SolsDawn.Gameplay.Utils;
+
 namespace SolsDawn.Gameplay.Entities;
 
 public class IdleState(Player player) : State
 {
-    public override void Enter(State from)
+    public override async Job Job()
     {
         player.Animator.Player.TryPlay(PlayerAnimations.Idle);
         player.Collider._body.LinearVelocity = Vector2.Zero;
@@ -11,6 +14,9 @@ public class IdleState(Player player) : State
 
 public class RunState(Player player) : State
 {
+    private float previousVx = 0;
+    private Platform previousPlatform = player.Board.CurrentPlatform ?? throw new LogicException("Platform can't be null");
+    
     public enum Phase
     {
         Drive, //input != 0, accelerate/maintain speed 
@@ -26,9 +32,24 @@ public class RunState(Player player) : State
         
         while (true)
         {
+            var currentPlatform = player.Board.CurrentPlatform;
+            if (currentPlatform is null)
+                throw new LogicException("Platform can't be null while run");
+            
             var angle = player.Board.CurrentPlatform!.Transform.Rotation;
             var inDir = (int)Input.Move.X;
-            var vx = Vector2.Dot(body.LinearVelocity, new Vector2(Cos(angle), Sin(angle)));
+            float vx;
+            
+            if (currentPlatform != previousPlatform)
+            {
+                vx = previousVx;
+                previousPlatform = currentPlatform;
+            }
+            else
+            {
+                vx = Vector2.Dot(body.LinearVelocity, new Vector2(Cos(angle), Sin(angle)));
+            }
+            
             var vxAbs = Abs(vx);
             var vxDir = Sign(vx);
             
@@ -46,7 +67,7 @@ public class RunState(Player player) : State
                 {
                     var excess = vxAbs - specs.Speed;
                     var timeToReach = excess / specs.GreatSpeedFriction;
-                    if (timeToReach < DeltaTime)
+                    if (timeToReach > DeltaTime)
                     {
                         vxAbs -= specs.GreatSpeedFriction * DeltaTime;
                     }
@@ -63,7 +84,7 @@ public class RunState(Player player) : State
                 {
                     var excess = vxAbs - specs.Speed;
                     var timeToReach = excess / specs.GreatSpeedFriction;
-                    if (timeToReach < DeltaTime)
+                    if (timeToReach > DeltaTime)
                     {
                         vxAbs -= specs.GreatSpeedFriction * DeltaTime;
                     }
@@ -82,7 +103,7 @@ public class RunState(Player player) : State
                 {
                     var excess = vxAbs - specs.Speed;
                     var timeToReach = excess / specs.GreatSpeedFriction;
-                    if (timeToReach < DeltaTime)
+                    if (timeToReach > DeltaTime)
                     {
                         vxAbs -= specs.GreatSpeedFriction * DeltaTime;
                     }
@@ -235,6 +256,7 @@ public class FallState(Player player) : State
             await NextFrame();
         }
         
-        player.Enter(new IdleState(player));
+        //fall speed projection (0, 0) leads to INFINITE speed!
+        player.Enter(new RunState(player));
     }
 }
