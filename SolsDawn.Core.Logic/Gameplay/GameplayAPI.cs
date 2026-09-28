@@ -30,22 +30,30 @@ public static class GameplayAPI
     public static Painter Painter { get; internal set; }
     public static Input Input { get; internal set; }
     public static AnimationsPool AnimationsPool { get; internal set; }
-    public static float ElapsedSeconds => (float)Time.ElapsedGameTime.TotalSeconds;
-    public static float TotalSeconds => (float)Time.TotalGameTime.TotalSeconds;
+    public static float DeltaTime => (float)Time.ElapsedGameTime.TotalSeconds;
+    public static float TotalTime => (float)Time.TotalGameTime.TotalSeconds;
     public static Action ImGuiDrawer
     {
         get => Game.ImGuiDrawer;
         set => Game.ImGuiDrawer = value;
     }
+
+    public static readonly float FpsSec = 1/60f;
     
     #endregion
     
     #region Math
     
     public static float Abs(float f) => Math.Abs(f);
+
+    public static int Sign(float f) => Math.Sign(f);
+    
+    public static float Max(float f1, float f2) => Math.Max(f1, f2);
+    
+    public static float Min(float f1, float f2) => Math.Min(f1, f2);
     
     public static float Angle(this Vector2 v) => (float)Math.Atan2(v.Y, v.X);
-
+    
     public static Vector2 Rotated(this Vector2 v, float radians)
     {
         float cos = MathF.Cos(radians);
@@ -58,6 +66,12 @@ public static class GameplayAPI
     }
 
     public static float PI => MathF.PI;
+
+    public static float Tan(float radians) => (float)Math.Tan(radians);
+
+    public static float Sin(float radians) => (float)Math.Sin(radians);
+
+    public static float Cos(float radians) => (float)Math.Cos(radians);
     
     #endregion
     

@@ -1,3 +1,5 @@
+using SolsDawn.Core.Logic;
+
 namespace SolsDawn.Gameplay.Entities;
 
 public class PlayerController
@@ -15,18 +17,10 @@ public class PlayerController
         {
             if (Input.Jump)
             {
-                _player.Enter(new JumpState(_player));
+                _player.Enter(CreateJumpState());
                 return;
             }
             
-            if (_player.State is RunState &&
-                Input.Move == Vector2.Zero)
-            {
-                var idleState = new IdleState(_player);
-                _player.Enter(idleState);
-                return;
-            }
-
             if (_player.State is IdleState &&
                 Input.Move != Vector2.Zero)
             {
@@ -37,8 +31,16 @@ public class PlayerController
         }
         else
         {
-            if (_player.State is not (FallState or JumpState))
+            if (_player.State is not (FallState or PrimitiveJumpState))
                 _player.Enter(new FallState(_player));
         }
     }
+
+    private State CreateJumpState() => 
+        Debug.CurrentJumpHeuristic.Name switch
+        {
+            nameof(PrimitiveJumpState) => new PrimitiveJumpState(_player),
+            nameof(CelesteJumpState) => new CelesteJumpState(_player),
+            _ => throw new LogicException()
+        };
 }

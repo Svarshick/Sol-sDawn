@@ -7,7 +7,7 @@ public static class Main
 {
     public static async Job RootJob()
     {
-        ImGuiDrawer = DebugDrawer.Draw;
+        ImGuiDrawer = Debug.Draw;
         BeforeGameLoop();
         GameLoop();
         AfterGameLoop();

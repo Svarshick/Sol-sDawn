@@ -55,15 +55,44 @@ public record PlayerSpecs
     public Color Color = Color.Blue;
     public float Width = 0.7f;
     public float Height = 1.3f;
-    
-    [Inspect] public float RunSpeed = 15;
 
-    [Inspect] public float JumpHorizontalStartSpeed = 20;
-    [Inspect] public float JumpVerticalStartSpeed = 15;
-    [Inspect] public float JumpHorizontalSpeed = 10;
-    [Inspect] public float JumpVerticalAcceleration = -10;
-    
-    [Inspect] public float FallHorizontalSpeed = 10;
-    [Inspect] public float FallVerticalAcceleration = -15;
-    [Inspect] public float FallVerticalSpeedLimit = -30;
+    public RunSpecs Run = new();
+    public record RunSpecs
+    {
+        [Inspect(min: 0)] public float GreatSpeedFriction = 20;
+        [Inspect(min: 0)] public float Friction = 30;
+        [Inspect(min: 0)] public float Acceleration = 10;
+        [Inspect(min: 0)] public float TurnAcceleration = 30;
+        [Inspect(min: 0)] public float Speed = 15;
+    }
+
+    public PrimitiveJumpSpecs PrimitiveJump = new();
+    public record PrimitiveJumpSpecs
+    {
+        [Inspect(min: 0)] public float HorizontalStartSpeed = 20;
+        [Inspect(min: 0)] public float VerticalStartSpeed = 20;
+        [Inspect(min: 0)] public float HorizontalSpeed = 15;
+        [Inspect(min: 0)] public float VerticalAcceleration = -15;
+    }
+
+    public CelesteJumpSpecs CelesteJump = new();
+    public record CelesteJumpSpecs
+    {
+        [Inspect(min: 0)] public float HorizontalDashAngle = 30;
+        [Inspect(min: 0)] public float HorizontalDashDistance = 10;
+        [Inspect(min: 0)] public float VerticalDashDistance = 10;
+        [Inspect(min: 1)] public int DashFrames = 3;
+        [Inspect(min: 0)] public int PeakReachedFrames;
+        [Inspect(min: 0)] public float PeakVerticalDelta;
+        [Inspect(min: 0)] public float PeakHorizontalSpeed;
+        [Inspect(min: 0)] public float PeakHorizontalBrakeAcceleration; //in friction instead of frames because Dash -> stop is slower than Peak -> stop
+    }
+
+    public FallSpecs Fall = new();
+    public record FallSpecs
+    {
+        [Inspect(min: 0)] public float FallHorizontalSpeed = 10;
+        [Inspect(min: 0)] public float FallVerticalAcceleration = 15;
+        [Inspect(min: 0)] public float FallVerticalSpeedLimit = 30;
+    }
 }

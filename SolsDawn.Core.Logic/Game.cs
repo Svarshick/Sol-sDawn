@@ -74,7 +74,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             _mainJob = _mainJobRunner();
         }
     }
-    
+
     protected override void Update(GameTime gameTime)
     {
         Time.Update(gameTime);

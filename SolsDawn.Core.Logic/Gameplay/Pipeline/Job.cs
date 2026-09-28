@@ -149,7 +149,7 @@ public class Job
             for (int i = 0; i + offset < _timers.Count;)
             {
                 var timer = _timers[i + offset];
-                timer.TimeRemaining -= GameplayAPI.ElapsedSeconds;
+                timer.TimeRemaining -= GameplayAPI.DeltaTime;
                 if (timer.IsEnded)
                 {
                     offset++;
