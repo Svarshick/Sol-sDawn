@@ -10,16 +10,21 @@ using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay;
 
-public static class Collision
+public static class Physics
 {
-    public static readonly World World;
+    private static readonly World World;
+    private static readonly List<Action> PostUpdateActions = new();
 
-    static Collision()
+    static Physics()
     {
         World = new World(Vector2.Zero);
     }
+
+    public static void Add(Body body) => World.Add(body);
+    public static void Remove(Body body) => World.Remove(body);
+    public static void DoAfterStep(Action action) => PostUpdateActions.Add(action);
     
-    public static void Update(GameTime gameTime)
+    public static void Step(GameTime gameTime)
     {
         foreach (var body in World.BodyList)
         {
@@ -32,6 +37,11 @@ public static class Collision
         var dt = gameTime.ElapsedGameTime;
         World.Step(dt);
 
+        //using Transform.Position is safe in EVERY point
+        //[can access][SAVE] before World.Step body.Position = Transform.Position 
+        //[can access][SAVE] in World.Step at OnCollision/OnSeparation are called, but body.Position isn't changed yet
+        //[can't access][NOT SAVE] in World.Step after OnCollision/OnSepatation body.Position is changed
+        //[can access][SAVE] after World.Step Transform.Position = body.Position
         foreach (var body in World.BodyList)
         {
             if (body.Tag is not Collider collider)
@@ -39,6 +49,12 @@ public static class Collision
             collider.GameObject.Transform.Position = body.Position;
             collider.GameObject.Transform.Rotation = body.Rotation;
         }
+
+        foreach (var action in PostUpdateActions)
+        {
+            action();
+        }
+        PostUpdateActions.Clear();
     }
     
     public struct HitResult
@@ -199,7 +215,7 @@ public delegate void OnSeparationHandler(CollisionData data);
 
 public sealed class Collider : Component
 {
-    public event OnCollisionHandler? OnCollision;
+    public event OnCollisionHandler? OnCollision; //using Transform.Position is safe
     public event OnSeparationHandler? OnSeparation;
     
     public bool Enabled
@@ -256,7 +272,7 @@ public sealed class Collider : Component
         fixture.CollisionCategories = selfLayer;
         fixture.CollidesWith = collidesLayer;
         fixture.IsSensor = isSensor;
-        Collision.World.Add(_body);
+        Physics.Add(_body);
         _activationTime = Time.TotalGameTime.TotalSeconds;
         
         
@@ -314,7 +330,7 @@ public sealed class Collider : Component
             Animation.Kill();
         }
 
-        Collision.World.Remove(_body);
+        Physics.Remove(_body);
     }
 }
 

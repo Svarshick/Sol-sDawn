@@ -72,6 +72,10 @@ public static class GameplayAPI
     public static float Sin(float radians) => (float)Math.Sin(radians);
 
     public static float Cos(float radians) => (float)Math.Cos(radians);
+
+    public static float ASin(float f) => (float)Math.Asin(f);
+
+    public static float ACos(float f) => (float)Math.Acos(f);
     
     #endregion
     

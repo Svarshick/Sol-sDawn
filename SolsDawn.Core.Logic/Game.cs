@@ -17,7 +17,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     public static CartesianCamera Camera { get; private set; }
     public static Painter Painter { get; private set; }
     public static AnimationsPool AnimationsPool { get; private set; }
-    public static CollisionsPool CollisionsPool { get; private set; }
     public static Action? ImGuiDrawer { get; set; }
     
     private GraphicsDeviceManager _graphicsDeviceManager;
@@ -27,11 +26,9 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private Input _input;
     private BoardBackground _background;
     
-    public Vector2 TestVector { get; set; } = Vector2.Zero;
-    public int TestInt { get; set; } = 10;
-
     public Game(Func<Job> mainJobRunner)
     {
+        IsFixedTimeStep = true;
         _graphicsDeviceManager = new GraphicsDeviceManager(this);
         _mainJobRunner = mainJobRunner;
     }
@@ -63,7 +60,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             _input = new Input();
             Painter = new Painter(GraphicsDevice);
             AnimationsPool = new AnimationsPool();
-            CollisionsPool = new CollisionsPool();
             _imGuiRenderer = new(this);
             _imGuiRenderer.RebuildFontAtlas();
 
@@ -80,8 +76,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         Time.Update(gameTime);
         MonoTask.Update();
         
-        Collision.Update(gameTime);
-        CollisionsPool.Resolve();
+        Physics.Step(gameTime);
         
         _input.Update();
         _mainJob.Update();

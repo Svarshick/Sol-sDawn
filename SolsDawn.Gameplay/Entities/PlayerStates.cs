@@ -1,5 +1,4 @@
 using SolsDawn.Core.Logic;
-using SolsDawn.Gameplay.Utils;
 
 namespace SolsDawn.Gameplay.Entities;
 
@@ -14,9 +13,6 @@ public class IdleState(Player player) : State
 
 public class RunState(Player player) : State
 {
-    private float previousVx = 0;
-    private Platform previousPlatform = player.Board.CurrentPlatform ?? throw new LogicException("Platform can't be null");
-    
     public enum Phase
     {
         Drive, //input != 0, accelerate/maintain speed 
@@ -38,18 +34,7 @@ public class RunState(Player player) : State
             
             var angle = player.Board.CurrentPlatform!.Transform.Rotation;
             var inDir = (int)Input.Move.X;
-            float vx;
-            
-            if (currentPlatform != previousPlatform)
-            {
-                vx = previousVx;
-                previousPlatform = currentPlatform;
-            }
-            else
-            {
-                vx = Vector2.Dot(body.LinearVelocity, new Vector2(Cos(angle), Sin(angle)));
-            }
-            
+            var vx = Vector2.Dot(body.LinearVelocity, new Vector2(Cos(angle), Sin(angle)));
             var vxAbs = Abs(vx);
             var vxDir = Sign(vx);
             
@@ -211,7 +196,7 @@ public class PrimitiveJumpState(Player player) : State
             }
 
             body.LinearVelocity = new Vector2(currentVx, body.LinearVelocity.Y);
-            body.ApplyForce(new Vector2(0, specs.VerticalAcceleration));
+            body.ApplyForce(new Vector2(0, -specs.VerticalAcceleration));
             await NextFrame();
         }
 
@@ -256,7 +241,6 @@ public class FallState(Player player) : State
             await NextFrame();
         }
         
-        //fall speed projection (0, 0) leads to INFINITE speed!
         player.Enter(new RunState(player));
     }
 }
