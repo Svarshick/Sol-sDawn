@@ -32,20 +32,24 @@ public record PlayerSpecs
     public RunSpecs Run = new();
     public record RunSpecs
     {
-        [Inspect(min: 0)] public float GreatSpeedFriction = 20;
-        [Inspect(min: 0)] public float Friction = 30;
+        [Inspect(min: 0)] public float ControlledSpeed = 15;
         [Inspect(min: 0)] public float Acceleration = 10;
+        [Inspect(min: 0)] public float Friction = 30;
         [Inspect(min: 0)] public float TurnAcceleration = 30;
-        [Inspect(min: 0)] public float MaxSpeed = 15;
+        [Inspect(min: 0)] public float GreatSpeedFriction = 20;
     }
 
     public PrimitiveJumpSpecs PrimitiveJump = new();
     public record PrimitiveJumpSpecs
     {
-        [Inspect(min: 0)] public float HorizontalStartSpeed = 20;
+        [Inspect(min: 0)] public float HorizontalStartSpeed = 30;
+        [Inspect(min: 0)] public float HorizontalGreatSpeedFriction = 10;
+        [Inspect(min: 0)] public float HorizontalControlledSpeed = 10;
+        [Inspect(min: 0)] public float HorizontalAcceleration = 10;
+        [Inspect(min: 0)] public float HorizontalFriction = 10;
+        [Inspect(min: 0)] public float HorizontalTurnAcceleration = 30;
         [Inspect(min: 0)] public float VerticalStartSpeed = 20;
-        [Inspect(min: 0)] public float HorizontalSpeed = 15;
-        [Inspect(min: 0)] public float VerticalAcceleration = 15;
+        [Inspect(min: 0)] public float VerticalFriction = 15;
     }
 
     public CelesteJumpSpecs CelesteJump = new();
@@ -55,10 +59,6 @@ public record PlayerSpecs
         [Inspect(min: 0)] public float HorizontalDashDistance = 10;
         [Inspect(min: 0)] public float VerticalDashDistance = 10;
         [Inspect(min: 1)] public int DashFrames = 3;
-        [Inspect(min: 0)] public int PeakReachedFrames;
-        [Inspect(min: 0)] public float PeakVerticalDelta;
-        [Inspect(min: 0)] public float PeakHorizontalSpeed;
-        [Inspect(min: 0)] public float PeakHorizontalBrakeAcceleration; //in friction instead of frames because Dash -> stop is slower than Peak -> stop
     }
 
     public FallSpecs Fall = new();
