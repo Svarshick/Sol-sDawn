@@ -124,7 +124,7 @@ public class RunState(Player player) : State
                 
                 case (greatSpeed: false, RunPhase.Turn):
                 {
-                    vx += inDir * specs.TurnAcceleration;
+                    vx += inDir * specs.TurnAcceleration * DeltaTime;
                     if (Abs(vx) >= specs.ControlledSpeed)
                     {
                         vx = inDir * specs.ControlledSpeed;
@@ -275,7 +275,7 @@ public class CelesteJumpState(Player player) : JumpState
                 
                 case (greatSpeed: false, CelesteJumpPhase.Turn):
                 {
-                    vx += inDir * specs.HorizontalTurnAcceleration;
+                    vx += inDir * specs.HorizontalTurnAcceleration * DeltaTime;
                     if (Abs(vx) >= specs.HorizontalControlledSpeed)
                     {
                         vx = inDir * specs.HorizontalControlledSpeed;
@@ -396,7 +396,7 @@ public class PrimitiveJumpState(Player player) : JumpState
                 
                 case (greatSpeed: false, PrimitiveJumpPhase.Turn):
                 {
-                    vx += inDir * specs.HorizontalTurnAcceleration;
+                    vx += inDir * specs.HorizontalTurnAcceleration * DeltaTime;
                     if (Abs(vx) >= specs.HorizontalControlledSpeed)
                     {
                         vx = inDir * specs.HorizontalControlledSpeed;
@@ -466,7 +466,7 @@ public class FallState(Player player) : State
                         vxAbs = specs.HorizontalMaxSpeed;
                     }
 
-                    vx = vxDir * vxAbs;
+                    vx = inDir * vxAbs;
                     break;
                 }
                 
@@ -524,7 +524,7 @@ public class FallState(Player player) : State
                 
                 case (greatSpeed: false, FallPhase.Turn):
                 {
-                    vx += inDir * specs.HorizontalTurnAcceleration;
+                    vx += inDir * specs.HorizontalTurnAcceleration * DeltaTime;
                     if (Abs(vx) >= specs.HorizontalMaxSpeed)
                     {
                         vx = inDir * specs.HorizontalMaxSpeed;
