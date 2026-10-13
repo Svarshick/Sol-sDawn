@@ -84,7 +84,7 @@ public static class GameplayAPI
         );
     }
 
-    public static float PI => MathF.PI;
+    public const float PI = MathF.PI;
 
     public static float Tan(float radians) => (float)Math.Tan(radians);
 

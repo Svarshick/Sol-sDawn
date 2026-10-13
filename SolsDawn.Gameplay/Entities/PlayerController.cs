@@ -129,7 +129,7 @@ public class PlayerController
     }
 
     private JumpState CreateJumpState() => 
-        Debug.CurrentJumpHeuristic.Name switch
+        Debug.CurrentJumpModel.Name switch
         {
             nameof(PrimitiveJumpState) => new PrimitiveJumpState(_player),
             nameof(CelesteJumpState) => new CelesteJumpState(_player),

@@ -1,5 +1,4 @@
 using SolsDawn.Core.Logic;
-using SolsDawn.Core.Logic.Gameplay;
 
 namespace SolsDawn.Gameplay.Entities;
 
@@ -39,7 +38,7 @@ public class RunState(Player player) : State
             }
 
             var angle = player.Board.CurrentPlatform!.Transform.Rotation;
-            var inDir = Sign(GameplayAPI.Input.Move.X);
+            var inDir = Sign(Input.Move.X);
             var vx = Vector2.Dot(board.Velocity, new Vector2(Cos(angle), Sin(angle)));
             var vxAbs = Abs(vx);
             var vxDir = Sign(vx);
@@ -143,33 +142,151 @@ public class RunState(Player player) : State
 
 public abstract class JumpState : State;
 
+public enum CelesteJumpPhase
+{
+    Drive, //input != 0, accelerate/maintain speed 
+    Brake, //input = 0, friction to stop
+    Turn, //int != 0, accelerate in opposite direction
+}
+
 public class CelesteJumpState(Player player) : JumpState
 {
+    public CelesteJumpPhase Phase { get; private set; }
+    
     public override async Job Job()
     {
         var specs = player.Board.Specs.CelesteJump;
         var board = player.Board;
-
-        Vector2 dashVelocity;
-        var dashSec = FpsSec * specs.DashFrames;
-
-        if (GameplayAPI.Input.Move.X == 0)
-        {
-            dashVelocity = new (0, specs.VerticalDashDistance / dashSec);
-        }
-        else
-        {
-            var xSign = GameplayAPI.Input.Move.X > 0 ? 1 : -1;
-            var xVelocity = xSign * specs.HorizontalDashDistance / dashSec;
-            var dashRadians = specs.HorizontalDashAngle * PI / 180;
-            var yVelocity  = specs.HorizontalDashDistance * Tan(dashRadians) / dashSec;
-            dashVelocity = new Vector2(xVelocity, yVelocity);
-        }
-
-        board.Velocity = dashVelocity;
+        Phase = CelesteJumpPhase.Drive;
         
-        for (var i = 0; i < specs.DashFrames; i++)
         {
+            var initInDir = Sign(Input.Move.X);
+            if (initInDir == 0)
+            {
+                var vy = specs.VerticalDashDistance / (specs.DashFrames * DeltaTime);
+                board.Velocity = new Vector2(0, vy);
+            }
+            else
+            {
+                var vxAbs = specs.HorizontalDashDistance / (specs.DashFrames * DeltaTime);
+                var vx = initInDir * vxAbs;
+                var vy = vxAbs * Tan(specs.HorizontalDashAngle);
+                board.Velocity = new Vector2(vx, vy);
+            }
+
+            for (int i = 0; i < specs.DashFrames; i++)
+            {
+                await NextFrame();
+            }
+
+            if (initInDir == 0)
+            {
+                var vy = specs.VerticalDashFinalSpeed;
+                board.Velocity = new Vector2(0, vy);
+            }
+            else
+            {
+                var vxAbs = specs.HorizontalDashFinalSpeed;
+                var vx = initInDir * vxAbs;
+                var vy = vxAbs * Tan(specs.HorizontalDashAngle);
+                board.Velocity = new Vector2(vx, vy);
+            }
+        }
+
+        while (true)
+        {
+            if (board.CurrentPlatform is not null)
+            {
+                Log.Logic.Error("Can't be on platform while fall");
+                return;
+            }
+
+            var inDir = Sign(Input.Move.X);
+            var vx = board.Velocity.X;
+            var vxAbs = Abs(vx);
+            var vxDir = Sign(vx);
+            
+            var greatSpeed = vxAbs > specs.HorizontalControlledSpeed;
+            Phase = inDir switch
+            {
+                0 => CelesteJumpPhase.Brake,
+                _ when Phase == CelesteJumpPhase.Turn || inDir == -vxDir => CelesteJumpPhase.Turn,
+                _ => CelesteJumpPhase.Drive
+            };
+            
+            switch (greatSpeed, Phase)
+            {
+                case (greatSpeed: true, CelesteJumpPhase.Drive):
+                {
+                    break;
+                }
+                
+                case (greatSpeed: true, CelesteJumpPhase.Brake):
+                {
+                    var excess = vxAbs - specs.HorizontalControlledSpeed;
+                    var timeToReach = excess / specs.HorizontalGreatSpeedFriction;
+                    if (timeToReach > DeltaTime)
+                    {
+                        vxAbs -= specs.HorizontalGreatSpeedFriction * DeltaTime;
+                    }
+                    else
+                    {
+                        vxAbs = specs.HorizontalControlledSpeed;
+                        var timeRemains = DeltaTime - timeToReach;
+                        vxAbs = Max(0, vxAbs - specs.HorizontalFriction * timeRemains);
+                    }
+                    
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case (greatSpeed: true, CelesteJumpPhase.Turn):
+                {
+                    var excess = vxAbs - specs.HorizontalControlledSpeed;
+                    var timeToReach = excess / specs.HorizontalGreatSpeedFriction;
+                    if (timeToReach > DeltaTime)
+                    {
+                        vxAbs -= specs.HorizontalGreatSpeedFriction * DeltaTime;
+                    }
+                    else
+                    {
+                        vxAbs = specs.HorizontalControlledSpeed;
+                        var timeRemains = DeltaTime - timeToReach;
+                        vxAbs = Max(0, vxAbs - specs.HorizontalTurnAcceleration * timeRemains);
+                    }
+
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case(greatSpeed: false, CelesteJumpPhase.Drive):
+                {
+                    vxAbs = Min(specs.HorizontalControlledSpeed, vxAbs + specs.HorizontalAcceleration * DeltaTime);
+                    vx = inDir * vxAbs;
+                    break;
+                }
+                    
+                case (greatSpeed: false, CelesteJumpPhase.Brake):
+                {
+                    vxAbs = Max(0, vxAbs - specs.HorizontalFriction * DeltaTime);
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case (greatSpeed: false, CelesteJumpPhase.Turn):
+                {
+                    vx += inDir * specs.HorizontalTurnAcceleration;
+                    if (Abs(vx) >= specs.HorizontalControlledSpeed)
+                    {
+                        vx = inDir * specs.HorizontalControlledSpeed;
+                        Phase = CelesteJumpPhase.Drive;
+                    }
+                    break;
+                }
+            }
+            
+            var vy = board.Velocity.Y - specs.VerticalFriction * DeltaTime;
+            board.Velocity = new Vector2(vx, vy);
             await NextFrame();
         }
     }
@@ -192,7 +309,7 @@ public class PrimitiveJumpState(Player player) : JumpState
         var board = player.Board;
         {
             Phase = PrimitiveJumpPhase.Drive;
-            var inDir = (int)GameplayAPI.Input.Move.X;
+            var inDir = Sign(Input.Move.X);
             board.Velocity = new Vector2(inDir * specs.HorizontalStartSpeed, specs.VerticalStartSpeed);
             await NextFrame();
         }
@@ -205,7 +322,7 @@ public class PrimitiveJumpState(Player player) : JumpState
                 return;
             }
 
-            var inDir = Sign(GameplayAPI.Input.Move.X);
+            var inDir = Sign(Input.Move.X);
             var vx = board.Velocity.X;
             var vxAbs = Abs(vx);
             var vxDir = Sign(vx);
@@ -321,7 +438,7 @@ public class FallState(Player player) : State
                 return;
             }
 
-            var inDir = Sign(GameplayAPI.Input.Move.X);
+            var inDir = Sign(Input.Move.X);
             var vx = board.Velocity.X;
             var vxAbs = Abs(vx);
             var vxDir = Sign(vx);

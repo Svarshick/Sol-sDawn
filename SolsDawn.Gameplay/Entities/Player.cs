@@ -55,10 +55,20 @@ public record PlayerSpecs
     public CelesteJumpSpecs CelesteJump = new();
     public record CelesteJumpSpecs
     {
-        [Inspect(min: 0)] public float HorizontalDashAngle = 30;
-        [Inspect(min: 0)] public float HorizontalDashDistance = 10;
-        [Inspect(min: 0)] public float VerticalDashDistance = 10;
+        [Inspect(min: 0, max: PI / 2)] public float HorizontalDashAngle = PI / 3;
+        [Inspect(min: 0)] public float HorizontalDashDistance = 5;
+        [Inspect(min: 0)] public float VerticalDashDistance = 5;
         [Inspect(min: 1)] public int DashFrames = 3;
+
+        [Inspect(min: 0)] public float HorizontalDashFinalSpeed = 20;
+        [Inspect(min: 0)] public float VerticalDashFinalSpeed = 20;
+        
+        [Inspect(min: 0)] public float HorizontalGreatSpeedFriction = 10;
+        [Inspect(min: 0)] public float HorizontalControlledSpeed = 10;
+        [Inspect(min: 0)] public float HorizontalAcceleration = 10;
+        [Inspect(min: 0)] public float HorizontalFriction = 10;
+        [Inspect(min: 0)] public float HorizontalTurnAcceleration = 30;
+        [Inspect(min: 0)] public float VerticalFriction = 15;
     }
 
     public FallSpecs Fall = new();

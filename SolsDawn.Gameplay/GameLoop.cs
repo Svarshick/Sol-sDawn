@@ -25,7 +25,7 @@ public static class GameLoop
         var leftSlope = new Platform(CreateObject(), 10);
         leftSlope.Transform.Position = new Vector2(-5, 0);
         leftSlope.Transform.Rotation = -PI * 1 / 4;
-        var negSlope = new Platform(CreateObject(), 10);
+        var negSlope = new Platform(CreateObject(), 1000);
         negSlope.Transform.Position = new Vector2(-7, 3);
         negSlope.Transform.Rotation = -PI * 5 / 8;
         var highPlatform = new Platform(CreateObject(), 10);
@@ -40,7 +40,7 @@ public static class GameLoop
             CreateObject(),
             playerBoard,
             playerAnimations);
-        G.Player.Transform.Position = new Vector2(6, 15);
+        G.Player.Transform.Position = new Vector2(6, 4);
         var playerController = new PlayerController(G.Player);
         
         while (true)

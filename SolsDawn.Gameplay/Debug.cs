@@ -8,9 +8,9 @@ namespace SolsDawn.Gameplay;
 
 public static class Debug
 {
-    public static Type CurrentJumpHeuristic => JumpHeuristics[_jumpIndex].Type;
+    public static Type CurrentJumpModel => JumpModels[_jumpIndex].Type;
     private static int _jumpIndex = 0;
-    private static readonly List<(string Name, Type Type)> JumpHeuristics = new()
+    private static readonly List<(string Name, Type Type)> JumpModels = new()
     {
         (nameof(PrimitiveJumpState), typeof(PrimitiveJumpState)),
         (nameof(CelesteJumpState), typeof(CelesteJumpState)),
@@ -28,15 +28,18 @@ public static class Debug
 
         ImGui.Text("Debug Controls");
         ImGui.Text($"Position: ({G.Player.Transform.Position.X:F2}, {G.Player.Transform.Position.Y:F2})");
+        var zoom = Camera.Zoom;
+        if (ImGui.SliderFloat("Zoom", ref zoom, -10, 100))
+            Camera.Zoom = zoom;
         
         ImGui.Separator();
 
-        if (ImGui.BeginCombo("Jump Heuristic", JumpHeuristics[_jumpIndex].Name))
+        if (ImGui.BeginCombo("Jump Models", JumpModels[_jumpIndex].Name))
         {
-            for (int i = 0; i < JumpHeuristics.Count; i++)
+            for (int i = 0; i < JumpModels.Count; i++)
             {
                 bool isSelected = (_jumpIndex == i);
-                if (ImGui.Selectable(JumpHeuristics[i].Name, isSelected))
+                if (ImGui.Selectable(JumpModels[i].Name, isSelected))
                 {
                     _jumpIndex = i;
                 }
@@ -48,7 +51,7 @@ public static class Debug
         }
 
         var pSpecs = G.Player.Board.Specs;
-        object jumpSpecs = CurrentJumpHeuristic.Name switch
+        object jumpSpecs = CurrentJumpModel.Name switch
         {
             nameof(PrimitiveJumpState) => pSpecs.PrimitiveJump,
             nameof(CelesteJumpState) => pSpecs.CelesteJump,
