@@ -1,6 +1,6 @@
-using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using nkast.Aether.Physics2D;
 using nkast.Aether.Physics2D.Collision;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
@@ -13,16 +13,15 @@ namespace SolsDawn.Core.Logic.Gameplay;
 public static class Physics
 {
     private static readonly World World;
-    private static readonly List<Action> PostUpdateActions = new();
 
     static Physics()
     {
         World = new World(Vector2.Zero);
+        World.ContactManager.PreSolve += OnPreSolve;
     }
 
     public static void Add(Body body) => World.Add(body);
     public static void Remove(Body body) => World.Remove(body);
-    public static void DoAfterStep(Action action) => PostUpdateActions.Add(action);
     
     public static void Step(GameTime gameTime)
     {
@@ -49,19 +48,18 @@ public static class Physics
             collider.GameObject.Transform.Position = body.Position;
             collider.GameObject.Transform.Rotation = body.Rotation;
         }
-
-        foreach (var action in PostUpdateActions)
-        {
-            action();
-        }
-        PostUpdateActions.Clear();
     }
-    
-    public struct HitResult
+
+    private static void OnPreSolve(Contact contact, ref Manifold oldManifold)
     {
-        public Fixture Fixture;
-        public Vector2 HitPoint;
-        public float Distance;
+        if (contact.FixtureA.Tag is not Collider collA || 
+            contact.FixtureB.Tag is not Collider collB) 
+            return;
+
+        var applyPhysics = collA.InvokePreSolve(new CollisionData(contact.FixtureA, contact.FixtureB, contact)) &&
+                           collB.InvokePreSolve(new CollisionData(contact.FixtureB, contact.FixtureA, contact));
+
+        contact.Enabled = contact.Enabled && applyPhysics;
     }
     
     public static void Overlap(AABB aabb, Category layer, IList<GameObject> results)
@@ -90,7 +88,7 @@ public static class Physics
         Category layer,
         IList<GameObject> results)
     {
-        var queryTransform = new nkast.Aether.Physics2D.Common.Transform(position, rotation);
+        var queryTransform = new Transform(position, rotation);
         shape.ComputeAABB(out var aabb, ref queryTransform, 0);
 
         World.QueryAABB(fixture =>
@@ -99,7 +97,7 @@ public static class Physics
             {
                 fixture.Body.GetTransform(out var bodyTransform);
 
-                if (nkast.Aether.Physics2D.Collision.Collision.TestOverlap(
+                if (Collision.TestOverlap(
                         shape, 
                         0, 
                         fixture.Shape, 
@@ -121,97 +119,105 @@ public static class Physics
         }, ref aabb);
     }
     
-    public static bool LineCast(
-        Vector2 start, 
-        Vector2 end, 
-        float width, 
-        Category layer,
-        out HitResult hit)
+    public static CircleCastResult CircleCast(
+        Vector2 from, 
+        Vector2 to, 
+        float radius, 
+        Category selfLayer = Category.All, 
+        Category collidesLayer = Category.All, 
+        short group = 0,
+        CircleCastFixtureFilter? filter = null)
     {
-        hit = default;
+        var bestHit = new CircleCastResult { Hit = false, Fraction = 1f };
 
-        var dir = end - start;
-        var length = dir.Length();
-        if (length <= 0.0001f) 
-            return false;
+        AABB movementBounds;
+        Vector2.Min(ref from, ref to, out movementBounds.LowerBound);
+        Vector2.Max(ref from, ref to, out movementBounds.UpperBound);
+        movementBounds.LowerBound -= new Vector2(radius, radius);
+        movementBounds.UpperBound += new Vector2(radius, radius);
         
-        dir /= length;
-        var normal = new Vector2(-dir.Y, dir.X) * (width * 0.5f);
-        var vertices = new Vertices(4)
-        {
-            start + normal,
-            end + normal,
-            end - normal,
-            start - normal
-        };
-
-        var beamShape = new PolygonShape(vertices, 0);
-        var beamTransform = Transform.Identity;
-
-        beamShape.ComputeAABB(out AABB aabb, ref beamTransform, 0);
-
-        var beamProxy = new DistanceProxy(beamShape, 0);
-        var minDistanceSq = float.MaxValue;
-        Fixture? closestFixture = null;
-        var closestPoint = Vector2.Zero;
-
         World.QueryAABB(fixture =>
         {
-            if ((fixture.CollisionCategories & layer) != 0)
+            var body = fixture.Body;
+            if (body.BodyType != BodyType.Static)
+                return true;
+            
+            if (group != 0 && group == fixture.CollisionGroup)
             {
-                fixture.Body.GetTransform(out var fixtureTransform);
-
-                if (nkast.Aether.Physics2D.Collision.Collision.TestOverlap(
-                        beamShape,
-                        0,
-                        fixture.Shape,
-                        0,
-                        ref beamTransform,
-                        ref fixtureTransform))
-                {
-                    var distInput = new DistanceInput
-                    {
-                        ProxyA = beamProxy,
-                        ProxyB = new DistanceProxy(fixture.Shape, 0),
-                        TransformA = beamTransform,
-                        TransformB = fixtureTransform,
-                        UseRadii = true
-                    };
-
-                    Distance.ComputeDistance(out DistanceOutput distOutput, out _, distInput);
-                    var distSq = Vector2.DistanceSquared(start, distOutput.PointB);
-                    if (distSq < minDistanceSq)
-                    {
-                        minDistanceSq = distSq;
-                        closestFixture = fixture;
-                        closestPoint = distOutput.PointB;
-                    }
-                }
+                if (group < 0)
+                    return true;
+            }
+            else
+            {
+                if ((fixture.CollisionCategories & collidesLayer) == Category.None ||
+                    (fixture.CollidesWith & selfLayer) == Category.None)
+                    return true;
             }
 
-            return true;
-        }, ref aabb);
+            var bodyWorldCenter = body.GetWorldPoint(body.LocalCenter);
+            var toiInput = new TOIInput
+            {
+                ProxyA = new DistanceProxy(new CircleShape(radius, 1f), 0),
+                SweepA = new Sweep
+                {
+                    C0 = from,
+                    C = to,
+                    LocalCenter = Vector2.Zero,
+                    A0 = 0f,
+                    A = 0f,
+                    Alpha0 = 0f,
+                },
+                SweepB = new Sweep
+                {
+                    C0 = bodyWorldCenter,
+                    C = bodyWorldCenter,
+                    LocalCenter = body.LocalCenter,
+                    A0 = body.Rotation,
+                    A = body.Rotation,
+                    Alpha0 = 0f
+                },
+                TMax = 1
+            };
 
-        if (closestFixture != null)
-        {
-            hit.Fixture = closestFixture;
-            hit.HitPoint = closestPoint;
-            hit.Distance = MathF.Sqrt(minDistanceSq);
+            for (int childIndex = 0; childIndex < fixture.Shape.ChildCount; childIndex++)
+            {
+                toiInput.ProxyB = new DistanceProxy(fixture.Shape, childIndex);
+                TimeOfImpact.CalculateTimeOfImpact(out var toiOutput, ref toiInput);
+                if (toiOutput.State == TOIOutputState.Touching && toiOutput.T < bestHit.Fraction)
+                {
+                    if (filter?.Invoke(from, to, radius, toiOutput.T, fixture) == false)
+                        continue;
+                    bestHit.Hit = true;
+                    bestHit.Fraction = toiOutput.T;
+                    bestHit.HitFixture = fixture;
+                }
+            }
+            
             return true;
-        }
+        }, ref movementBounds);
 
-        return false;
+        return bestHit;
     }
+}
+
+public delegate bool CircleCastFixtureFilter(Vector2 from, Vector2 to, float radius, float fraction, Fixture other);
+
+public struct CircleCastResult
+{
+    public bool Hit;
+    public float Fraction; // 0.0 to 1.0 (How far along the path it hit)
+    public Fixture HitFixture;
 }
 
 public record struct CollisionData(Fixture SenderFixture, Fixture OtherFixture, Contact Contact)
 {
-    public Collider Sender => SenderFixture.Tag as Collider ?? throw new LogicException("Fixture tag must be Collider");
-    public Collider Other => OtherFixture.Tag as Collider ?? throw new LogicException("Fixture tag must be Collider");
+    public Collider Sender => SenderFixture.Tag as Collider ?? throw Log.Physics.FatalException("Fixture tag must be Collider");
+    public Collider Other => OtherFixture.Tag as Collider ?? throw Log.Physics.FatalException("Fixture tag must be Collider");
 }
 
 public delegate bool OnCollisionHandler(CollisionData data);
 public delegate void OnSeparationHandler(CollisionData data);
+public delegate bool OnPreSolveHandler(CollisionData data);
 
 public sealed class Collider : Component
 {
@@ -300,11 +306,26 @@ public sealed class Collider : Component
     {
         OnSeparation?.Invoke(new CollisionData(sender, other, collision));
     }
+    
+    public event OnPreSolveHandler? OnPreSolve;
+
+    internal bool InvokePreSolve(CollisionData data)
+    {
+        if (OnPreSolve == null) return true;
+
+        var result = true;
+        foreach (OnPreSolveHandler invocation in OnPreSolve.GetInvocationList())
+        {
+            result &= invocation(data);
+        }
+        
+        return result;
+    }
 
     public override void Update()
     {
-        Animation.Transform.Position = _body.Position;
-        Animation.Transform.Rotation = _body.Rotation;
+        Animation.Transform.Position = Transform.Position;
+        Animation.Transform.Rotation = Transform.Rotation;
         Animation.IsVisible = _body.Enabled;
     }
 
@@ -315,14 +336,14 @@ public sealed class Collider : Component
             Debug.Collider.Category.Default => Debug.Collider.DefaultMinimalTime,
             Debug.Collider.Category.Attack => Debug.Collider.AttackMinimalTime,
             Debug.Collider.Category.Parry => Debug.Collider.ParryMinimalTime,
-            _ => throw new LogicException()
+            _ => throw Log.Physics.FatalException()
         };
-
+        
         var timeToEnd = _activationTime + minimalTime - Time.TotalGameTime.TotalSeconds;
         if (timeToEnd > 0)
         {
-            Animation.Transform.Position = _body.Position;
-            Animation.Transform.Rotation = _body.Rotation;
+            Animation.Transform.Position = Transform.Position;
+            Animation.Transform.Rotation = Transform.Rotation;
             Animation.TimeToKill = timeToEnd;
         }
         else
@@ -370,7 +391,7 @@ public class ColliderAnimation : Animation
                 thickness = Debug.Collider.AttackThickness;
                 break;
             default:
-                throw new LogicException();
+                throw Log.Physics.FatalException();
         }
         
         foreach (var fixture in FixtureList)

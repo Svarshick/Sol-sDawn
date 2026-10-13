@@ -1,5 +1,3 @@
-using MonoGame.Extended;
-
 namespace SolsDawn.Core.Logic.Animations;
 
 public abstract class AnimationSet : IDrawable, IUpdatable

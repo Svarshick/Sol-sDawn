@@ -25,15 +25,13 @@ public abstract class Entity : Component
     public readonly Category SelfLayer;
     public readonly Category CollidesLayer;
     
-    public event Action<int, Job>? Damaged;
-
-    public readonly Job RootJob;
+    public readonly Job? RootJob;
     public State? State { get; private set; }
     public Job? StateJob { get; private set; }
 
     public Entity(
         GameObject go, 
-        Job rootJob, 
+        Job? rootJob, 
         Shape shape,
         Category selfLayer,
         Category collidesLayer)
@@ -42,28 +40,24 @@ public abstract class Entity : Component
         RootJob = rootJob;
         SelfLayer = selfLayer;
         CollidesLayer = collidesLayer;
-        Collider = new(go, shape, SelfLayer, CollidesLayer);
-    }
-
-    public void Damage(int damage)
-    {
-        if (damage < 1)
-            throw new LogicException($"Damage can't be negative: {damage}");
-        Damaged?.Invoke(damage, RootJob);
+        Collider = new(go, shape, SelfLayer, CollidesLayer, BodyType.Kinematic);
     }
     
+    //The first time I want job isn't updated by parent job
+    //Controller want manual update control 
     public void Enter(State state)
     {
+        Log.Logic.Info($"Change state: {State} -> {state}");
         if (State is not null)
         {
             State.Exit(state);
             if (StateJob is null)
             {
-                Console.WriteLine($"[Warning] previous state {State} job is null");
+                Log.Logic.Warning($"Previous state {State} job is null");
             }
             else if (StateJob.IsEnded)
             {
-                Console.WriteLine($"[Warning] previous state {State} job is ended");
+                Log.Logic.Warning($"Previous state {State} job is ended");
             }
             else
             {
@@ -89,12 +83,13 @@ public abstract class Entity<TBoard, TAnimation> : Entity
 
     public Entity(
         GameObject go, 
+        Job? job,
         TBoard board, 
         TAnimation animationPlayer, 
         Shape shape,
         Category selfLayer,
         Category collidesLayer) 
-        : base(go, GameplayAPI.CurrentJob, shape, selfLayer, collidesLayer)
+        : base(go, job, shape, selfLayer, collidesLayer)
     {
         Board = board;
         Animator = new Animator<TAnimation>(go, animationPlayer);

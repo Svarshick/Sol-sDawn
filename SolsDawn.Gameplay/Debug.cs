@@ -52,7 +52,7 @@ public static class Debug
         {
             nameof(PrimitiveJumpState) => pSpecs.PrimitiveJump,
             nameof(CelesteJumpState) => pSpecs.CelesteJump,
-            _ => throw new LogicException()
+            _ => throw Log.Logic.FatalException()
         };
         AutoInspector.Draw(jumpSpecs);
         

@@ -1,5 +1,3 @@
-using MonoGame.Extended;
-
 namespace SolsDawn.Core;
 
 public abstract class Component : IUpdatable, IDrawable
@@ -94,7 +92,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IComparable<GameObject>
 
     public int CompareTo(GameObject? other) => GetHashCode().CompareTo(other?.GetHashCode());
 
-    public T? GetComponent<T>() where T : Component
+    public T GetComponent<T>() where T : Component
     {
         if (IsDestroyed)
             throw new Exception("Access to destroyed GameObject");
@@ -111,7 +109,7 @@ public sealed class GameObject : IUpdatable, IDrawable, IComparable<GameObject>
                 return (T)component;
         }
 
-        return null;
+        throw new Exception("Can't find component");
     }
 
     public Component? GetComponent(Type ofType)

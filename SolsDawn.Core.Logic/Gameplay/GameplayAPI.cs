@@ -11,6 +11,20 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public static class GameplayAPI
 {
+    internal static void Init(
+        Game game, 
+        CartesianCamera camera, 
+        Painter painter,
+        Input input,
+        AnimationsPool animationsPool)
+    {
+        Game = game;
+        Camera = camera;
+        Painter =  painter;
+        Input = input;
+        AnimationsPool = animationsPool;
+    }
+    
     #region Private
 
     private static GameObject CreateGameObject(Job job, Vector2 position, float rotation = 0)
@@ -25,13 +39,16 @@ public static class GameplayAPI
     #endregion
 
     #region Meta
-    
-    public static CartesianCamera Camera { get; internal set; }
-    public static Painter Painter { get; internal set; }
-    public static Input Input { get; internal set; }
-    public static AnimationsPool AnimationsPool { get; internal set; }
+
+    private static Game Game; 
+    public static CartesianCamera Camera { get; private set; }
+    public static Painter Painter { get; private set; }
+    public static Input Input { get; private set; }
+    public static AnimationsPool AnimationsPool { get; private set; }
     public static float DeltaTime => (float)Time.ElapsedGameTime.TotalSeconds;
     public static float TotalTime => (float)Time.TotalGameTime.TotalSeconds;
+    public static long TotalFrames => Time.TotalGameTime.Ticks / Game.TargetElapsedTime.Ticks;
+    
     public static Action ImGuiDrawer
     {
         get => Game.ImGuiDrawer;
@@ -51,6 +68,8 @@ public static class GameplayAPI
     public static float Max(float f1, float f2) => Math.Max(f1, f2);
     
     public static float Min(float f1, float f2) => Math.Min(f1, f2);
+
+    public static float Sqrt(float f) => (float)Math.Sqrt(f);
     
     public static float Angle(this Vector2 v) => (float)Math.Atan2(v.Y, v.X);
     
@@ -129,6 +148,7 @@ public static class GameplayAPI
     
     public static class Layer
     {
+        public static Category None => Category.None;
         public static Category Wall => Category.Cat1;
         public static Category Player => Category.Cat2;
         public static Category Enemy => Category.Cat3;

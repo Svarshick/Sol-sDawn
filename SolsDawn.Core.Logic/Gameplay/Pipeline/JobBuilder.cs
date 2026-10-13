@@ -53,7 +53,7 @@ public struct JobAsyncMethodBuilder
 
     public void SetException(Exception exception)
     {
-        Console.Error.WriteLine($"[JobTest Error] {exception}");
+        Log.Job.Error(exception);
         _job.Kill();
     }
 

@@ -21,10 +21,12 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     
     private GraphicsDeviceManager _graphicsDeviceManager;
     private ImGuiRenderer _imGuiRenderer;
+    private BoardBackground _background;
+    
     private Func<Job> _mainJobRunner;
     private Job _mainJob;
+    private bool _firstUpdate = true;
     private Input _input;
-    private BoardBackground _background;
     
     public Game(Func<Job> mainJobRunner)
     {
@@ -63,23 +65,26 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             _imGuiRenderer = new(this);
             _imGuiRenderer.RebuildFontAtlas();
 
-            GameplayAPI.Camera = Camera;
-            GameplayAPI.Painter = Painter;
-            GameplayAPI.Input = _input;
-            GameplayAPI.AnimationsPool = AnimationsPool;
-            _mainJob = _mainJobRunner();
+            GameplayAPI.Init(this, Camera, Painter, _input, AnimationsPool);
         }
     }
 
     protected override void Update(GameTime gameTime)
     {
         Time.Update(gameTime);
-        MonoTask.Update();
-        
         Physics.Step(gameTime);
         
         _input.Update();
-        _mainJob.Update();
+        if (_firstUpdate)
+        {
+            _mainJob = _mainJobRunner();
+            _firstUpdate = false;
+        }
+        else
+        {
+            _mainJob.Update();
+        }
+
         GameObjectPool.Update();
         AnimationsPool.Update();
         

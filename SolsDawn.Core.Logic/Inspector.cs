@@ -26,10 +26,9 @@ public static class AutoInspector
 {
     public static void Draw(object target)
     {
-        if (target == null) return;
-
         var type = target.GetType();
         var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+        ImGui.PushID(type.Name);
 
         foreach (var field in fields)
         {
@@ -37,11 +36,11 @@ public static class AutoInspector
             if (attr == null) 
                 continue;
 
-            string label = attr.CustomName ?? Regex.Replace(field.Name, "(\\B[A-Z])", " $1");
+            var label = attr.CustomName ?? Regex.Replace(field.Name, "(\\B[A-Z])", " $1");
 
             if (field.FieldType == typeof(float))
             {
-                float value = (float)field.GetValue(target)!;
+                var value = (float)field.GetValue(target)!;
                 
                 bool changed = attr.Min != float.MinValue && attr.Max != float.MaxValue
                     ? ImGui.SliderFloat(label, ref value, attr.Min, attr.Max)
@@ -52,16 +51,18 @@ public static class AutoInspector
             }
             else if (field.FieldType == typeof(int))
             {
-                int value = (int)field.GetValue(target)!;
+                var value = (int)field.GetValue(target)!;
                 if (ImGui.DragInt(label, ref value, (int)Math.Max(1, attr.Speed)))
                     field.SetValue(target, value);
             }
             else if (field.FieldType == typeof(bool))
             {
-                bool value = (bool)field.GetValue(target)!;
+                var value = (bool)field.GetValue(target)!;
                 if (ImGui.Checkbox(label, ref value))
                     field.SetValue(target, value);
             }
         }
+        
+        ImGui.PopID();
     }
 }

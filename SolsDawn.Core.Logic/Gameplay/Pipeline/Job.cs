@@ -1,18 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using SolsDawn.Core.Logic.Animations;
 
 namespace SolsDawn.Core.Logic.Gameplay.Pipeline;
-
-public class JobException(string message = null) : Exception(FullMessage(message))
-{
-    private static string FullMessage(string message)
-    {
-        const string prefix = "[Job]";
-        return string.IsNullOrEmpty(message) ? $"{prefix}" : $"{prefix}: {message}";
-    }
-}
 
 public enum JobStatus : byte
 {
@@ -26,13 +16,13 @@ public static class JobContext
     [field: ThreadStatic]
     public static Job? CurrentJob { get; internal set; }
 
-    public static JobScope Use(Job job) => new(job);
+    public static JobScope Use(Job? job) => new(job);
 
     public struct JobScope : IDisposable
     {
         private readonly Job? _previous;
 
-        public JobScope(Job currentJob)
+        public JobScope(Job? currentJob)
         {
             _previous = CurrentJob;
             CurrentJob = currentJob;
@@ -50,7 +40,7 @@ public class Job
 {
     public JobStatus Status { get; private set; }
     internal Job? BlockJob;
-    internal Action? Continuation;
+    internal Action? NextFrameContinuation;
     internal Event Completed;
     
     public bool IsEnded => Status != JobStatus.Pending;
@@ -80,9 +70,9 @@ public class Job
     public JobAwaiter GetAwaiter()
     {
         if (JobContext.CurrentJob is null)
-            throw new JobException();
+            Log.Job.Fatal("Invalid Job awaiter context");
         return new (JobContext.CurrentJob, this);
-    } 
+    }
 
     internal void AddChild(Job child)
     {
@@ -118,17 +108,18 @@ public class Job
         _trackedResources.Add(timer);
     }
 
-    internal void Update()
+    public void Update()
     {
         if (IsEnded)
             return;
+        var nextFrameContinuationSnapshot = NextFrameContinuation;
+        NextFrameContinuation = null;
         using (JobContext.Use(this))
         {
             UpdateTimers();
             UpdateSubjobs();
             UpdateSelf();
         }
-
         return;
         
         void UpdateTimers()
@@ -209,39 +200,8 @@ public class Job
         {
             if (IsEnded)
                 return;
-            
-            if (BlockJob != null)
-            {
-                BlockJob.Update();
-            }
-            else if (Continuation != null) //event awaiter doesn't set Continuation until event ended
-            {
-                var continuation = Continuation;
-                Continuation = null;
-                continuation();
-            }
-            else
-            {
-                return;
-            }
-
-            while (!IsEnded && BlockJob != null)
-            {
-                if (BlockJob.IsEnded)
-                {
-                    BlockJob = null;
-                    if (Continuation != null)
-                    {
-                        var continuation = Continuation!;
-                        Continuation = null;
-                        continuation();
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
+            BlockJob?.Update();
+            nextFrameContinuationSnapshot?.Invoke();
         }
     }
 
@@ -314,9 +274,6 @@ public class Job
                 break;
             case EventRace eventRace:
                 eventRace.Finished.Cancel();
-                break;
-            case Animation animation:
-                animation.Kill();
                 break;
             default:
                 throw new NotImplementedException($"Can't free {resource.GetType()} resource");

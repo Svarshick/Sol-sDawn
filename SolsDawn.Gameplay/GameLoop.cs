@@ -40,7 +40,7 @@ public static class GameLoop
             CreateObject(),
             playerBoard,
             playerAnimations);
-        G.Player.Transform.Position = new Vector2(0, 1);
+        G.Player.Transform.Position = new Vector2(6, 15);
         var playerController = new PlayerController(G.Player);
         
         while (true)

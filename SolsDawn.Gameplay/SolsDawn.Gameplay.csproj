@@ -10,7 +10,6 @@
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
     <ProjectReference Include="../SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />
-    <PackageReference Include="Aether.Physics2D.MG" Version="2.2.0" />
     
     <Using Include="Microsoft.Xna.Framework.Color" Alias="Color" />
     <Using Include="Microsoft.Xna.Framework.Vector2" Alias="Vector2" />

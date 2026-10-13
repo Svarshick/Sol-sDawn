@@ -63,7 +63,7 @@ public class Event
     public EventAwaiter GetAwaiter()
     {
         if (!AwaiterUtils.ValidContext())
-            throw new JobException();
+            Log.Job.Fatal("Invalid Job awaiter context");
         return new EventAwaiter(JobContext.CurrentJob!, this);
     }
     

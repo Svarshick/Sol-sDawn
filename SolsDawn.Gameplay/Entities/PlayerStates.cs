@@ -1,4 +1,5 @@
 using SolsDawn.Core.Logic;
+using SolsDawn.Core.Logic.Gameplay;
 
 namespace SolsDawn.Gameplay.Entities;
 
@@ -6,51 +7,56 @@ public class IdleState(Player player) : State
 {
     public override async Job Job()
     {
+        player.Board.Velocity = Vector2.Zero;
         player.Animator.Player.TryPlay(PlayerAnimations.Idle);
-        player.Collider._body.LinearVelocity = Vector2.Zero;
     }
+}
+
+public enum RunPhase
+{
+    Drive, //input != 0, accelerate/maintain speed 
+    Brake, //input = 0, friction to stop
+    Turn, //int != 0, accelerate in opposite direction
 }
 
 public class RunState(Player player) : State
 {
-    public enum Phase
-    {
-        Drive, //input != 0, accelerate/maintain speed 
-        Brake, //input = 0, friction to stop
-        Turn, //int != 0, accelerate in opposite direction
-    }
+    public RunPhase Phase { get; private set; }
 
     public override async Job Job()
     {
         var specs = player.Board.Specs.Run;
-        var body = player.Collider._body;
-        var phase = Phase.Drive;
+        var board = player.Board;
+        Phase = RunPhase.Drive;
         
         while (true)
         {
             var currentPlatform = player.Board.CurrentPlatform;
             if (currentPlatform is null)
-                throw new LogicException("Platform can't be null while run");
-            
+            {
+                Log.Logic.Error("Platform can't be null while run");
+                return;
+            }
+
             var angle = player.Board.CurrentPlatform!.Transform.Rotation;
-            var inDir = (int)Input.Move.X;
-            var vx = Vector2.Dot(body.LinearVelocity, new Vector2(Cos(angle), Sin(angle)));
+            var inDir = (int)GameplayAPI.Input.Move.X;
+            var vx = Vector2.Dot(board.Velocity, new Vector2(Cos(angle), Sin(angle)));
             var vxAbs = Abs(vx);
             var vxDir = Sign(vx);
             
-            var greatSpeed = vxAbs > specs.Speed;
-            phase = inDir switch
+            var greatSpeed = vxAbs > specs.MaxSpeed;
+            Phase = inDir switch
             {
-                0 => Phase.Brake,
-                _ when phase == Phase.Turn || inDir == -vxDir => Phase.Turn,
-                _ => Phase.Drive
+                0 => RunPhase.Brake,
+                _ when Phase == RunPhase.Turn || inDir == -vxDir => RunPhase.Turn,
+                _ => RunPhase.Drive
             };
 
-            switch (greatSpeed, phase)
+            switch (greatSpeed, Phase)
             {
-                case (greatSpeed: true, Phase.Drive):
+                case (greatSpeed: true, RunPhase.Drive):
                 {
-                    var excess = vxAbs - specs.Speed;
+                    var excess = vxAbs - specs.MaxSpeed;
                     var timeToReach = excess / specs.GreatSpeedFriction;
                     if (timeToReach > DeltaTime)
                     {
@@ -58,16 +64,16 @@ public class RunState(Player player) : State
                     }
                     else
                     {
-                        vxAbs = specs.Speed;
+                        vxAbs = specs.MaxSpeed;
                     }
 
-                    vx = vxDir * vxAbs;
+                    vx = inDir * vxAbs;
                     break;
                 }
                 
-                case (greatSpeed: true, Phase.Brake):
+                case (greatSpeed: true, RunPhase.Brake):
                 {
-                    var excess = vxAbs - specs.Speed;
+                    var excess = vxAbs - specs.MaxSpeed;
                     var timeToReach = excess / specs.GreatSpeedFriction;
                     if (timeToReach > DeltaTime)
                     {
@@ -75,7 +81,7 @@ public class RunState(Player player) : State
                     }
                     else
                     {
-                        vxAbs = specs.Speed;
+                        vxAbs = specs.MaxSpeed;
                         var timeRemains = DeltaTime - timeToReach;
                         vxAbs = Max(0, vxAbs - specs.Friction * timeRemains);
                     }
@@ -84,9 +90,9 @@ public class RunState(Player player) : State
                     break;
                 }
                 
-                case (greatSpeed: true, Phase.Turn):
+                case (greatSpeed: true, RunPhase.Turn):
                 {
-                    var excess = vxAbs - specs.Speed;
+                    var excess = vxAbs - specs.MaxSpeed;
                     var timeToReach = excess / specs.GreatSpeedFriction;
                     if (timeToReach > DeltaTime)
                     {
@@ -94,7 +100,7 @@ public class RunState(Player player) : State
                     }
                     else
                     {
-                        vxAbs = specs.Speed;
+                        vxAbs = specs.MaxSpeed;
                         var timeRemains = DeltaTime - timeToReach;
                         vxAbs = Max(0, vxAbs - specs.TurnAcceleration * timeRemains);
                     }
@@ -103,144 +109,240 @@ public class RunState(Player player) : State
                     break;
                 }
                 
-                case(greatSpeed: false, Phase.Drive):
+                case(greatSpeed: false, RunPhase.Drive):
                 {
-                    vxAbs = Min(specs.Speed, vxAbs + specs.Acceleration * DeltaTime);
+                    vxAbs = Min(specs.MaxSpeed, vxAbs + specs.Acceleration * DeltaTime);
                     vx = inDir * vxAbs;
                     break;
                 }
                     
-                case (greatSpeed: false, Phase.Brake):
+                case (greatSpeed: false, RunPhase.Brake):
                 {
                     vxAbs = Max(0, vxAbs - specs.Friction * DeltaTime);
                     vx = vxDir * vxAbs;
                     break;
                 }
                 
-                case (greatSpeed: false, Phase.Turn):
+                case (greatSpeed: false, RunPhase.Turn):
                 {
                     vx += inDir * specs.TurnAcceleration;
-                    if (Abs(vx) >= specs.Speed)
+                    if (Abs(vx) >= specs.MaxSpeed)
                     {
-                        vx = inDir * specs.Speed;
-                        phase = Phase.Drive;
+                        vx = inDir * specs.MaxSpeed;
+                        Phase = RunPhase.Drive;
                     }
                     break;
                 }
             }
 
-            body.LinearVelocity = new Vector2(vx, 0).Rotated(angle);
+            board.Velocity = new Vector2(vx, 0).Rotated(angle);
             await NextFrame();
         }
     }
 }
 
-public class CelesteJumpState(Player player) : State
+public abstract class JumpState : State;
+
+public class CelesteJumpState(Player player) : JumpState
 {
     public override async Job Job()
     {
         var specs = player.Board.Specs.CelesteJump;
-        var body = player.Collider._body;
+        var board = player.Board;
 
         Vector2 dashVelocity;
         var dashSec = FpsSec * specs.DashFrames;
 
-        if (Input.Move.X == 0)
+        if (GameplayAPI.Input.Move.X == 0)
         {
             dashVelocity = new (0, specs.VerticalDashDistance / dashSec);
         }
         else
         {
-            var xSign = Input.Move.X > 0 ? 1 : -1;
+            var xSign = GameplayAPI.Input.Move.X > 0 ? 1 : -1;
             var xVelocity = xSign * specs.HorizontalDashDistance / dashSec;
             var dashRadians = specs.HorizontalDashAngle * PI / 180;
             var yVelocity  = specs.HorizontalDashDistance * Tan(dashRadians) / dashSec;
             dashVelocity = new Vector2(xVelocity, yVelocity);
         }
 
-        body.LinearVelocity = dashVelocity;
+        board.Velocity = dashVelocity;
         
         for (var i = 0; i < specs.DashFrames; i++)
         {
             await NextFrame();
         }
-        
-        player.Enter(new FallState(player));
     }
 }
 
-public class PrimitiveJumpState(Player player) : State
-{
+public class PrimitiveJumpState(Player player) : JumpState
+{ 
     public override async Job Job()
     {
         var specs = player.Board.Specs.PrimitiveJump;
-        var body = player.Collider._body;
+        var board = player.Board;
         
-        var direction = Input.Move;
-        body.LinearVelocity = new Vector2(direction.X * specs.HorizontalStartSpeed, specs.VerticalStartSpeed);
-        
-        while (body.LinearVelocity.Y >= 0)
+        var inDir = Sign(GameplayAPI.Input.Move.X);
+        board.Velocity = new Vector2(inDir * specs.HorizontalStartSpeed, specs.VerticalStartSpeed);
+        await NextFrame();
+        while (true)
         {
-            direction = Input.Move;
-            var targetVx = direction.X * specs.HorizontalSpeed;
-            var currentVx = body.LinearVelocity.X;
+            inDir = Sign(GameplayAPI.Input.Move.X);
+            var targetVx = inDir * specs.HorizontalSpeed;
+            var vx = board.Velocity.X;
 
-            if (Abs(currentVx) >= specs.HorizontalSpeed)
+            if (Abs(vx) >= specs.HorizontalSpeed)
             {
-                if (currentVx * direction.X < 0)
-                    currentVx += targetVx;
+                if (vx * inDir < 0)
+                    vx += targetVx;
             }
             else
             {
-                currentVx = targetVx;
+                vx = targetVx;
             }
 
-            body.LinearVelocity = new Vector2(currentVx, body.LinearVelocity.Y);
-            body.ApplyForce(new Vector2(0, -specs.VerticalAcceleration));
+            var vy = board.Velocity.Y - specs.VerticalAcceleration * DeltaTime;
+            
+            board.Velocity = new Vector2(vx, vy);
             await NextFrame();
         }
-
-        player.Enter(new FallState(player));
     }
+}
+
+public enum FallPhase
+{
+    Drive, //input != 0, accelerate/maintain speed 
+    Brake, //input = 0, friction to stop
+    Turn, //int != 0, accelerate in opposite direction
 }
 
 public class FallState(Player player) : State
 {
+    public FallPhase Phase { get; private set; }
+    
+
     public override async Job Job()
     {
         var specs = player.Board.Specs.Fall;
-        var body = player.Collider._body;
+        var board = player.Board;
+        var phase = FallPhase.Drive;
         
-        while (!player.Board.OnGround)
+        while (true)
         {
-            var direction = Input.Move;
-            
-            var targetVx = direction.X * specs.FallHorizontalSpeed;
-            var currentVx = body.LinearVelocity.X;
-            if (Abs(currentVx) >= specs.FallHorizontalSpeed)
+            if (board.CurrentPlatform is not null)
             {
-                if (currentVx * direction.X < 0)
-                    currentVx += targetVx;
+                Log.Logic.Error("Can't be on platform while fall");
+                return;
+            }
+
+            var inDir = (int)GameplayAPI.Input.Move.X;
+            var vx = board.Velocity.X;
+            var vxAbs = Abs(vx);
+            var vxDir = Sign(vx);
+            
+            var greatSpeed = vxAbs > specs.HorizontalMaxSpeed;
+            phase = inDir switch
+            {
+                0 => FallPhase.Brake,
+                _ when phase == FallPhase.Turn || inDir == -vxDir => FallPhase.Turn,
+                _ => FallPhase.Drive
+            };
+
+            switch (greatSpeed, phase)
+            {
+                case (greatSpeed: true, FallPhase.Drive):
+                {
+                    var excess = vxAbs - specs.HorizontalMaxSpeed;
+                    var timeToReach = excess / specs.HorizontalGreatSpeedFriction;
+                    if (timeToReach > DeltaTime)
+                    {
+                        vxAbs -= specs.HorizontalGreatSpeedFriction * DeltaTime;
+                    }
+                    else
+                    {
+                        vxAbs = specs.HorizontalMaxSpeed;
+                    }
+
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case (greatSpeed: true, FallPhase.Brake):
+                {
+                    var excess = vxAbs - specs.HorizontalMaxSpeed;
+                    var timeToReach = excess / specs.HorizontalGreatSpeedFriction;
+                    if (timeToReach > DeltaTime)
+                    {
+                        vxAbs -= specs.HorizontalGreatSpeedFriction * DeltaTime;
+                    }
+                    else
+                    {
+                        vxAbs = specs.HorizontalMaxSpeed;
+                        var timeRemains = DeltaTime - timeToReach;
+                        vxAbs = Max(0, vxAbs - specs.HorizontalFriction * timeRemains);
+                    }
+                    
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case (greatSpeed: true, FallPhase.Turn):
+                {
+                    var excess = vxAbs - specs.HorizontalMaxSpeed;
+                    var timeToReach = excess / specs.HorizontalGreatSpeedFriction;
+                    if (timeToReach > DeltaTime)
+                    {
+                        vxAbs -= specs.HorizontalGreatSpeedFriction * DeltaTime;
+                    }
+                    else
+                    {
+                        vxAbs = specs.HorizontalMaxSpeed;
+                        var timeRemains = DeltaTime - timeToReach;
+                        vxAbs = Max(0, vxAbs - specs.HorizontalTurnAcceleration * timeRemains);
+                    }
+
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case(greatSpeed: false, FallPhase.Drive):
+                {
+                    vxAbs = Min(specs.HorizontalMaxSpeed, vxAbs + specs.HorizontalAcceleration * DeltaTime);
+                    vx = inDir * vxAbs;
+                    break;
+                }
+                    
+                case (greatSpeed: false, FallPhase.Brake):
+                {
+                    vxAbs = Max(0, vxAbs - specs.HorizontalFriction * DeltaTime);
+                    vx = vxDir * vxAbs;
+                    break;
+                }
+                
+                case (greatSpeed: false, FallPhase.Turn):
+                {
+                    vx += inDir * specs.HorizontalTurnAcceleration;
+                    if (Abs(vx) >= specs.HorizontalMaxSpeed)
+                    {
+                        vx = inDir * specs.HorizontalMaxSpeed;
+                        phase = FallPhase.Drive;
+                    }
+                    break;
+                }
+            }
+
+            var vy = board.Velocity.Y;
+            if (vy - specs.VerticalAcceleration * DeltaTime < -specs.VerticalMaxSpeed)
+            {
+                vy = -specs.VerticalMaxSpeed;
             }
             else
             {
-                currentVx = targetVx;
+                vy -= specs.VerticalAcceleration * DeltaTime;
             }
-            
-            var currentVy = body.LinearVelocity.Y;
-            if (body.LinearVelocity.Y > -specs.FallVerticalSpeedLimit)
-            {
-                body.ApplyForce(new Vector2(0, -specs.FallVerticalAcceleration));
-            }
-            else
-            {
-                currentVy = -specs.FallVerticalSpeedLimit;
-            }
-            
-            body.LinearVelocity = new Vector2(currentVx, currentVy);
+
+            board.Velocity = new Vector2(vx, vy);
             await NextFrame();
         }
-        
-        player.Enter(new RunState(player));
     }
 }

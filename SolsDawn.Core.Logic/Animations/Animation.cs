@@ -1,4 +1,3 @@
-using MonoGame.Extended;
 using System.Collections.Generic;
 
 namespace SolsDawn.Core.Logic.Animations;
