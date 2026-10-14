@@ -20,6 +20,12 @@ public record PlayerBoard
     public bool OnGround => CurrentPlatform is not null;
     public Platform? CurrentPlatform;
     public Vector2 Velocity;
+    
+    public PlayerBoard()
+    {
+        // Initializes all nested CategorySlots inside all nested MotionSolvers
+        ConfigurationUtility.InitializeConfig(Specs);
+    }
 }
 
 public record PlayerSpecs
@@ -32,22 +38,13 @@ public record PlayerSpecs
     public RunSpecs Run = new();
     public record RunSpecs
     {
-        [Inspect(min: 0)] public float ControlledSpeed = 15;
-        [Inspect(min: 0)] public float Acceleration = 10;
-        [Inspect(min: 0)] public float Friction = 30;
-        [Inspect(min: 0)] public float TurnAcceleration = 30;
-        [Inspect(min: 0)] public float GreatSpeedFriction = 20;
+        [Inspect] public MotionSolver MotionSolver = new();
     }
 
     public PrimitiveJumpSpecs PrimitiveJump = new();
     public record PrimitiveJumpSpecs
     {
-        [Inspect(min: 0)] public float HorizontalStartSpeed = 30;
-        [Inspect(min: 0)] public float HorizontalGreatSpeedFriction = 10;
-        [Inspect(min: 0)] public float HorizontalControlledSpeed = 10;
-        [Inspect(min: 0)] public float HorizontalAcceleration = 10;
-        [Inspect(min: 0)] public float HorizontalFriction = 10;
-        [Inspect(min: 0)] public float HorizontalTurnAcceleration = 30;
+        [Inspect] public MotionSolver HorizontalMotionSolver = new();
         [Inspect(min: 0)] public float VerticalStartSpeed = 20;
         [Inspect(min: 0)] public float VerticalFriction = 15;
     }
@@ -55,7 +52,9 @@ public record PlayerSpecs
     public CelesteJumpSpecs CelesteJump = new();
     public record CelesteJumpSpecs
     {
-        [Inspect(min: 0, max: PI / 2)] public float HorizontalDashAngle = PI / 3;
+        [Inspect] public MotionSolver HorizontalMotionSolver = new();
+        
+        [Inspect(min: 0, max: PI / 2)] public float HorizontalDashAngle = PI / 6;
         [Inspect(min: 0)] public float HorizontalDashDistance = 5;
         [Inspect(min: 0)] public float VerticalDashDistance = 5;
         [Inspect(min: 1)] public int DashFrames = 3;
@@ -63,22 +62,14 @@ public record PlayerSpecs
         [Inspect(min: 0)] public float HorizontalDashFinalSpeed = 20;
         [Inspect(min: 0)] public float VerticalDashFinalSpeed = 20;
         
-        [Inspect(min: 0)] public float HorizontalGreatSpeedFriction = 10;
-        [Inspect(min: 0)] public float HorizontalControlledSpeed = 10;
-        [Inspect(min: 0)] public float HorizontalAcceleration = 10;
-        [Inspect(min: 0)] public float HorizontalFriction = 10;
-        [Inspect(min: 0)] public float HorizontalTurnAcceleration = 30;
         [Inspect(min: 0)] public float VerticalFriction = 15;
     }
 
     public FallSpecs Fall = new();
     public record FallSpecs
     {
-        [Inspect(min: 0)] public float HorizontalGreatSpeedFriction = 20;
-        [Inspect(min: 0)] public float HorizontalFriction = 10;
-        [Inspect(min: 0)] public float HorizontalAcceleration = 10;
-        [Inspect(min: 0)] public float HorizontalTurnAcceleration = 30;
-        [Inspect(min: 0)] public float HorizontalMaxSpeed = 20;
+        [Inspect] public MotionSolver HorizontalMotionSolver = new();
+        
         [Inspect(min: 0)] public float VerticalAcceleration = 15;
         [Inspect(min: 0)] public float VerticalMaxSpeed = 30;
     }
