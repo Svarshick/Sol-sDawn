@@ -477,7 +477,8 @@ public static class AutoInspector
         }
 
         ImGui.SetNextItemWidth(-1f);
-        if (ImGui.InputTextWithHint("##ModelSearchInput", "Search (e.g. has:Model had:Model default: pattern)...", ref query, 128))
+        if (ImGui.InputTextWithHint("##ModelSearchInput", "Search (e.g. has:Model had:Model default: pattern)...",
+                ref query, 128))
         {
             _slotSearchQueries[slotId] = query;
             _slotSearchCache.Remove(slotId);
@@ -501,7 +502,7 @@ public static class AutoInspector
         else
         {
             float removeBtnWidth = ImGui.CalcTextSize("[ X ]").X + ImGui.GetStyle().FramePadding.X * 2f;
-            string? guidToRemoveFromHistory = null;
+            string? guidToDelete = null;
 
             for (int i = 0; i < results.Count; i++)
             {
@@ -569,7 +570,7 @@ public static class AutoInspector
                     DrawSearchResultTooltip(res, willCopy);
                 }
 
-                // Section 5.2: Right Side (Remove from History [ X ] button)
+                // Section 5.2: Right Side (Delete Model [ X ] button)
                 bool removeClicked = false;
                 if (!res.IsDefault)
                 {
@@ -588,7 +589,7 @@ public static class AutoInspector
                     if (ImGui.SmallButton(" X "))
                     {
                         removeClicked = true;
-                        guidToRemoveFromHistory = res.Guid;
+                        guidToDelete = res.Guid;
                     }
 
                     bool btnHovered = ImGui.IsItemHovered();
@@ -596,7 +597,7 @@ public static class AutoInspector
 
                     if (btnHovered)
                     {
-                        ImGui.SetTooltip("Remove from this slot's history");
+                        ImGui.SetTooltip("Delete model from Library");
                     }
                 }
 
@@ -620,9 +621,10 @@ public static class AutoInspector
                 ImGui.PopID();
             }
 
-            if (guidToRemoveFromHistory != null)
+            if (guidToDelete != null)
             {
-                slot.RemoveFromHistory(guidToRemoveFromHistory);
+                Library.DeleteModel(guidToDelete);
+                slot.PruneDeletedHistory();
                 _slotSearchCache.Remove(slotId);
                 changed = true;
             }

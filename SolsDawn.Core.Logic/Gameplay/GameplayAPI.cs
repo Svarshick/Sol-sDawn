@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ImGuiNET;
 using Microsoft.Xna.Framework;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Common;
@@ -20,7 +21,7 @@ public static class GameplayAPI
     {
         Game = game;
         Camera = camera;
-        Painter =  painter;
+        Painter = painter;
         Input = input;
         AnimationsPool = animationsPool;
     }
@@ -49,13 +50,23 @@ public static class GameplayAPI
     public static float TotalTime => (float)Time.TotalGameTime.TotalSeconds;
     public static long TotalFrames => Time.TotalGameTime.Ticks / Game.TargetElapsedTime.Ticks;
     
-    public static Action ImGuiDrawer
+    public static Action? ImGuiDrawer
     {
         get => Game.ImGuiDrawer;
         set => Game.ImGuiDrawer = value;
     }
 
-    public static readonly float FpsSec = 1/60f;
+    public static bool WantCaptureKeyboard =>
+        Game.ImGuiDrawer is not null &&
+        ImGui.GetCurrentContext() != IntPtr.Zero &&
+        ImGui.GetIO().WantCaptureKeyboard;
+
+    public static bool WantCaptureMouse =>
+        Game.ImGuiDrawer is not null &&
+        ImGui.GetCurrentContext() != IntPtr.Zero &&
+        ImGui.GetIO().WantCaptureMouse;
+
+    public static readonly float FpsSec = 1 / 60f;
     
     #endregion
     
@@ -189,7 +200,7 @@ public static class GameplayAPI
             float layerDepth = 0)
         {
             var job = CurrentJob;
-            var animation = new CircleIdleAnimation( radius, color, layerDepth);
+            var animation = new CircleIdleAnimation(radius, color, layerDepth);
             animation.Transform.Position = position;
             AnimationsPool.Add(animation);
             job.TrackResource(animation);

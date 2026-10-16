@@ -87,18 +87,18 @@ public static class MouseExtended
 /// <param name="previousMouseState">THe state of mouse input during hte previous update cycle.</param>
 public struct MouseStateExtended(MouseState currentMouseState, MouseState previousMouseState)
 {
-  private readonly MouseState _currentMouseState = currentMouseState;
-  private readonly MouseState _previousMouseState = previousMouseState;
+  public MouseState CurrentMouseState = currentMouseState;
+  public MouseState PreviousMouseState = previousMouseState;
 
   /// <summary>
   /// Gets the current x-coordinate position of the mouse cursor relative to the game window.
   /// </summary>
-  public int X => this._currentMouseState.X;
+  public int X => this.CurrentMouseState.X;
 
   /// <summary>
   /// Gets the current y-coordinate position of the mouse cursor relative to the game window.
   /// </summary>
-  public int Y => this._currentMouseState.Y;
+  public int Y => this.CurrentMouseState.Y;
 
   /// <summary>
   /// Gets the current xy-coordinate position of the mouse cursor relative to the game window.
@@ -107,9 +107,9 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
   {
     get
     {
-      MouseState currentMouseState = this._currentMouseState;
+      MouseState currentMouseState = this.CurrentMouseState;
       int x = currentMouseState.X;
-      currentMouseState = this._currentMouseState;
+      currentMouseState = this.CurrentMouseState;
       int y = currentMouseState.Y;
       return new Point(x, y);
     }
@@ -123,15 +123,15 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
   {
     get
     {
-      MouseState mouseState1 = this._currentMouseState;
+      MouseState mouseState1 = this.CurrentMouseState;
       int x1 = mouseState1.X;
-      mouseState1 = this._previousMouseState;
+      mouseState1 = this.PreviousMouseState;
       int x2 = mouseState1.X;
       if (x1 != x2)
         return true;
-      MouseState mouseState2 = this._currentMouseState;
+      MouseState mouseState2 = this.CurrentMouseState;
       int y1 = mouseState2.Y;
-      mouseState2 = this._previousMouseState;
+      mouseState2 = this.PreviousMouseState;
       int y2 = mouseState2.Y;
       return y1 != y2;
     }
@@ -144,9 +144,9 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
   {
     get
     {
-      MouseState mouseState = this._previousMouseState;
+      MouseState mouseState = this.PreviousMouseState;
       int x1 = mouseState.X;
-      mouseState = this._currentMouseState;
+      mouseState = this.CurrentMouseState;
       int x2 = mouseState.X;
       return x1 - x2;
     }
@@ -159,9 +159,9 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
   {
     get
     {
-      MouseState mouseState = this._previousMouseState;
+      MouseState mouseState = this.PreviousMouseState;
       int y1 = mouseState.Y;
-      mouseState = this._currentMouseState;
+      mouseState = this.CurrentMouseState;
       int y2 = mouseState.Y;
       return y1 - y2;
     }
@@ -173,7 +173,7 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
   public Point DeltaPosition => new Point(this.DeltaX, this.DeltaY);
 
   /// <summary>Gets the current value of the mouse scroll wheel.</summary>
-  public int ScrollWheelValue => this._currentMouseState.ScrollWheelValue;
+  public int ScrollWheelValue => this.CurrentMouseState.ScrollWheelValue;
 
   /// <summary>
   /// Gets the difference in the mouse scroll wheel value between the previous and current state.
@@ -182,30 +182,30 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
   {
     get
     {
-      MouseState mouseState = this._previousMouseState;
+      MouseState mouseState = this.PreviousMouseState;
       int scrollWheelValue1 = mouseState.ScrollWheelValue;
-      mouseState = this._currentMouseState;
+      mouseState = this.CurrentMouseState;
       int scrollWheelValue2 = mouseState.ScrollWheelValue;
       return scrollWheelValue1 - scrollWheelValue2;
     }
   }
 
   /// <summary>Gets the current state of the mouse left button.</summary>
-  public ButtonState LeftButton => this._currentMouseState.LeftButton;
+  public ButtonState LeftButton => this.CurrentMouseState.LeftButton;
 
   /// <summary>Gets the current state of the mouse middle button.</summary>
-  public ButtonState MiddleButton => this._currentMouseState.MiddleButton;
+  public ButtonState MiddleButton => this.CurrentMouseState.MiddleButton;
 
   /// <summary>Gets the current state of the mouse right button.</summary>
-  public ButtonState RightButton => this._currentMouseState.RightButton;
+  public ButtonState RightButton => this.CurrentMouseState.RightButton;
 
   /// <summary>Gets the current state of the first mouse extra button.</summary>
-  public ButtonState XButton1 => this._currentMouseState.XButton1;
+  public ButtonState XButton1 => this.CurrentMouseState.XButton1;
 
   /// <summary>
   /// Gets the current state of the second mouse extra button.
   /// </summary>
-  public ButtonState XButton2 => this._currentMouseState.XButton2;
+  public ButtonState XButton2 => this.CurrentMouseState.XButton2;
 
   /// <summary>
   /// Returns a value that indicates whether the specified mouse button is down during the current state.
@@ -329,22 +329,22 @@ public struct MouseStateExtended(MouseState currentMouseState, MouseState previo
 
   private readonly bool IsPressed(Func<MouseState, ButtonState> button)
   {
-    return button(this._currentMouseState) == ButtonState.Pressed;
+    return button(this.CurrentMouseState) == ButtonState.Pressed;
   }
 
   private readonly bool IsReleased(Func<MouseState, ButtonState> button)
   {
-    return button(this._currentMouseState) == ButtonState.Released;
+    return button(this.CurrentMouseState) == ButtonState.Released;
   }
 
   private readonly bool WasJustPressed(Func<MouseState, ButtonState> button)
   {
-    return button(this._previousMouseState) == ButtonState.Released && button(this._currentMouseState) == ButtonState.Pressed;
+    return button(this.PreviousMouseState) == ButtonState.Released && button(this.CurrentMouseState) == ButtonState.Pressed;
   }
 
   private readonly bool WasJustReleased(Func<MouseState, ButtonState> button)
   {
-    return button(this._previousMouseState) == ButtonState.Pressed && button(this._currentMouseState) == ButtonState.Released;
+    return button(this.PreviousMouseState) == ButtonState.Pressed && button(this.CurrentMouseState) == ButtonState.Released;
   }
 }
 
@@ -396,18 +396,18 @@ public struct KeyboardStateExtended(
   KeyboardState currentKeyboardState,
   KeyboardState previousKeyboardState)
 {
-  private KeyboardState _currentKeyboardState = currentKeyboardState;
-  private KeyboardState _previousKeyboardState = previousKeyboardState;
+  public KeyboardState CurrentKeyboardState = currentKeyboardState;
+  public KeyboardState PreviousKeyboardState = previousKeyboardState;
 
   /// <summary>
   /// Gets a value that indicates whether the caps lock key is down during the current state.
   /// </summary>
-  public bool CapsLock => this._currentKeyboardState.CapsLock;
+  public bool CapsLock => this.CurrentKeyboardState.CapsLock;
 
   /// <summary>
   /// Gets a value that indicates whether the num lock key is down during the current state.
   /// </summary>
-  public bool NumLock => this._currentKeyboardState.NumLock;
+  public bool NumLock => this.CurrentKeyboardState.NumLock;
 
   /// <summary>
   /// Returns a value that indicates whether either the left or right shift key is down during the current state.
@@ -418,7 +418,7 @@ public struct KeyboardStateExtended(
   /// </returns>
   public bool IsShiftDown()
   {
-    return this._currentKeyboardState.IsKeyDown(Keys.LeftShift) || this._currentKeyboardState.IsKeyDown(Keys.RightShift);
+    return this.CurrentKeyboardState.IsKeyDown(Keys.LeftShift) || this.CurrentKeyboardState.IsKeyDown(Keys.RightShift);
   }
 
   /// <summary>
@@ -431,7 +431,7 @@ public struct KeyboardStateExtended(
   /// </returns>
   public bool IsControlDown()
   {
-    return this._currentKeyboardState.IsKeyDown(Keys.LeftControl) || this._currentKeyboardState.IsKeyDown(Keys.RightControl);
+    return this.CurrentKeyboardState.IsKeyDown(Keys.LeftControl) || this.CurrentKeyboardState.IsKeyDown(Keys.RightControl);
   }
 
   /// <summary>
@@ -440,7 +440,7 @@ public struct KeyboardStateExtended(
   /// <returns></returns>
   public bool IsAltDown()
   {
-    return this._currentKeyboardState.IsKeyDown(Keys.LeftAlt) || this._currentKeyboardState.IsKeyDown(Keys.RightAlt);
+    return this.CurrentKeyboardState.IsKeyDown(Keys.LeftAlt) || this.CurrentKeyboardState.IsKeyDown(Keys.RightAlt);
   }
 
   /// <summary>
@@ -450,7 +450,7 @@ public struct KeyboardStateExtended(
   /// <returns>
   /// <see langword="true" /> if the key is down during the current state; otherwise, <see langword="false" />.
   /// </returns>
-  public bool IsKeyDown(Keys key) => this._currentKeyboardState.IsKeyDown(key);
+  public bool IsKeyDown(Keys key) => this.CurrentKeyboardState.IsKeyDown(key);
 
   /// <summary>
   /// Returns a value that indicates if the specified key is up during the current state.
@@ -459,12 +459,12 @@ public struct KeyboardStateExtended(
   /// <returns>
   /// <see langword="true" /> if the key is up during the current state; otherwise, <see langword="false" />.
   /// </returns>
-  public bool IsKeyUp(Keys key) => this._currentKeyboardState.IsKeyUp(key);
+  public bool IsKeyUp(Keys key) => this.CurrentKeyboardState.IsKeyUp(key);
 
   /// <summary>
   /// Returns the total number of keys down during the current state.
   /// </summary>
-  public int GetPressedKeyCount => this._currentKeyboardState.GetPressedKeyCount();
+  public int GetPressedKeyCount => this.CurrentKeyboardState.GetPressedKeyCount();
 
   /// <summary>
   /// Returns an array of all keys that are down during the current state.
@@ -472,7 +472,7 @@ public struct KeyboardStateExtended(
   /// <returns>
   /// An array of <see cref="T:Microsoft.Xna.Framework.Input.Keys" /> values that represent each key that is down during the current state.
   /// </returns>
-  public Keys[] GetPressedKeys() => this._currentKeyboardState.GetPressedKeys();
+  public Keys[] GetPressedKeys() => this.CurrentKeyboardState.GetPressedKeys();
 
   /// <summary>
   /// Fills an existing array with the keys pressed during the current state.
@@ -485,7 +485,7 @@ public struct KeyboardStateExtended(
   /// Thrown if the array provided by the <paramref name="keys" /> parameter is not large enough to fit all
   /// pressed keys.  Use <see cref="P:MonoGame.Extended.Input.KeyboardStateExtended.GetPressedKeyCount" /> to determine the total number of elements.
   /// </exception>
-  public void GetPressedKeys(Keys[] keys) => this._currentKeyboardState.GetPressedKeys(keys);
+  public void GetPressedKeys(Keys[] keys) => this.CurrentKeyboardState.GetPressedKeys(keys);
 
   /// <summary>
   /// Returns whether the given key was down during previous state, but is now up.
@@ -496,7 +496,7 @@ public struct KeyboardStateExtended(
   /// </returns>
   public readonly bool WasKeyReleased(Keys key)
   {
-    return this._previousKeyboardState.IsKeyDown(key) && this._currentKeyboardState.IsKeyUp(key);
+    return this.PreviousKeyboardState.IsKeyDown(key) && this.CurrentKeyboardState.IsKeyUp(key);
   }
 
   /// <summary>
@@ -508,7 +508,7 @@ public struct KeyboardStateExtended(
   /// </returns>
   public readonly bool WasKeyPressed(Keys key)
   {
-    return this._previousKeyboardState.IsKeyUp(key) && this._currentKeyboardState.IsKeyDown(key);
+    return this.PreviousKeyboardState.IsKeyUp(key) && this.CurrentKeyboardState.IsKeyDown(key);
   }
 
   /// <summary>
@@ -517,5 +517,5 @@ public struct KeyboardStateExtended(
   /// <returns>
   /// <see langword="true" /> if any key was pressed during the previous state; otherwise, <see langword="false" />.
   /// </returns>
-  public bool WasAnyKeyJustDown() => this._previousKeyboardState.GetPressedKeyCount() > 0;
+  public bool WasAnyKeyJustDown() => this.PreviousKeyboardState.GetPressedKeyCount() > 0;
 }

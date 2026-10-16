@@ -29,8 +29,29 @@ public class Input : IUpdatable
     {
         KeyboardExtended.Update();
         MouseExtended.Update();
+        
         var keyboardState = KeyboardExtended.GetState();
         var mouseState = MouseExtended.GetState();
+
+        if (GameplayAPI.WantCaptureKeyboard)
+        {
+            keyboardState.CurrentKeyboardState = default;
+        }
+
+        if (GameplayAPI.WantCaptureMouse)
+        {
+            mouseState.CurrentMouseState = new MouseState(
+                mouseState.PreviousMouseState.X, 
+                mouseState.PreviousMouseState.Y, 
+                mouseState.PreviousMouseState.ScrollWheelValue, 
+                ButtonState.Released, 
+                ButtonState.Released, 
+                ButtonState.Released, 
+                ButtonState.Released, 
+                ButtonState.Released,
+                mouseState.PreviousMouseState.HorizontalScrollWheelValue);
+        }
+        
         UpdateMovement(mouseState, keyboardState);
         UpdateTeleport(mouseState, keyboardState);
         UpdateAttacks(mouseState, keyboardState);
