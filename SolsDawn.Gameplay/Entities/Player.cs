@@ -1,20 +1,43 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using SolsDawn.Core.Logic;
 using SolsDawn.Gameplay.Utils;
 
 namespace SolsDawn.Gameplay.Entities;
 
+public class PlayerCategoryAttribute : CategoryAttribute
+{
+    public PlayerCategoryAttribute(Type defaultFallbackType) : base(defaultFallbackType)
+    {
+    }
+
+    public override string GetTagsDescription() => "Entity: Player";
+}
+
+public class PlayerModelAttribute : ModelAttribute
+{
+    public override bool Satisfies(CategoryAttribute slot) => slot is PlayerCategoryAttribute;
+
+    public override string GetTagsDescription() => "Entity: Player";
+}
+
 public class Player : Core.Logic.Gameplay.Entity<PlayerBoard, PlayerAnimations>
 {
     public Player(GameObject go, PlayerBoard board, PlayerAnimations animation)
-        : base(go, null, board, animation, Shapes.Circle(board.Specs.ColliderRadius), Layer.None, Layer.None)
+        : base(go, null, board, animation, Shapes.Circle(board.Specs.GetActiveInstance().ColliderRadius), Layer.None, Layer.None)
     {
     }
 }
 
 public record PlayerBoard
 {
-    public PlayerSpecs Specs = new();
+    [PlayerCategory(typeof(PlayerSpecs))]
+    public CategorySlot<PlayerSpecs> Specs = new();
+
+    public PlayerBoard()
+    {
+        CategorySystem.BindAndResolveRecursive(this);
+    }
 
     [MemberNotNullWhen(true, nameof(CurrentPlatform))]
     public bool OnGround => CurrentPlatform is not null;
@@ -22,12 +45,13 @@ public record PlayerBoard
     public Vector2 Velocity;
 }
 
+[PlayerModel]
 public record PlayerSpecs
 {
-    public Color Color = Color.Blue;
-    public float ColliderRadius = 0.35f;
-    public float Width = 0.7f;
-    public float Height = 1.3f;
+    [Inspect] public Color Color = Color.Blue;
+    [Inspect(0.01f, 0.05f, 5f)] public float ColliderRadius = 0.35f;
+    [Inspect(0.05f, 0.1f, 10f)] public float Width = 0.7f;
+    [Inspect(0.05f, 0.1f, 10f)] public float Height = 1.3f;
 
     [StateCategory(AllowedState.Idle, typeof(IdleState))]
     public CategorySlot<PlayerState> Idle = new();

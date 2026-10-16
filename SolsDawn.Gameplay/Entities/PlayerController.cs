@@ -10,17 +10,17 @@ namespace SolsDawn.Gameplay.Entities;
 public class PlayerController
 {
     private readonly Player _player;
-    
+
     public PlayerController(Player player)
     {
         _player = player;
-        _player.Enter(_player.Board.Specs.Idle.GetActiveInstance());
+        _player.Enter(_player.Board.Specs.GetActiveInstance().Idle.GetActiveInstance());
     }
 
     public void Update()
     {
         var board = _player.Board;
-        var specs = board.Specs;
+        var specs = board.Specs.GetActiveInstance();
 
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");
@@ -67,7 +67,7 @@ public class PlayerController
         var result = Core.Logic.Gameplay.Physics.CircleCast(
             _player.Transform.Position,
             _player.Transform.Position + delta,
-            board.Specs.ColliderRadius,
+            specs.ColliderRadius,
             Layer.Player,
             Layer.Wall,
             filter: OneWayPlatformFilter);
@@ -88,17 +88,18 @@ public class PlayerController
             }
         }
     }
-    
+
     private bool TestOnGround()
     {
         var platform = _player.Board.CurrentPlatform;
         if (platform is null)
             return false;
 
+        var specs = _player.Board.Specs.GetActiveInstance();
         var xfA = new Transform(_player.Transform.WorldPosition, _player.Transform.WorldRotation);
         var xfB = new Transform(platform.Transform.WorldPosition, platform.Transform.WorldRotation);
         return Collision.TestOverlap(
-            Shapes.Circle(_player.Board.Specs.ColliderRadius + Settings.LinearSlop),
+            Shapes.Circle(specs.ColliderRadius + Settings.LinearSlop),
             0,
             platform._edge,
             0,

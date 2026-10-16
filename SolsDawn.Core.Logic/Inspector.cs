@@ -72,12 +72,15 @@ public static class AutoInspector
     // Rule 1: Do not inject spaces into camelCase/PascalCase field names
     public static string FormatLabel(string rawName) => rawName;
 
-    public static bool Draw(object target)
+    public static bool Draw(object target) => DrawInternal(target, isRootCall: true);
+
+    private static bool DrawInternal(object target, bool isRootCall)
     {
         if (target == null)
             return false;
 
-        CategorySystem.BindSlots(target);
+        bool isRootOwner = isRootCall && !Library.IsModelInstance(target);
+        CategorySystem.BindSlots(target, isRootOwner);
 
         var type = target.GetType();
         if (!_cache.TryGetValue(type, out var metaList))
@@ -99,7 +102,8 @@ public static class AutoInspector
             {
                 if (field.GetValue(target) is ICategorySlot slot)
                 {
-                    slot.Configure(meta.CategoryAttr, field.Name);
+                    string? rootSlotKey = isRootOwner ? $"{type.FullName}.{field.Name}" : null;
+                    slot.Configure(meta.CategoryAttr, field.Name, rootSlotKey);
                     if (DrawCategorySlot(slot, label))
                         anyChanged = true;
                 }
@@ -123,7 +127,7 @@ public static class AutoInspector
                     ImGui.PushID(field.Name);
                     if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
                     {
-                        if (Draw(nestedObj))
+                        if (DrawInternal(nestedObj, isRootCall: false))
                             anyChanged = true;
                         ImGui.TreePop();
                     }
@@ -135,7 +139,19 @@ public static class AutoInspector
         ImGui.PopID();
 
         if (anyChanged)
-            OnAnyValueChanged?.Invoke();
+        {
+            // If target itself is a registered Library model, auto-save it
+            var targetGuid = Library.GetModelGuidByInstance(target);
+            if (!string.IsNullOrWhiteSpace(targetGuid))
+            {
+                Library.SaveModel(targetGuid);
+            }
+
+            if (isRootCall)
+            {
+                OnAnyValueChanged?.Invoke();
+            }
+        }
 
         return anyChanged;
     }
@@ -316,7 +332,8 @@ public static class AutoInspector
 
         if (!_slotExpanded.TryGetValue(slotId, out bool isExpanded))
         {
-            isExpanded = false;
+            // Expand root slots by default for immediate visibility
+            isExpanded = !string.IsNullOrWhiteSpace(slot.RootSlotKey);
             _slotExpanded[slotId] = isExpanded;
         }
 
@@ -340,7 +357,6 @@ public static class AutoInspector
             pushedColors = 3;
         }
 
-        // Render Category [ModelName] bar
         ImGui.Selectable(headerLabel, true, ImGuiSelectableFlags.AllowDoubleClick);
         var headerMin = ImGui.GetItemRectMin();
         var headerMax = ImGui.GetItemRectMax();
@@ -351,7 +367,6 @@ public static class AutoInspector
 
             if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
             {
-                // Restore pre-click expanded state so double-clicking doesn't flip the editor state
                 if (_slotExpandedBeforeClick.TryGetValue(slotId, out bool prevExpanded))
                 {
                     isExpanded = prevExpanded;
@@ -375,7 +390,7 @@ public static class AutoInspector
         if (pushedColors > 0)
             ImGui.PopStyleColor(pushedColors);
 
-        // Search Area Popup (Unity / Google-style search dropdown)
+        // Search Area Popup
         if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax))
         {
             changed = true;
@@ -383,7 +398,7 @@ public static class AutoInspector
             isExpanded = true;
         }
 
-        // Model Editor (when expanded)
+        // Model Editor
         if (isExpanded)
         {
             ImGui.Indent(12f);
@@ -493,7 +508,7 @@ public static class AutoInspector
         return changed;
     }
 
-    // Model Editor: Displays the model's name and its contents (all its fields, nested fields, and child categories)
+    // Model Editor: Displays the model's name and its contents
     private static bool DrawModelEditor(ICategorySlot slot)
     {
         bool changed = false;
@@ -501,7 +516,6 @@ public static class AutoInspector
         var modelEntry = slot.GetActiveModelEntry();
         var activeGuid = slot.ModelGuid ?? modelEntry?.Guid ?? "default";
 
-        // 1. Model Name field (spaces automatically replaced with underscores)
         string currentName = modelEntry?.Name ?? activeInstance.GetType().Name;
         if (!_modelNameDrafts.TryGetValue(activeGuid, out var nameDraft) ||
             !ImGui.IsAnyItemActive())
@@ -523,7 +537,6 @@ public static class AutoInspector
 
         if (ImGui.InputText("##ModelNameEdit", ref nameDraft, 64))
         {
-            // Rule 1: Replace spaces with underscores (_)
             nameDraft = nameDraft.Replace(' ', '_');
             _modelNameDrafts[activeGuid] = nameDraft;
 
@@ -537,8 +550,7 @@ public static class AutoInspector
         if (isDefaultEntry)
             ImGui.EndDisabled();
 
-        // 2. Model Contents (all fields, nested fields, and child categories)
-        bool contentsEdited = Draw(activeInstance);
+        bool contentsEdited = DrawInternal(activeInstance, isRootCall: false);
         if (contentsEdited)
         {
             if (!isDefaultEntry && !string.IsNullOrWhiteSpace(slot.ModelGuid))
@@ -564,6 +576,7 @@ public static class AutoInspector
             return;
         }
 
+        ImGui.TextDisabled($"Storage: {Library.StorageDirectory}");
         ImGui.InputText("FilterName", ref _librarySearchQuery, 64);
         ImGui.InputText("FilterTags", ref _libraryTagFilter, 64);
         ImGui.Separator();
@@ -574,7 +587,7 @@ public static class AutoInspector
 
         if (models.Count == 0)
         {
-            ImGui.TextDisabled("No saved models in /Presets/ folder.");
+            ImGui.TextDisabled("No saved models in _Data folder.");
             ImGui.End();
             return;
         }
@@ -640,7 +653,7 @@ public static class AutoInspector
                 if (model.Instance != null)
                 {
                     ImGui.Spacing();
-                    if (Draw(model.Instance))
+                    if (DrawInternal(model.Instance, isRootCall: false))
                     {
                         Library.SaveModel(model.Guid);
                     }

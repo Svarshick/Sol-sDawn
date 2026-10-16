@@ -7,46 +7,22 @@ public class PlayerAnimations(PlayerBoard board) : AnimationSet
 
     public override void TryPlay(string animationName)
     {
+        var specs = board.Specs.GetActiveInstance();
         switch (animationName)
         {
             case Idle:
                 _baseAnimation = new RectangleIdleAnimation(
-                    board.Specs.Width,
-                    board.Specs.Height,
-                    board.Specs.Color);
+                    specs.Width,
+                    specs.Height,
+                    specs.Color);
                 _baseAnimation.Transform.Parent = Transform;
                 break;
-            case Hit:/*
-                _overlayAnimation = new RectangleBlink(
-                    Transform,
-                    _stats.Width,
-                    _stats.Height,
-                    _stats.HitInvulnerabilityDuration,
-                    true,
-                    _stats.Color,
-                    _stats.HitBlinkColor);*/
+            case Hit:
                 break;
         }
     }
 
-    public override void Update()
-    { 
-        _baseAnimation?.Update();
-    }
-
-    public override void LateUpdate()
-    {
-        _baseAnimation?.LateUpdate();
-    }
-
-    public override void Draw()
-    {/*
-        if (_overlayAnimation is { IsFinished: false })
-        {
-            _overlayAnimation.Draw();
-        }
-        else*/
-        
-        _baseAnimation?.Draw();
-    }
+    public override void Update() => _baseAnimation?.Update();
+    public override void LateUpdate() => _baseAnimation?.LateUpdate();
+    public override void Draw() => _baseAnimation?.Draw();
 }

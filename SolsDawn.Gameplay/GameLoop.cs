@@ -1,5 +1,4 @@
 using SolsDawn.Core.Logic;
-using SolsDawn.Gameplay.Configs;
 using SolsDawn.Gameplay.Entities;
 using SolsDawn.Gameplay.Utils;
 
@@ -9,7 +8,7 @@ public static class GameLoop
 {
     public static async Job Start()
     {
-        Library.Initialize();
+        Library.EnsureInitialized();
         ImGuiDrawer = Debug.Draw;
         BeforeUpdate();
         Update();
@@ -37,12 +36,7 @@ public static class GameLoop
         rightSlope.Transform.Position = new Vector2(60, 10);
         rightSlope.Transform.Rotation = ASin(10 / 50f);
 
-        var playerBoard = new PlayerBoard
-        {
-            Specs = PlayerConfigs.Load()
-        };
-        AutoInspector.OnAnyValueChanged = () => PlayerConfigs.Save(playerBoard.Specs);
-
+        var playerBoard = new PlayerBoard();
         var playerAnimations = new PlayerAnimations(playerBoard);
         G.Player = new Player(
             CreateObject(),
