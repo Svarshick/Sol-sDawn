@@ -1,65 +1,86 @@
 using System;
-using System.Text.Json.Serialization;
 using SolsDawn.Core.Logic;
 
 namespace SolsDawn.Gameplay.Entities;
 
-[Flags] public enum AllowedPhase { Drive = 1 << 0, Brake = 1 << 1, Turn  = 1 << 2, All = Drive | Brake | Turn }
-[Flags] public enum AllowedSpeed { Normal = 1 << 0, GreatSpeed = 1 << 1, Any = Normal | GreatSpeed }
-public enum MovePhase { Drive, Brake, Turn }
+// --- 1. GAME-SPECIFIC (MOTION) ATTRIBUTES & ENUMS ---
 
-// JSON Polymorphism so Serialization/Deserialization knows exactly which implementations exist
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
-[JsonDerivedType(typeof(FrictionGreatSpeedDrive), nameof(FrictionGreatSpeedDrive))]
-[JsonDerivedType(typeof(KeepGreatSpeedDrive), nameof(KeepGreatSpeedDrive))]
-[JsonDerivedType(typeof(FrictionGreatSpeedDecay), nameof(FrictionGreatSpeedDecay))]
-[JsonDerivedType(typeof(LinearDriveModel), nameof(LinearDriveModel))]
-[JsonDerivedType(typeof(LinearBrakeModel), nameof(LinearBrakeModel))]
-[JsonDerivedType(typeof(LinearTurnModel), nameof(LinearTurnModel))]
+[Flags]
+public enum AllowedPhase
+{
+    Drive = 1 << 0,
+    Brake = 1 << 1,
+    Turn  = 1 << 2,
+    All   = Drive | Brake | Turn
+}
+
+[Flags]
+public enum AllowedSpeed
+{
+    Normal     = 1 << 0, // for speed <= ControlledSpeed
+    GreatSpeed = 1 << 1, // for speed > ControlledSpeed
+    Any        = Normal | GreatSpeed
+}
+
+public enum MovePhase
+{
+    Drive,
+    Brake,
+    Turn
+}
+
 public interface IMotionModel
 {
     float Calculate(float velocity, int inDir, float dt, float controlledSpeed);
 }
 
-public class MotionModelAttribute : ModelAttribute
+public class MotionCategoryAttribute : CategoryAttribute
 {
     public AllowedPhase Phase { get; }
     public AllowedSpeed Speed { get; }
 
-    public MotionModelAttribute(AllowedPhase phase, AllowedSpeed speed)
+    public MotionCategoryAttribute(AllowedPhase phase, AllowedSpeed speed, Type fallbackType)
+        : base(fallbackType)
     {
         Phase = phase;
         Speed = speed;
     }
 
-    public override bool Satisfies(CategoryAttribute slot)
-    {
-        if (slot is not MotionCategoryAttribute constraint) return false;
-        bool phaseMatches = (Phase & constraint.Phases) == constraint.Phases;
-        bool speedMatches = (Speed == AllowedSpeed.Any || constraint.Speed == AllowedSpeed.Any || Speed == constraint.Speed);
-        return phaseMatches && speedMatches;
-    }
+    public override string GetTagsDescription() => $"Phase: {Phase} | Speed: {Speed}";
 }
 
-public class MotionCategoryAttribute : CategoryAttribute
+public class MotionModelAttribute : ModelAttribute
 {
     public AllowedPhase Phases { get; }
     public AllowedSpeed Speed { get; }
 
-    public MotionCategoryAttribute(AllowedPhase phases, AllowedSpeed speed, Type fallbackType) 
-        : base(fallbackType)
+    public MotionModelAttribute(AllowedPhase phases, AllowedSpeed speed = AllowedSpeed.Any)
     {
         Phases = phases;
         Speed = speed;
     }
+
+    public override bool Satisfies(CategoryAttribute baseConstraint)
+    {
+        if (baseConstraint is not MotionCategoryAttribute constraint)
+            return false;
+
+        bool phaseMatches = (Phases & constraint.Phase) == constraint.Phase;
+        bool speedMatches = (Speed & constraint.Speed) == constraint.Speed;
+        return phaseMatches && speedMatches;
+    }
+
+    public override string GetTagsDescription() => $"Phases: {Phases} | Speed: {Speed}";
 }
 
-// --- IMPLEMENTATIONS ---
+// --- 2. MODEL IMPLEMENTATIONS ---
 
 [MotionModel(AllowedPhase.Drive, AllowedSpeed.GreatSpeed)]
 public class FrictionGreatSpeedDrive : IMotionModel
 {
-    [Inspect(1f, 0f, 200f)] public float Friction { get; set; } = 10f;
+    [Inspect, Range(0f, 200f), Step(1f)]
+    public float Friction = 10f;
+
     public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Max(controlledSpeed, Math.Abs(velocity) - Friction * dt);
@@ -76,7 +97,9 @@ public class KeepGreatSpeedDrive : IMotionModel
 [MotionModel(AllowedPhase.Brake | AllowedPhase.Turn, AllowedSpeed.GreatSpeed)]
 public class FrictionGreatSpeedDecay : IMotionModel
 {
-    [Inspect(1f, 0f, 200f)] public float Deceleration { get; set; } = 20f;
+    [Inspect, Range(0f, 200f), Step(1f)]
+    public float Deceleration = 10f;
+
     public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Max(controlledSpeed, Math.Abs(velocity) - Deceleration * dt);
@@ -87,7 +110,9 @@ public class FrictionGreatSpeedDecay : IMotionModel
 [MotionModel(AllowedPhase.Drive, AllowedSpeed.Normal)]
 public class LinearDriveModel : IMotionModel
 {
-    [Inspect(1f, 0f, 200f)] public float Acceleration { get; set; } = 15f;
+    [Inspect, Range(0f, 200f), Step(1f)]
+    public float Acceleration = 10f;
+
     public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Min(controlledSpeed, Math.Abs(velocity) + Acceleration * dt);
@@ -98,7 +123,9 @@ public class LinearDriveModel : IMotionModel
 [MotionModel(AllowedPhase.Brake, AllowedSpeed.Normal)]
 public class LinearBrakeModel : IMotionModel
 {
-    [Inspect(1f, 0f, 200f)] public float Friction { get; set; } = 15f;
+    [Inspect, Range(0f, 200f), Step(1f)]
+    public float Friction = 10f;
+
     public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Max(0f, Math.Abs(velocity) - Friction * dt);
@@ -109,47 +136,45 @@ public class LinearBrakeModel : IMotionModel
 [MotionModel(AllowedPhase.Turn, AllowedSpeed.Normal)]
 public class LinearTurnModel : IMotionModel
 {
-    [Inspect(1f, 0f, 200f)] public float TurnAcceleration { get; set; } = 30f;
+    [Inspect, Range(0f, 200f), Step(1f)]
+    public float TurnAcceleration = 30f;
+
     public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
     {
         var nextVelocity = velocity + inDir * TurnAcceleration * dt;
         if (Math.Sign(nextVelocity) == inDir && Math.Abs(nextVelocity) >= controlledSpeed)
             return inDir * controlledSpeed;
+
         return nextVelocity;
     }
 }
 
-// --- THE SOLVER ---
+// --- 3. THE SOLVER (OWNER OF THE CATEGORIES) ---
 
 public class MotionSolver
 {
-    [Inspect(0.5f, 0f, 100f)] public float ControlledSpeed { get; set; } = 15f;
+    [Inspect(0.5f, 0f, 100f)]
+    public float ControlledSpeed = 10f;
 
-    [MotionCategory(AllowedPhase.Drive, AllowedSpeed.GreatSpeed, typeof(FrictionGreatSpeedDrive))] 
+    [MotionCategory(AllowedPhase.Drive, AllowedSpeed.GreatSpeed, typeof(FrictionGreatSpeedDrive))]
     public CategorySlot<IMotionModel> GreatSpeedDrive = new();
-    
-    [MotionCategory(AllowedPhase.Brake, AllowedSpeed.GreatSpeed, typeof(FrictionGreatSpeedDecay))] 
+
+    [MotionCategory(AllowedPhase.Brake, AllowedSpeed.GreatSpeed, typeof(FrictionGreatSpeedDecay))]
     public CategorySlot<IMotionModel> GreatSpeedBrake = new();
-    
-    [MotionCategory(AllowedPhase.Turn, AllowedSpeed.GreatSpeed, typeof(FrictionGreatSpeedDecay))] 
+
+    [MotionCategory(AllowedPhase.Turn, AllowedSpeed.GreatSpeed, typeof(FrictionGreatSpeedDecay))]
     public CategorySlot<IMotionModel> GreatSpeedTurn = new();
-    
-    [MotionCategory(AllowedPhase.Drive, AllowedSpeed.Normal, typeof(LinearDriveModel))] 
+
+    [MotionCategory(AllowedPhase.Drive, AllowedSpeed.Normal, typeof(LinearDriveModel))]
     public CategorySlot<IMotionModel> NormalDrive = new();
-    
-    [MotionCategory(AllowedPhase.Brake, AllowedSpeed.Normal, typeof(LinearBrakeModel))] 
+
+    [MotionCategory(AllowedPhase.Brake, AllowedSpeed.Normal, typeof(LinearBrakeModel))]
     public CategorySlot<IMotionModel> NormalBrake = new();
-    
-    [MotionCategory(AllowedPhase.Turn, AllowedSpeed.Normal, typeof(LinearTurnModel))] 
+
+    [MotionCategory(AllowedPhase.Turn, AllowedSpeed.Normal, typeof(LinearTurnModel))]
     public CategorySlot<IMotionModel> NormalTurn = new();
 
-    [JsonIgnore] public MovePhase Phase { get; private set; }
-
-    public MotionSolver()
-    {
-        // Setup initial default models dynamically based on attributes for safety
-        ConfigurationUtility.InitializeConfig(this);
-    }
+    public MovePhase Phase { get; private set; }
 
     public void ResetPhase(MovePhase phase = MovePhase.Drive) => Phase = phase;
 
@@ -158,7 +183,7 @@ public class MotionSolver
         var speed = Math.Abs(velocity);
         var velDir = Math.Sign(velocity);
         var isGreatSpeed = speed > ControlledSpeed;
-        
+
         Phase = inDir switch
         {
             0 => MovePhase.Brake,
@@ -169,9 +194,9 @@ public class MotionSolver
 
         return (isGreatSpeed, Phase) switch
         {
-            (true, MovePhase.Drive) => GreatSpeedDrive.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
-            (true, MovePhase.Brake) => GreatSpeedBrake.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
-            (true, MovePhase.Turn)  => GreatSpeedTurn.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
+            (true, MovePhase.Drive)  => GreatSpeedDrive.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
+            (true, MovePhase.Brake)  => GreatSpeedBrake.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
+            (true, MovePhase.Turn)   => GreatSpeedTurn.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
             (false, MovePhase.Drive) => NormalDrive.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
             (false, MovePhase.Brake) => NormalBrake.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
             (false, MovePhase.Turn)  => NormalTurn.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),

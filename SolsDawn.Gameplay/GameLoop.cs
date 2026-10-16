@@ -1,3 +1,5 @@
+using SolsDawn.Core.Logic;
+using SolsDawn.Gameplay.Configs;
 using SolsDawn.Gameplay.Entities;
 using SolsDawn.Gameplay.Utils;
 
@@ -7,6 +9,7 @@ public static class GameLoop
 {
     public static async Job Start()
     {
+        Library.Initialize();
         ImGuiDrawer = Debug.Draw;
         BeforeUpdate();
         Update();
@@ -17,7 +20,7 @@ public static class GameLoop
             await NextFrame();
         }
     }
-    
+
     private static async Job BeforeUpdate()
     {
         var floor = new Platform(CreateObject(), 100);
@@ -33,8 +36,13 @@ public static class GameLoop
         var rightSlope = new Platform(CreateObject(), 100);
         rightSlope.Transform.Position = new Vector2(60, 10);
         rightSlope.Transform.Rotation = ASin(10 / 50f);
-        
-        var playerBoard = new PlayerBoard();
+
+        var playerBoard = new PlayerBoard
+        {
+            Specs = PlayerConfigs.Load()
+        };
+        AutoInspector.OnAnyValueChanged = () => PlayerConfigs.Save(playerBoard.Specs);
+
         var playerAnimations = new PlayerAnimations(playerBoard);
         G.Player = new Player(
             CreateObject(),
@@ -42,7 +50,7 @@ public static class GameLoop
             playerAnimations);
         G.Player.Transform.Position = new Vector2(6, 4);
         var playerController = new PlayerController(G.Player);
-        
+
         while (true)
         {
             playerController.Update();
@@ -70,5 +78,5 @@ public static class GameLoop
 
 public static class G
 {
-    public static Player Player;
+    public static Player Player = null!;
 }

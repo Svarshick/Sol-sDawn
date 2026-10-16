@@ -14,12 +14,13 @@ public class PlayerController
     public PlayerController(Player player)
     {
         _player = player;
-        _player.Enter(new IdleState(_player));
+        _player.Enter(_player.Board.Specs.Idle.GetActiveInstance());
     }
 
     public void Update()
     {
         var board = _player.Board;
+        var specs = board.Specs;
 
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");
@@ -29,19 +30,19 @@ public class PlayerController
         {
             if (!board.OnGround)
             {
-                _player.Enter(new FallState(_player));
+                _player.Enter(specs.Fall.GetActiveInstance());
             }
             else if (Input.Jump)
             {
-                _player.Enter(CreateJumpState());
+                _player.Enter(specs.Jump.GetActiveInstance());
             }
             else if (_player.State is IdleState && Input.Move != Vector2.Zero)
             {
-                _player.Enter(new RunState(_player));
+                _player.Enter(specs.Run.GetActiveInstance());
             }
             else if (_player.State is RunState && board.Velocity == Vector2.Zero && Input.Move == Vector2.Zero)
             {
-                _player.Enter(new IdleState(_player));
+                _player.Enter(specs.Idle.GetActiveInstance());
             }
         }
         else if (_player.State is FallState or JumpState)
@@ -49,13 +50,13 @@ public class PlayerController
             if (board.OnGround)
             {
                 if (board.Velocity == Vector2.Zero && Input.Move == Vector2.Zero)
-                    _player.Enter(new IdleState(_player));
+                    _player.Enter(specs.Idle.GetActiveInstance());
                 else
-                    _player.Enter(new RunState(_player));
+                    _player.Enter(specs.Run.GetActiveInstance());
             }
             else if (_player.State is JumpState && board.Velocity.Y <= 0)
             {
-                _player.Enter(new FallState(_player));
+                _player.Enter(specs.Fall.GetActiveInstance());
             }
         }
 
@@ -127,12 +128,4 @@ public class PlayerController
         bool bottomTouches = centerProjectionFraction is >= 0 and <= 1;
         return facesPlatform && abovePlatform && bottomTouches;
     }
-
-    private JumpState CreateJumpState() => 
-        Debug.CurrentJumpModel.Name switch
-        {
-            nameof(PrimitiveJumpState) => new PrimitiveJumpState(_player),
-            nameof(CelesteJumpState) => new CelesteJumpState(_player),
-            _ => throw Log.Logic.FatalException()
-        };
 }

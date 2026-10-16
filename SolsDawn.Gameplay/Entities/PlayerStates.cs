@@ -1,24 +1,78 @@
+using System;
 using SolsDawn.Core.Logic;
 
 namespace SolsDawn.Gameplay.Entities;
 
-public class IdleState(Player player) : State
+// --- 1. STATE CATEGORY & MODEL ATTRIBUTES ---
+
+[Flags]
+public enum AllowedState
 {
-    public override async Job Job()
+    Idle = 1 << 0,
+    Run  = 1 << 1,
+    Jump = 1 << 2,
+    Fall = 1 << 3,
+    All  = Idle | Run | Jump | Fall
+}
+
+public class StateCategoryAttribute : CategoryAttribute
+{
+    public AllowedState State { get; }
+
+    public StateCategoryAttribute(AllowedState state, Type fallbackType)
+        : base(fallbackType)
+    {
+        State = state;
+    }
+
+    public override string GetTagsDescription() => $"State: {State}";
+}
+
+public class StateModelAttribute : ModelAttribute
+{
+    public AllowedState States { get; }
+
+    public StateModelAttribute(AllowedState states)
+    {
+        States = states;
+    }
+
+    public override bool Satisfies(CategoryAttribute baseConstraint)
+    {
+        if (baseConstraint is not StateCategoryAttribute constraint)
+            return false;
+
+        return (States & constraint.State) == constraint.State;
+    }
+
+    public override string GetTagsDescription() => $"States: {States}";
+}
+
+// --- 2. BASE PLAYER STATE & STATE MODELS ---
+
+public abstract class PlayerState : Core.Logic.Gameplay.State<Player>;
+
+public abstract class JumpState : PlayerState;
+
+[StateModel(AllowedState.Idle)]
+public class IdleState : PlayerState
+{
+    public override async Job Job(Player player)
     {
         player.Board.Velocity = Vector2.Zero;
         player.Animator.Player.TryPlay(PlayerAnimations.Idle);
     }
 }
 
-public class RunState(Player player) : State
+[StateModel(AllowedState.Run)]
+public class RunState : PlayerState
 {
-    public override async Job Job()
+    [Inspect] public MotionSolver Motion = new();
+
+    public override async Job Job(Player player)
     {
-        var specs = player.Board.Specs.Run;
         var board = player.Board;
-        // Uses the Run-specific motion solver!
-        var motionSolver = specs.MotionSolver; 
+        Motion.ResetPhase();
 
         while (true)
         {
@@ -35,7 +89,7 @@ public class RunState(Player player) : State
             var inDir = Sign(Input.Move.X);
             var vx = Vector2.Dot(board.Velocity, tangent);
 
-            vx = motionSolver.Calculate(vx, inDir, DeltaTime);
+            vx = Motion.Calculate(vx, inDir, DeltaTime);
 
             board.Velocity = new Vector2(vx, 0).Rotated(angle);
             await NextFrame();
@@ -43,33 +97,70 @@ public class RunState(Player player) : State
     }
 }
 
-public abstract class JumpState : State;
-
-public class CelesteJumpState(Player player) : JumpState
+[StateModel(AllowedState.Jump)]
+public class CelesteJumpState : JumpState
 {
-    public override async Job Job()
+    [Inspect(min: 0, max: PI / 2)] public float HorizontalDashAngle = PI / 6;
+    [Inspect(min: 0)] public float HorizontalDashDistance = 5;
+    [Inspect(min: 0)] public float VerticalDashDistance = 5;
+    [Inspect(min: 1)] public int DashFrames = 3;
+
+    [Inspect(min: 0)] public float HorizontalDashFinalSpeed = 20;
+    [Inspect(min: 0)] public float VerticalDashFinalSpeed = 20;
+    [Inspect(min: 0)] public float VerticalFriction = 15;
+
+    [Inspect] public MotionSolver HorizontalMotion = new();
+
+    public override async Job Job(Player player)
     {
-        var specs = player.Board.Specs.CelesteJump;
         var board = player.Board;
+        HorizontalMotion.ResetPhase();
 
         {
-            // (Initial jump velocity math omitted for brevity, remains unchanged)
+            var initInDir = Sign(Input.Move.X);
+            if (initInDir == 0)
+            {
+                var vy = VerticalDashDistance / (DashFrames * DeltaTime);
+                board.Velocity = new Vector2(0, vy);
+            }
+            else
+            {
+                var vxAbs = HorizontalDashDistance / (DashFrames * DeltaTime);
+                var vx = initInDir * vxAbs;
+                var vy = vxAbs * Tan(HorizontalDashAngle);
+                board.Velocity = new Vector2(vx, vy);
+            }
+
+            for (int i = 0; i < DashFrames; i++)
+            {
+                await NextFrame();
+            }
+
+            if (initInDir == 0)
+            {
+                var vy = VerticalDashFinalSpeed;
+                board.Velocity = new Vector2(0, vy);
+            }
+            else
+            {
+                var vxAbs = HorizontalDashFinalSpeed;
+                var vx = initInDir * vxAbs;
+                var vy = vxAbs * Tan(HorizontalDashAngle);
+                board.Velocity = new Vector2(vx, vy);
+            }
         }
 
-        // Uses the CelesteJump-specific horizontal motion solver!
-        var horizontalMotionSolver = specs.HorizontalMotionSolver; 
-        
         while (true)
         {
             if (board.CurrentPlatform is not null)
             {
-                Log.Logic.Error("Can't be on platform while fall");
+                Log.Logic.Error("Can't be on platform while jump");
                 return;
             }
 
             var inDir = Sign(Input.Move.X);
-            var vx = horizontalMotionSolver.Calculate(board.Velocity.X, inDir, DeltaTime);
-            var vy = board.Velocity.Y - specs.VerticalFriction * DeltaTime;
+            var vx = HorizontalMotion.Calculate(board.Velocity.X, inDir, DeltaTime);
+            var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);
             await NextFrame();
@@ -77,34 +168,37 @@ public class CelesteJumpState(Player player) : JumpState
     }
 }
 
-public class PrimitiveJumpState(Player player) : JumpState
+[StateModel(AllowedState.Jump)]
+public class PrimitiveJumpState : JumpState
 {
-    public override async Job Job()
+    [Inspect(min: 0)] public float HorizontalStartSpeed = 30;
+    [Inspect(min: 0)] public float VerticalStartSpeed = 20;
+    [Inspect(min: 0)] public float VerticalFriction = 15;
+
+    [Inspect] public MotionSolver HorizontalMotion = new();
+
+    public override async Job Job(Player player)
     {
-        var specs = player.Board.Specs.PrimitiveJump;
         var board = player.Board;
+        HorizontalMotion.ResetPhase();
 
         {
             var inDir = Sign(Input.Move.X);
-            // Uses the HorizontalMotionSolver's ControlledSpeed as the start speed if desired, or keep as is.
-            board.Velocity = new Vector2(inDir * specs.HorizontalMotionSolver.ControlledSpeed, specs.VerticalStartSpeed);
+            board.Velocity = new Vector2(inDir * HorizontalStartSpeed, VerticalStartSpeed);
             await NextFrame();
         }
 
-        // Uses the PrimitiveJump-specific horizontal motion solver!
-        var horizontalMotionSolver = specs.HorizontalMotionSolver; 
-        
         while (true)
         {
             if (board.CurrentPlatform is not null)
             {
-                Log.Logic.Error("Can't be on platform while fall");
+                Log.Logic.Error("Can't be on platform while jump");
                 return;
             }
 
             var inDir = Sign(Input.Move.X);
-            var vx = horizontalMotionSolver.Calculate(board.Velocity.X, inDir, DeltaTime);
-            var vy = board.Velocity.Y - specs.VerticalFriction * DeltaTime;
+            var vx = HorizontalMotion.Calculate(board.Velocity.X, inDir, DeltaTime);
+            var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);
             await NextFrame();
@@ -112,15 +206,18 @@ public class PrimitiveJumpState(Player player) : JumpState
     }
 }
 
-public class FallState(Player player) : State
+[StateModel(AllowedState.Fall)]
+public class FallState : PlayerState
 {
-    public override async Job Job()
+    [Inspect(min: 0)] public float VerticalAcceleration = 15;
+    [Inspect(min: 0)] public float VerticalMaxSpeed = 30;
+
+    [Inspect] public MotionSolver HorizontalMotion = new();
+
+    public override async Job Job(Player player)
     {
-        var specs = player.Board.Specs.Fall;
         var board = player.Board;
-        
-        // Uses the Fall-specific horizontal motion solver!
-        var horizontalMotionSolver = specs.HorizontalMotionSolver; 
+        HorizontalMotion.ResetPhase();
 
         while (true)
         {
@@ -131,8 +228,8 @@ public class FallState(Player player) : State
             }
 
             var inDir = Sign(Input.Move.X);
-            var vx = horizontalMotionSolver.Calculate(board.Velocity.X, inDir, DeltaTime);
-            var vy = Max(-specs.VerticalMaxSpeed, board.Velocity.Y - specs.VerticalAcceleration * DeltaTime);
+            var vx = HorizontalMotion.Calculate(board.Velocity.X, inDir, DeltaTime);
+            var vy = Max(-VerticalMaxSpeed, board.Velocity.Y - VerticalAcceleration * DeltaTime);
 
             board.Velocity = new Vector2(vx, vy);
             await NextFrame();

@@ -27,4 +27,8 @@
     <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job" />
     <Using Include="SolsDawn.Core.Logic.Animations" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="_Data\" />
+  </ItemGroup>
 </Project>

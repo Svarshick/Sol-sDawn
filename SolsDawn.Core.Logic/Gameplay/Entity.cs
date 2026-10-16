@@ -1,4 +1,3 @@
-using System;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic.Animations;
@@ -8,15 +7,15 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public abstract class State
 {
-    public virtual void Enter(State? from)
-    {
-    }
+    public virtual Job Job(Entity entity) => Pipeline.Job.CompletedJob;
+}
 
-    public virtual Job Job() => Pipeline.Job.CompletedJob;
+public abstract class State<TEntity> : State
+    where TEntity : Entity
+{
+    public sealed override Job Job(Entity entity) => Job((TEntity)entity);
 
-    public virtual void Exit(State? to)
-    {
-    }
+    public abstract Job Job(TEntity entity);
 }
 
 public abstract class Entity : Component
@@ -43,14 +42,11 @@ public abstract class Entity : Component
         Collider = new(go, shape, SelfLayer, CollidesLayer, BodyType.Kinematic);
     }
     
-    //The first time I want job isn't updated by parent job
-    //Controller want manual update control 
     public void Enter(State state)
     {
         Log.Logic.Info($"Change state: {State} -> {state}");
         if (State is not null)
         {
-            State.Exit(state);
             if (StateJob is null)
             {
                 Log.Logic.Warning($"Previous state {State} job is null");
@@ -67,9 +63,8 @@ public abstract class Entity : Component
 
         using (JobContext.Use(RootJob))
         {
-            state.Enter(State);
             State = state;
-            StateJob = state.Job();
+            StateJob = state.Job(this);
         }
     }
 }

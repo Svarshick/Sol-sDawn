@@ -1,74 +1,49 @@
-using System;
-using System.Collections.Generic;
 using ImGuiNET;
 using SolsDawn.Core.Logic;
-using SolsDawn.Gameplay.Entities;
+using SolsDawn.Gameplay.Configs;
 
 namespace SolsDawn.Gameplay;
 
 public static class Debug
 {
-    public static Type CurrentJumpModel => JumpModels[_jumpIndex].Type;
-    private static int _jumpIndex = 0;
-    private static readonly List<(string Name, Type Type)> JumpModels = new()
-    {
-        (nameof(PrimitiveJumpState), typeof(PrimitiveJumpState)),
-        (nameof(CelesteJumpState), typeof(CelesteJumpState)),
-    };
-    
+    private static bool _showLibraryBrowser = true;
+
     public static void Draw()
     {
-        ImGui.SetNextWindowPos(Vector2.Zero.ToNumerics(), ImGuiCond.Always);
-        ImGui.Begin("Demo Window",
-            ImGuiWindowFlags.NoDecoration |
-            ImGuiWindowFlags.AlwaysAutoResize |
-            ImGuiWindowFlags.NoSavedSettings |
-            ImGuiWindowFlags.NoFocusOnAppearing |
-            ImGuiWindowFlags.NoNav);
+        ImGui.SetNextWindowPos(Vector2.Zero.ToNumerics(), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(480, 760), ImGuiCond.FirstUseEver);
+        ImGui.Begin("Player Configuration & Inspector");
 
         ImGui.Text("Debug Controls");
         ImGui.Text($"Position: ({G.Player.Transform.Position.X:F2}, {G.Player.Transform.Position.Y:F2})");
+        ImGui.Text($"Active State: {G.Player.State?.GetType().Name ?? "None"}");
+
         var zoom = Camera.Zoom;
-        if (ImGui.SliderFloat("Zoom", ref zoom, -10, 100))
+        if (ImGui.SliderFloat("Zoom", ref zoom, 0.1f, 100f))
             Camera.Zoom = zoom;
-        
-        ImGui.Separator();
-
-        if (ImGui.BeginCombo("Jump Models", JumpModels[_jumpIndex].Name))
-        {
-            for (int i = 0; i < JumpModels.Count; i++)
-            {
-                bool isSelected = (_jumpIndex == i);
-                if (ImGui.Selectable(JumpModels[i].Name, isSelected))
-                {
-                    _jumpIndex = i;
-                }
-
-                if (isSelected)
-                    ImGui.SetItemDefaultFocus();
-            }
-            ImGui.EndCombo();
-        }
 
         var pSpecs = G.Player.Board.Specs;
-        object jumpSpecs = CurrentJumpModel.Name switch
+
+        if (ImGui.Button("Save Config JSON"))
         {
-            nameof(PrimitiveJumpState) => pSpecs.PrimitiveJump,
-            nameof(CelesteJumpState) => pSpecs.CelesteJump,
-            _ => throw Log.Logic.FatalException()
-        };
-        AutoInspector.Draw(jumpSpecs);
-        
+            PlayerConfigs.Save(pSpecs);
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Reload Config JSON"))
+        {
+            G.Player.Board.Specs = PlayerConfigs.Load();
+            pSpecs = G.Player.Board.Specs;
+        }
+        ImGui.SameLine();
+        ImGui.Checkbox("Library Browser", ref _showLibraryBrowser);
+
         ImGui.Separator();
 
-        ImGui.Text("Run");
-        AutoInspector.Draw(pSpecs.Run);
-        
-        ImGui.Separator();
-        
-        ImGui.Text("Fall");
-        AutoInspector.Draw(pSpecs.Fall);
-        
+        // Draws all State CategorySlots (Idle, Run, Jump, Fall) and their nested MotionSolvers
+        AutoInspector.Draw(pSpecs);
+
         ImGui.End();
+
+        AutoInspector.DrawLibraryBrowser(ref _showLibraryBrowser);
     }
 }
