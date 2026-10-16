@@ -8,7 +8,7 @@ public static class GameLoop
 {
     public static async Job Start()
     {
-        Library.EnsureInitialized();
+        Library.Initialize();
         ImGuiDrawer = Debug.Draw;
         BeforeUpdate();
         Update();

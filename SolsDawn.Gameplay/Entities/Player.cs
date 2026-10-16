@@ -1,16 +1,19 @@
-using System;
 using System.Diagnostics.CodeAnalysis;
 using SolsDawn.Core.Logic;
 using SolsDawn.Gameplay.Utils;
 
 namespace SolsDawn.Gameplay.Entities;
 
-public class PlayerCategoryAttribute : CategoryAttribute
+public class Player : Core.Logic.Gameplay.Entity<PlayerBoard, PlayerAnimations>
 {
-    public PlayerCategoryAttribute(Type defaultFallbackType) : base(defaultFallbackType)
+    public Player(GameObject go, PlayerBoard board, PlayerAnimations animation)
+        : base(go, null, board, animation, Shapes.Circle(board.Specs.GetActiveInstance().ColliderRadius), Layer.None, Layer.None)
     {
     }
+}
 
+public class PlayerCategoryAttribute() : CategoryAttribute(typeof(PlayerSpecs))
+{
     public override string GetTagsDescription() => "Entity: Player";
 }
 
@@ -21,23 +24,10 @@ public class PlayerModelAttribute : ModelAttribute
     public override string GetTagsDescription() => "Entity: Player";
 }
 
-public class Player : Core.Logic.Gameplay.Entity<PlayerBoard, PlayerAnimations>
-{
-    public Player(GameObject go, PlayerBoard board, PlayerAnimations animation)
-        : base(go, null, board, animation, Shapes.Circle(board.Specs.GetActiveInstance().ColliderRadius), Layer.None, Layer.None)
-    {
-    }
-}
-
 public record PlayerBoard
 {
-    [PlayerCategory(typeof(PlayerSpecs))]
+    [PlayerCategory]
     public CategorySlot<PlayerSpecs> Specs = new();
-
-    public PlayerBoard()
-    {
-        CategorySystem.BindAndResolveRecursive(this);
-    }
 
     [MemberNotNullWhen(true, nameof(CurrentPlatform))]
     public bool OnGround => CurrentPlatform is not null;

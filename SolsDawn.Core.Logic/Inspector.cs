@@ -102,11 +102,20 @@ public static class AutoInspector
             {
                 if (field.GetValue(target) is ICategorySlot slot)
                 {
-                    string? rootSlotKey = isRootOwner ? $"{type.FullName}.{field.Name}" : null;
-                    slot.Configure(meta.CategoryAttr, field.Name, rootSlotKey);
+                    if (isRootOwner)
+                    {
+                        string rootKey = slot.ModelInterfaceType.FullName ?? slot.ModelInterfaceType.Name;
+                        slot.ConfigureRoot(meta.CategoryAttr, field.Name, rootKey);
+                    }
+                    else
+                    {
+                        slot.ConfigureChild(meta.CategoryAttr, field.Name);
+                    }
+
                     if (DrawCategorySlot(slot, label))
                         anyChanged = true;
                 }
+
                 continue;
             }
 
