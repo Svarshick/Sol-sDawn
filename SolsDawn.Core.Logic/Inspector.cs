@@ -54,14 +54,39 @@ public static class AutoInspector
         public bool IsReadOnly { get; set; }
     }
 
+    private sealed record CachedSearchState(
+        string Query,
+        int LibraryVersion,
+        IReadOnlyList<ModelSearchResult> Results);
+
+    // Section 4: ImGui Palette Constants
+    private static readonly NumVector4 ColorCurrentText        = new(1.00f, 1.00f, 1.00f, 1.00f); // White (Default)
+    private static readonly NumVector4 ColorCurrentHoverBg     = new(0.16f, 0.29f, 0.48f, 0.85f); // Dark Blue (ImGui Default Active)
+
+    private static readonly NumVector4 ColorReferenceText      = new(0.86f, 0.88f, 0.90f, 1.00f); // Light Gray (Default)
+    private static readonly NumVector4 ColorReferenceHoverBg   = new(0.26f, 0.36f, 0.48f, 0.55f); // Muted Gray-Blue (ImGui Default Hover)
+
+    private static readonly NumVector4 ColorCopyText           = new(0.45f, 0.82f, 0.78f, 1.00f); // Muted Teal (Soft Teal)
+    private static readonly NumVector4 ColorCopyHoverBg        = new(0.12f, 0.65f, 0.62f, 0.45f); // Bright Teal (with transparency)
+
+    private static readonly NumVector4 ColorDefaultTemplateText = new(0.50f, 0.54f, 0.58f, 1.00f); // Dark Gray / Dimmed
+
+    // Section 5.2: [ X ] Remove from History Button Colors
+    private static readonly NumVector4 ColorRemoveBtnBg        = new(0.35f, 0.07f, 0.09f, 0.90f); // Dark Maroon
+    private static readonly NumVector4 ColorRemoveBtnText      = new(0.82f, 0.42f, 0.42f, 1.00f); // Maroon-tinted text
+    private static readonly NumVector4 ColorRemoveBtnHoverBg   = new(0.90f, 0.16f, 0.16f, 1.00f); // Bright Red
+    private static readonly NumVector4 ColorRemoveBtnHoverText = new(1.00f, 0.95f, 0.95f, 1.00f); // Bright highlight text
+
     private static readonly Dictionary<Type, List<FieldMeta>> _cache = new();
 
     // UI state per CategorySlot
     private static readonly Dictionary<string, bool> _slotExpanded = new();
     private static readonly Dictionary<string, bool> _slotExpandedBeforeClick = new();
     private static readonly Dictionary<string, string> _slotSearchQueries = new();
+    private static readonly Dictionary<string, CachedSearchState> _slotSearchCache = new();
     private static readonly Dictionary<string, string> _modelNameDrafts = new();
     private static string? _pendingSearchOpenSlotId;
+    private static int _drawDepth;
 
     // Library Browser state
     private static string _librarySearchQuery = string.Empty;
@@ -69,20 +94,21 @@ public static class AutoInspector
 
     public static Action? OnAnyValueChanged { get; set; }
 
-    // Rule 1: Do not inject spaces into camelCase/PascalCase field names
     public static string FormatLabel(string rawName) => rawName;
 
-    public static bool Draw(object target) => DrawInternal(target, isRootCall: true);
-
-    private static bool DrawInternal(object target, bool isRootCall)
+    public static bool Draw(object target)
     {
         if (target == null)
             return false;
 
-        bool isRootOwner = isRootCall && !Library.IsModelInstance(target);
-        CategorySystem.BindSlots(target, isRootOwner);
+        CategorySystem.BindSlots(target);
 
         var type = target.GetType();
+        if (_drawDepth == 0 && type.GetCustomAttribute<ModelAttribute>(inherit: false) == null)
+        {
+            Library.RegisterRootOwner(target);
+        }
+
         if (!_cache.TryGetValue(type, out var metaList))
         {
             metaList = BuildMetaList(type);
@@ -90,77 +116,62 @@ public static class AutoInspector
         }
 
         bool anyChanged = false;
+        _drawDepth++;
         ImGui.PushID(target.GetHashCode());
 
-        foreach (var meta in metaList)
+        try
         {
-            var field = meta.Field;
-            var label = meta.Label;
-
-            // 2.3. Category (CategorySlot)
-            if (meta.IsCategorySlot)
+            foreach (var meta in metaList)
             {
-                if (field.GetValue(target) is ICategorySlot slot)
+                var field = meta.Field;
+                var label = meta.Label;
+
+                // 2.3. Category (CategorySlot)
+                if (meta.IsCategorySlot)
                 {
-                    if (isRootOwner)
+                    if (field.GetValue(target) is ICategorySlot slot)
                     {
-                        string rootKey = slot.ModelInterfaceType.FullName ?? slot.ModelInterfaceType.Name;
-                        slot.ConfigureRoot(meta.CategoryAttr, field.Name, rootKey);
-                    }
-                    else
-                    {
-                        slot.ConfigureChild(meta.CategoryAttr, field.Name);
-                    }
-
-                    if (DrawCategorySlot(slot, label))
-                        anyChanged = true;
-                }
-
-                continue;
-            }
-
-            // 2.1. Regular Fields (float / int / bool / Vector2 / Color / string / Enum)
-            if (IsRegularFieldType(field.FieldType))
-            {
-                if (DrawRegularField(target, meta))
-                    anyChanged = true;
-                continue;
-            }
-
-            // 2.2. Nested Field (container class with its own fields, e.g., MotionSolver)
-            if (field.FieldType.IsClass && field.FieldType != typeof(string))
-            {
-                var nestedObj = field.GetValue(target);
-                if (nestedObj != null)
-                {
-                    ImGui.PushID(field.Name);
-                    if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
-                    {
-                        if (DrawInternal(nestedObj, isRootCall: false))
+                        slot.Configure(meta.CategoryAttr, field.Name);
+                        if (DrawCategorySlot(slot, label))
                             anyChanged = true;
-                        ImGui.TreePop();
                     }
-                    ImGui.PopID();
+                    continue;
+                }
+
+                // 2.1. Regular Fields (float / int / bool / Vector2 / Color / string / Enum)
+                if (IsRegularFieldType(field.FieldType))
+                {
+                    if (DrawRegularField(target, meta))
+                        anyChanged = true;
+                    continue;
+                }
+
+                // 2.2. Nested Field (container class with its own fields, e.g., MotionSolver)
+                if (field.FieldType.IsClass && field.FieldType != typeof(string))
+                {
+                    var nestedObj = field.GetValue(target);
+                    if (nestedObj != null)
+                    {
+                        ImGui.PushID(field.Name);
+                        if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
+                        {
+                            if (Draw(nestedObj))
+                                anyChanged = true;
+                            ImGui.TreePop();
+                        }
+                        ImGui.PopID();
+                    }
                 }
             }
         }
-
-        ImGui.PopID();
-
-        if (anyChanged)
+        finally
         {
-            // If target itself is a registered Library model, auto-save it
-            var targetGuid = Library.GetModelGuidByInstance(target);
-            if (!string.IsNullOrWhiteSpace(targetGuid))
-            {
-                Library.SaveModel(targetGuid);
-            }
-
-            if (isRootCall)
-            {
-                OnAnyValueChanged?.Invoke();
-            }
+            ImGui.PopID();
+            _drawDepth--;
         }
+
+        if (anyChanged && _drawDepth == 0)
+            OnAnyValueChanged?.Invoke();
 
         return anyChanged;
     }
@@ -177,7 +188,6 @@ public static class AutoInspector
                t.IsEnum;
     }
 
-    // 2.1. Regular Field: FieldName | [Slider/Input] (disabled if Readonly)
     private static bool DrawRegularField(object target, FieldMeta meta)
     {
         var field = meta.Field;
@@ -330,9 +340,6 @@ public static class AutoInspector
         return metaList;
     }
 
-    // 2.3. Category: Category [ModelName]
-    // - Single-click: expands/collapses Model Editor
-    // - Double-click: opens Search Area
     private static bool DrawCategorySlot(ICategorySlot slot, string categoryName)
     {
         bool changed = false;
@@ -341,8 +348,7 @@ public static class AutoInspector
 
         if (!_slotExpanded.TryGetValue(slotId, out bool isExpanded))
         {
-            // Expand root slots by default for immediate visibility
-            isExpanded = !string.IsNullOrWhiteSpace(slot.RootSlotKey);
+            isExpanded = false;
             _slotExpanded[slotId] = isExpanded;
         }
 
@@ -386,6 +392,7 @@ public static class AutoInspector
                 if (!_slotSearchQueries.ContainsKey(slotId))
                     _slotSearchQueries[slotId] = string.Empty;
 
+                _slotSearchCache.Remove(slotId);
                 ImGui.OpenPopup("CategorySearchPopup");
             }
             else if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
@@ -399,7 +406,7 @@ public static class AutoInspector
         if (pushedColors > 0)
             ImGui.PopStyleColor(pushedColors);
 
-        // Search Area Popup
+        // Model Selector Search Popup
         if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax))
         {
             changed = true;
@@ -407,7 +414,7 @@ public static class AutoInspector
             isExpanded = true;
         }
 
-        // Model Editor
+        // Expanded Model Editor
         if (isExpanded)
         {
             ImGui.Indent(12f);
@@ -431,6 +438,21 @@ public static class AutoInspector
         return changed;
     }
 
+    private static IReadOnlyList<ModelSearchResult> GetOrRunSearch(ICategorySlot slot, string slotId, string query)
+    {
+        int currentVersion = Library.Version;
+        if (_slotSearchCache.TryGetValue(slotId, out var cached) &&
+            cached.LibraryVersion == currentVersion &&
+            string.Equals(cached.Query, query, StringComparison.Ordinal))
+        {
+            return cached.Results;
+        }
+
+        var results = Library.SearchModels(slot.CategoryAttribute, slot.ModelInterfaceType, query);
+        _slotSearchCache[slotId] = new CachedSearchState(query, Library.Version, results);
+        return results;
+    }
+
     private static bool DrawCategorySearchPopup(
         ICategorySlot slot,
         string slotId,
@@ -438,9 +460,9 @@ public static class AutoInspector
         NumVector2 headerMax)
     {
         bool changed = false;
-        float width = Math.Max(headerMax.X - headerMin.X, 380f);
+        float width = Math.Max(headerMax.X - headerMin.X, 420f);
         ImGui.SetNextWindowPos(new NumVector2(headerMin.X, headerMax.Y));
-        ImGui.SetNextWindowSize(new NumVector2(width, 290f), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new NumVector2(width, 310f), ImGuiCond.Always);
 
         if (!ImGui.BeginPopup("CategorySearchPopup"))
             return false;
@@ -458,12 +480,17 @@ public static class AutoInspector
         if (ImGui.InputTextWithHint("##ModelSearchInput", "Search (e.g. has:Model had:Model default: pattern)...", ref query, 128))
         {
             _slotSearchQueries[slotId] = query;
+            _slotSearchCache.Remove(slotId);
         }
 
-        ImGui.TextDisabled("Left-Click: Copy Model   |   Shift + Left-Click: Share Original");
+        bool shiftHeld = ImGui.GetIO().KeyShift;
+        ImGui.TextDisabled(shiftHeld
+            ? "[SHIFT HELD] Owned -> Reference | Orphaned -> Copy | Default -> Copy"
+            : "Owned -> Copy | Orphaned -> Reference | Default -> Copy (Hold Shift to invert)");
         ImGui.Separator();
 
-        var results = Library.SearchModels(slot.CategoryAttribute, slot.ModelInterfaceType, query);
+        // Section 6: IsOrphaned is pre-calculated in Library.SearchModels and cached in ModelSearchResult
+        var results = GetOrRunSearch(slot, slotId, query);
 
         ImGui.BeginChild("##SearchResultsList", new NumVector2(0, 0), ImGuiChildFlags.None);
 
@@ -473,42 +500,131 @@ public static class AutoInspector
         }
         else
         {
-            foreach (var res in results)
+            float removeBtnWidth = ImGui.CalcTextSize("[ X ]").X + ImGui.GetStyle().FramePadding.X * 2f;
+            string? guidToRemoveFromHistory = null;
+
+            for (int i = 0; i < results.Count; i++)
             {
+                var res = results[i];
+                ImGui.PushID($"{res.Guid}_{res.ParentGuid ?? "root"}_{i}");
+
                 bool isCurrent = !res.IsDefault &&
                                  string.Equals(slot.ModelGuid, res.Guid, StringComparison.OrdinalIgnoreCase);
 
-                string itemLabel = $"{res.DisplayLabel}###SearchItem_{res.Guid}_{res.ParentGuid ?? "root"}";
+                // Section 3: Interaction Logic based exclusively on pre-calculated IsOrphaned & Shift
+                // - Default templates: Always Copy
+                // - Orphaned: LMB = Reference, Shift+LMB = Copy
+                // - Owned: LMB = Copy, Shift+LMB = Reference
+                bool willCopy = res.IsDefault || (res.IsOrphaned ? shiftHeld : !shiftHeld);
 
-                if (res.IsDefault)
-                    ImGui.PushStyleColor(ImGuiCol.Text, new NumVector4(0.70f, 0.75f, 0.82f, 1.0f));
+                // Section 4: Color Scheme & Visualization (swaps in real-time with Shift)
+                NumVector4 textColor;
+                NumVector4 hoverBgColor;
 
-                if (ImGui.Selectable(itemLabel, isCurrent))
+                if (isCurrent)
                 {
-                    bool shiftHeld = ImGui.GetIO().KeyShift;
-                    if (shiftHeld && !res.IsDefault)
+                    textColor = ColorCurrentText;
+                    hoverBgColor = ColorCurrentHoverBg;
+                }
+                else if (res.IsDefault)
+                {
+                    textColor = ColorDefaultTemplateText;
+                    hoverBgColor = ColorCopyHoverBg;
+                }
+                else if (willCopy)
+                {
+                    textColor = ColorCopyText;
+                    hoverBgColor = ColorCopyHoverBg;
+                }
+                else
+                {
+                    textColor = ColorReferenceText;
+                    hoverBgColor = ColorReferenceHoverBg;
+                }
+
+                float rowStartX = ImGui.GetCursorPosX();
+                float rowAvailWidth = ImGui.GetContentRegionAvail().X;
+                float selectableWidth = !res.IsDefault
+                    ? Math.Max(60f, rowAvailWidth - removeBtnWidth - 6f)
+                    : rowAvailWidth;
+
+                ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+                ImGui.PushStyleColor(ImGuiCol.HeaderHovered, hoverBgColor);
+                ImGui.PushStyleColor(ImGuiCol.HeaderActive, hoverBgColor);
+                ImGui.PushStyleColor(ImGuiCol.Header, ColorCurrentHoverBg);
+
+                // Section 5.1: Left Side (Selectable area)
+                bool rowClicked = ImGui.Selectable(
+                    $"{res.DisplayLabel}###RowSelect",
+                    isCurrent,
+                    ImGuiSelectableFlags.AllowOverlap | ImGuiSelectableFlags.NoAutoClosePopups,
+                    new NumVector2(selectableWidth, 0f));
+
+                bool selectableHovered = ImGui.IsItemHovered();
+
+                ImGui.PopStyleColor(4);
+
+                if (selectableHovered)
+                {
+                    DrawSearchResultTooltip(res, willCopy);
+                }
+
+                // Section 5.2: Right Side (Remove from History [ X ] button)
+                bool removeClicked = false;
+                if (!res.IsDefault)
+                {
+                    ImGui.SameLine();
+                    float buttonX = rowStartX + rowAvailWidth - removeBtnWidth;
+                    if (buttonX > ImGui.GetCursorPosX())
                     {
-                        slot.ReferenceModel(res.Guid);
+                        ImGui.SetCursorPosX(buttonX);
                     }
-                    else
+
+                    ImGui.PushStyleColor(ImGuiCol.Button, ColorRemoveBtnBg);
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ColorRemoveBtnHoverBg);
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, ColorRemoveBtnHoverBg);
+                    ImGui.PushStyleColor(ImGuiCol.Text, ColorRemoveBtnText);
+
+                    if (ImGui.SmallButton(" X "))
+                    {
+                        removeClicked = true;
+                        guidToRemoveFromHistory = res.Guid;
+                    }
+
+                    bool btnHovered = ImGui.IsItemHovered();
+                    ImGui.PopStyleColor(4);
+
+                    if (btnHovered)
+                    {
+                        ImGui.SetTooltip("Remove from this slot's history");
+                    }
+                }
+
+                // Guard so clicking [ X ] never triggers the Selectable
+                if (rowClicked && !removeClicked)
+                {
+                    if (willCopy)
                     {
                         slot.CopyModel(res);
                     }
+                    else
+                    {
+                        slot.ReferenceModel(res.Guid);
+                    }
 
+                    _slotSearchCache.Remove(slotId);
                     changed = true;
                     ImGui.CloseCurrentPopup();
                 }
 
-                if (res.IsDefault)
-                    ImGui.PopStyleColor();
+                ImGui.PopID();
+            }
 
-                if (ImGui.IsItemHovered())
-                {
-                    string modeHint = res.IsDefault
-                        ? "Default Model (Always Copied)"
-                        : $"Type: {res.ModelType.Name}\nGUID: {res.Guid}";
-                    ImGui.SetTooltip(modeHint);
-                }
+            if (guidToRemoveFromHistory != null)
+            {
+                slot.RemoveFromHistory(guidToRemoveFromHistory);
+                _slotSearchCache.Remove(slotId);
+                changed = true;
             }
         }
 
@@ -517,7 +633,34 @@ public static class AutoInspector
         return changed;
     }
 
-    // Model Editor: Displays the model's name and its contents
+    private static void DrawSearchResultTooltip(ModelSearchResult res, bool willCopy)
+    {
+        string pendingAction = willCopy ? "Copy (Create Unique Instance)" : "Reference (Link Existing GUID)";
+        string controlsHint;
+        string stateLabel;
+
+        if (res.IsDefault)
+        {
+            stateLabel = "Default Template (New)";
+            controlsHint = "LMB: Copy | Shift+LMB: Copy (Always Copy)";
+        }
+        else if (res.IsOrphaned)
+        {
+            stateLabel = "Orphaned";
+            controlsHint = "LMB: Reference | Shift+LMB: Copy";
+        }
+        else
+        {
+            stateLabel = "Owned";
+            controlsHint = "LMB: Copy | Shift+LMB: Reference";
+        }
+
+        ImGui.SetTooltip(
+            $"Pending Action: {pendingAction}\n" +
+            $"{controlsHint}\n" +
+            $"State: {stateLabel} | Type: {res.ModelType.Name}");
+    }
+
     private static bool DrawModelEditor(ICategorySlot slot)
     {
         bool changed = false;
@@ -559,7 +702,7 @@ public static class AutoInspector
         if (isDefaultEntry)
             ImGui.EndDisabled();
 
-        bool contentsEdited = DrawInternal(activeInstance, isRootCall: false);
+        bool contentsEdited = Draw(activeInstance);
         if (contentsEdited)
         {
             if (!isDefaultEntry && !string.IsNullOrWhiteSpace(slot.ModelGuid))
@@ -572,7 +715,6 @@ public static class AutoInspector
         return changed;
     }
 
-    // Library Browser Window
     public static void DrawLibraryBrowser(ref bool isOpen)
     {
         if (!isOpen)
@@ -585,7 +727,6 @@ public static class AutoInspector
             return;
         }
 
-        ImGui.TextDisabled($"Storage: {Library.StorageDirectory}");
         ImGui.InputText("FilterName", ref _librarySearchQuery, 64);
         ImGui.InputText("FilterTags", ref _libraryTagFilter, 64);
         ImGui.Separator();
@@ -596,7 +737,7 @@ public static class AutoInspector
 
         if (models.Count == 0)
         {
-            ImGui.TextDisabled("No saved models in _Data folder.");
+            ImGui.TextDisabled("No saved models in /Presets/ folder.");
             ImGui.End();
             return;
         }
@@ -662,7 +803,7 @@ public static class AutoInspector
                 if (model.Instance != null)
                 {
                     ImGui.Spacing();
-                    if (DrawInternal(model.Instance, isRootCall: false))
+                    if (Draw(model.Instance))
                     {
                         Library.SaveModel(model.Guid);
                     }

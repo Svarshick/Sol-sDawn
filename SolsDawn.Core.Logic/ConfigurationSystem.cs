@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Xna.Framework;
@@ -13,9 +12,14 @@ namespace SolsDawn.Core.Logic;
 // --- 1. GENERIC ATTRIBUTE INFRASTRUCTURE ---
 
 [AttributeUsage(AttributeTargets.Field)]
-public abstract class CategoryAttribute(Type defaultFallbackType) : Attribute
+public abstract class CategoryAttribute : Attribute
 {
-    public Type DefaultFallbackType { get; } = defaultFallbackType;
+    public Type DefaultFallbackType { get; }
+
+    protected CategoryAttribute(Type defaultFallbackType)
+    {
+        DefaultFallbackType = defaultFallbackType;
+    }
 
     public virtual string GetTagsDescription() => GetType().Name.Replace("CategoryAttribute", "");
 }
@@ -38,12 +42,11 @@ public interface ICategorySlot
     Type? FallbackType { get; }
     CategoryAttribute? CategoryAttribute { get; }
     string FieldName { get; }
-    string? RootSlotKey { get; }
     bool IsMissingModel { get; }
 
-    void ConfigureRoot(CategoryAttribute? attribute, string fieldName, string rootSlotKey);
-    bool ConfigureChild(CategoryAttribute? attribute, string fieldName);
+    void Configure(CategoryAttribute? attribute, string fieldName);
     void ConfigureAsDefaultTemplate(CategoryAttribute? attribute, string fieldName);
+    void Resolve();
     object GetActiveInstanceObject();
     string GetActiveModelName();
     ModelEntry? GetActiveModelEntry();
@@ -51,6 +54,7 @@ public interface ICategorySlot
     ModelEntry CopyModel(ModelSearchResult source);
     ModelEntry CopyModelByGuidOrDefault(string? sourceGuid, Type? fallbackModelType = null);
     void ReferenceModel(string targetGuid);
+    void RemoveFromHistory(string guid);
     void PruneDeletedHistory();
 }
 
@@ -60,12 +64,10 @@ public class CategorySlot<T> : ICategorySlot where T : class
     public List<string> HistoryGuids { get; set; } = new();
 
     private bool _isDefaultTemplateSlot;
-    private bool _isChildSlot;
     private bool _missingLogged;
 
     [JsonIgnore] public CategoryAttribute? CategoryAttribute { get; private set; }
     [JsonIgnore] public string FieldName { get; private set; } = typeof(T).Name;
-    [JsonIgnore] public string? RootSlotKey { get; private set; }
     [JsonIgnore] public Type ModelInterfaceType => typeof(T);
     [JsonIgnore] public Type? FallbackType => CategoryAttribute?.DefaultFallbackType;
 
@@ -75,116 +77,60 @@ public class CategorySlot<T> : ICategorySlot where T : class
         !string.IsNullOrWhiteSpace(ModelGuid) &&
         Library.GetModel<T>(ModelGuid) == null;
 
-    public static implicit operator T(CategorySlot<T> slot) => slot.GetActiveInstance();
-
-    internal void MarkAsChildSlot() => _isChildSlot = true;
-
-    public void ConfigureRoot(CategoryAttribute? attribute, string fieldName, string rootSlotKey)
+    public void Configure(CategoryAttribute? attribute, string fieldName)
     {
-        _isChildSlot = false;
-        if (attribute != null)
-            CategoryAttribute = attribute;
-        if (!string.IsNullOrWhiteSpace(fieldName))
-            FieldName = fieldName;
-        if (!string.IsNullOrWhiteSpace(rootSlotKey))
-            RootSlotKey = rootSlotKey;
-
-        if (_isDefaultTemplateSlot)
-            return;
-
-        EnsureResolved();
-    }
-
-    // Configures a slot that belongs to a Model (or nested container inside a Model).
-    // Returns true if the slot had to initialize or repair its ModelGuid.
-    public bool ConfigureChild(CategoryAttribute? attribute, string fieldName)
-    {
-        _isChildSlot = true;
-        RootSlotKey = null;
-
-        if (attribute != null)
-            CategoryAttribute = attribute;
+        CategoryAttribute = attribute;
         if (!string.IsNullOrWhiteSpace(fieldName))
             FieldName = fieldName;
 
-        if (_isDefaultTemplateSlot)
-            return false;
-
-        PruneDeletedHistory();
-
-        // 1. If uninitialized, create a copy of this slot's specific DefaultFallbackType
-        if (string.IsNullOrWhiteSpace(ModelGuid))
+        if (!_isDefaultTemplateSlot && string.IsNullOrWhiteSpace(ModelGuid))
         {
-            var defaultType = CategoryRegistry.GetDefaultModelType(typeof(T), CategoryAttribute);
-            var created = Library.CreateCopyFromDefault(defaultType, CategoryAttribute);
-            ModelGuid = created.Guid;
-            RecordHistory(created.Guid);
-            return true;
+            EnsureInitializedWithCopy();
         }
-
-        // 2. If the model exists in Library, verify it actually satisfies this slot's CategoryAttribute
-        var existingInstance = Library.GetModel<T>(ModelGuid);
-        if (existingInstance != null &&
-            !CategoryRegistry.IsModelTypeAllowed(existingInstance.GetType(), CategoryAttribute, typeof(T)))
-        {
-            var defaultType = CategoryRegistry.GetDefaultModelType(typeof(T), CategoryAttribute);
-            var created = Library.CreateCopyFromDefault(defaultType, CategoryAttribute);
-            HistoryGuids.Remove(ModelGuid);
-            ModelGuid = created.Guid;
-            RecordHistory(created.Guid);
-            return true;
-        }
-
-        return false;
     }
 
     public void ConfigureAsDefaultTemplate(CategoryAttribute? attribute, string fieldName)
     {
         _isDefaultTemplateSlot = true;
-        _isChildSlot = true;
         CategoryAttribute = attribute;
         if (!string.IsNullOrWhiteSpace(fieldName))
             FieldName = fieldName;
     }
 
-    private void EnsureResolved()
+    public void Resolve()
     {
         if (_isDefaultTemplateSlot)
             return;
 
-        // Only non-child slots (such as PlayerBoard.Specs) use RootSlotKey and _RootSlots.json
-        if (!_isChildSlot)
-        {
-            if (string.IsNullOrWhiteSpace(RootSlotKey))
-            {
-                RootSlotKey = typeof(T).FullName ?? typeof(T).Name;
-            }
-
-            if (string.IsNullOrWhiteSpace(ModelGuid) &&
-                Library.TryRestoreRootSlot(RootSlotKey, out var savedGuid, out var savedHistory))
-            {
-                ModelGuid = savedGuid;
-                foreach (var h in savedHistory)
-                    RecordHistory(h);
-            }
-        }
+        _missingLogged = false;
+        PruneDeletedHistory();
 
         if (string.IsNullOrWhiteSpace(ModelGuid))
         {
-            var defaultType = CategoryRegistry.GetDefaultModelType(typeof(T), CategoryAttribute);
-            var created = Library.CreateCopyFromDefault(defaultType, CategoryAttribute);
-            ModelGuid = created.Guid;
-            RecordHistory(created.Guid);
-            PersistRootSlotIfNeeded();
+            EnsureInitializedWithCopy();
+            return;
+        }
+
+        var model = Library.GetModel<T>(ModelGuid);
+        if (model == null)
+        {
+            var fb = GetDefaultFallbackInstance();
+            Log.Logic.Warning(
+                $"CategorySlot '{FieldName}' could not find model GUID '{ModelGuid}'. Using default fallback '{fb.GetType().Name}'.");
+            _missingLogged = true;
+        }
+        else
+        {
+            RecordHistory(ModelGuid);
         }
     }
 
-    private void PersistRootSlotIfNeeded()
+    private void EnsureInitializedWithCopy()
     {
-        if (!_isChildSlot && !string.IsNullOrWhiteSpace(RootSlotKey))
-        {
-            Library.SaveRootSlot(RootSlotKey, ModelGuid, HistoryGuids);
-        }
+        var defaultType = CategoryRegistry.GetDefaultModelType(typeof(T), CategoryAttribute);
+        var created = Library.CreateCopyFromDefault(defaultType, CategoryAttribute);
+        ModelGuid = created.Guid;
+        RecordHistory(created.Guid);
     }
 
     public void RecordHistory(string? guid)
@@ -198,27 +144,27 @@ public class CategorySlot<T> : ICategorySlot where T : class
         }
     }
 
-    public void PruneDeletedHistory()
+    public void RemoveFromHistory(string guid)
     {
-        int before = HistoryGuids.Count;
-        HistoryGuids.RemoveAll(g => string.IsNullOrWhiteSpace(g) || !Library.ContainsModel(g));
-        if (!string.IsNullOrWhiteSpace(ModelGuid) && Library.ContainsModel(ModelGuid))
-        {
-            RecordHistory(ModelGuid);
-        }
+        if (string.IsNullOrWhiteSpace(guid))
+            return;
 
-        if (HistoryGuids.Count != before)
+        if (HistoryGuids.RemoveAll(g => string.Equals(g, guid, StringComparison.OrdinalIgnoreCase)) > 0)
         {
-            PersistRootSlotIfNeeded();
+            Library.NotifyHistoryOrSlotChanged();
         }
     }
 
+    public void PruneDeletedHistory()
+    {
+        HistoryGuids.RemoveAll(g => string.IsNullOrWhiteSpace(g) || !Library.ContainsModel(g));
+    }
+
+    // Guaranteed never to return null
     public T GetActiveInstance()
     {
         if (_isDefaultTemplateSlot)
             return GetDefaultFallbackInstance();
-
-        EnsureResolved();
 
         if (!string.IsNullOrWhiteSpace(ModelGuid))
         {
@@ -240,7 +186,6 @@ public class CategorySlot<T> : ICategorySlot where T : class
 
     public ModelEntry? GetActiveModelEntry()
     {
-        EnsureResolved();
         if (!string.IsNullOrWhiteSpace(ModelGuid))
         {
             var entry = Library.GetModelEntry(ModelGuid);
@@ -252,7 +197,14 @@ public class CategorySlot<T> : ICategorySlot where T : class
         return CategoryRegistry.GetDefaultModelEntry(defaultType);
     }
 
-    public string GetActiveModelName() => GetActiveModelEntry()?.Name ?? GetActiveInstance().GetType().Name;
+    public string GetActiveModelName()
+    {
+        var entry = GetActiveModelEntry();
+        if (entry != null)
+            return entry.Name;
+
+        return GetActiveInstance().GetType().Name;
+    }
 
     private T GetDefaultFallbackInstance()
     {
@@ -260,25 +212,34 @@ public class CategorySlot<T> : ICategorySlot where T : class
         return (T)CategoryRegistry.GetDefaultModelEntry(defaultType).Instance!;
     }
 
+    // Copy action: creates a new unique model instance with its own GUID
     public ModelEntry CopyModel(ModelSearchResult source)
     {
-        ModelEntry created = source.IsDefault
-            ? Library.CreateCopyFromDefault(source.ModelType, CategoryAttribute)
-            : Library.CopyExistingModel(source.Guid, CategoryAttribute)
-              ?? Library.CreateCopyFromDefault(source.ModelType, CategoryAttribute);
+        ModelEntry created;
+        if (source.IsDefault)
+        {
+            created = Library.CreateCopyFromDefault(source.ModelType, CategoryAttribute);
+        }
+        else
+        {
+            created = Library.CopyExistingModel(source.Guid, CategoryAttribute)
+                      ?? Library.CreateCopyFromDefault(source.ModelType, CategoryAttribute);
+        }
 
         ModelGuid = created.Guid;
         RecordHistory(created.Guid);
         _missingLogged = false;
-        PersistRootSlotIfNeeded();
+        Library.NotifyHistoryOrSlotChanged();
         return created;
     }
 
     public ModelEntry CopyModelByGuidOrDefault(string? sourceGuid, Type? fallbackModelType = null)
     {
-        ModelEntry? created = !string.IsNullOrWhiteSpace(sourceGuid)
-            ? Library.CopyExistingModel(sourceGuid, CategoryAttribute)
-            : null;
+        ModelEntry? created = null;
+        if (!string.IsNullOrWhiteSpace(sourceGuid))
+        {
+            created = Library.CopyExistingModel(sourceGuid, CategoryAttribute);
+        }
 
         if (created == null)
         {
@@ -289,10 +250,11 @@ public class CategorySlot<T> : ICategorySlot where T : class
         ModelGuid = created.Guid;
         RecordHistory(created.Guid);
         _missingLogged = false;
-        PersistRootSlotIfNeeded();
+        Library.NotifyHistoryOrSlotChanged();
         return created;
     }
 
+    // Reference action: reuses the existing GUID
     public void ReferenceModel(string targetGuid)
     {
         var entry = Library.GetModelEntry(targetGuid);
@@ -303,11 +265,11 @@ public class CategorySlot<T> : ICategorySlot where T : class
         RecordHistory(entry.Guid);
         Library.TouchModel(entry.Guid);
         _missingLogged = false;
-        PersistRootSlotIfNeeded();
+        Library.NotifyHistoryOrSlotChanged();
     }
 }
 
-// --- 3. STATIC METADATA INITIALIZATION (CATEGORY REGISTRY) ---
+// --- 3. MODEL DISCOVERY, DEFAULT MODELS & RESOLUTION HANDSHAKE ---
 
 public sealed record ModelDescriptor(
     Type ModelType,
@@ -318,12 +280,16 @@ public sealed record ModelDescriptor(
 
 public static class CategoryRegistry
 {
-    private static readonly List<ModelDescriptor> _models = new();
+    private static List<ModelDescriptor>? _models;
     private static readonly Dictionary<Type, ModelEntry> _defaultEntries = new();
     private static readonly Dictionary<Type, FieldInfo[]> _fieldCache = new();
 
-    static CategoryRegistry()
+    private static List<ModelDescriptor> EnsureModelsLoaded()
     {
+        if (_models != null)
+            return _models;
+
+        _models = new List<ModelDescriptor>();
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
         {
             if (assembly.IsDynamic)
@@ -352,20 +318,14 @@ public static class CategoryRegistry
                     _models.Add(new ModelDescriptor(
                         type,
                         modelAttr,
-                        SanitizeName(type.Name),
+                        Library.SanitizeModelName(type.Name),
                         modelAttr.GetTagsDescription(),
                         defaultEntry));
                 }
             }
         }
-    }
 
-    public static string SanitizeName(string? rawName, string fallback = "Model")
-    {
-        if (string.IsNullOrWhiteSpace(rawName))
-            return fallback.Replace(' ', '_');
-
-        return rawName.Trim().Replace(' ', '_');
+        return _models;
     }
 
     private static ModelEntry CreateDefaultEntry(Type modelType, ModelAttribute modelAttr)
@@ -376,7 +336,7 @@ public static class CategoryRegistry
         return new ModelEntry
         {
             Guid = $"default:{modelType.FullName ?? modelType.Name}",
-            Name = SanitizeName(modelType.Name),
+            Name = Library.SanitizeModelName(typeName: modelType.Name),
             ModelType = modelType.FullName ?? modelType.Name,
             CategoryTags = modelAttr.GetTagsDescription(),
             LastUpdatedTicks = 0L,
@@ -385,22 +345,37 @@ public static class CategoryRegistry
         };
     }
 
-    public static IReadOnlyList<ModelDescriptor> GetAllModels() => _models;
+    public static IReadOnlyList<ModelDescriptor> GetAllModels() => EnsureModelsLoaded();
 
     public static ModelEntry GetDefaultModelEntry(Type modelType)
     {
+        EnsureModelsLoaded();
         if (_defaultEntries.TryGetValue(modelType, out var entry))
             return entry;
 
-        throw Log.Logic.FatalException($"Type '{modelType.Name}' is not registered with a [ModelAttribute].");
+        var instance = Activator.CreateInstance(modelType)!;
+        CategorySystem.BindDefaultTemplateRecursive(instance);
+        var fallbackEntry = new ModelEntry
+        {
+            Guid = $"default:{modelType.FullName ?? modelType.Name}",
+            Name = Library.SanitizeModelName(modelType.Name),
+            ModelType = modelType.FullName ?? modelType.Name,
+            CategoryTags = modelType.Name,
+            LastUpdatedTicks = 0L,
+            IsDefault = true,
+            Instance = instance
+        };
+        _defaultEntries[modelType] = fallbackEntry;
+        return fallbackEntry;
     }
 
     public static IReadOnlyList<ModelDescriptor> GetAllowedModels(CategoryAttribute? category, Type modelInterfaceType)
     {
+        var all = EnsureModelsLoaded();
         if (category == null)
-            return _models.Where(m => modelInterfaceType.IsAssignableFrom(m.ModelType)).ToList();
+            return all.Where(m => modelInterfaceType.IsAssignableFrom(m.ModelType)).ToList();
 
-        return _models
+        return all
             .Where(m => modelInterfaceType.IsAssignableFrom(m.ModelType) && m.Attribute.Satisfies(category))
             .ToList();
     }
@@ -422,11 +397,22 @@ public static class CategoryRegistry
         if (string.IsNullOrWhiteSpace(typeName))
             return null;
 
-        var match = _models.FirstOrDefault(m =>
+        var all = EnsureModelsLoaded();
+        var match = all.FirstOrDefault(m =>
             string.Equals(m.ModelType.FullName, typeName, StringComparison.Ordinal) ||
             string.Equals(m.ModelType.Name, typeName, StringComparison.Ordinal));
 
-        return match?.ModelType;
+        if (match != null)
+            return match.ModelType;
+
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var found = asm.GetType(typeName);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 
     public static Type GetDefaultModelType(Type modelInterfaceType, CategoryAttribute? category)
@@ -438,11 +424,11 @@ public static class CategoryRegistry
         if (allowed.Count > 0)
             return allowed[0].ModelType;
 
-        var anyAssignable = _models.FirstOrDefault(m => modelInterfaceType.IsAssignableFrom(m.ModelType));
+        var anyAssignable = EnsureModelsLoaded().FirstOrDefault(m => modelInterfaceType.IsAssignableFrom(m.ModelType));
         if (anyAssignable != null)
             return anyAssignable.ModelType;
 
-        throw Log.Logic.FatalException($"No valid Model Type found for '{modelInterfaceType.Name}'.");
+        throw new InvalidOperationException($"No valid Model Type found for {modelInterfaceType.Name}");
     }
 
     public static FieldInfo[] GetPublicFields(Type type)
@@ -456,17 +442,16 @@ public static class CategoryRegistry
     }
 }
 
-// --- 4. INTERNAL SLOT BINDING ---
+// --- 4. CATEGORY SYSTEM & HIERARCHY TRAVERSAL ---
 
 public static class CategorySystem
 {
-    public static void BindSlots(object owner, bool isRootOwner = false)
+    public static void BindSlots(object owner)
     {
         if (owner == null)
             return;
 
-        var ownerType = owner.GetType();
-        var fields = CategoryRegistry.GetPublicFields(ownerType);
+        var fields = CategoryRegistry.GetPublicFields(owner.GetType());
         foreach (var field in fields)
         {
             if (!typeof(ICategorySlot).IsAssignableFrom(field.FieldType))
@@ -480,15 +465,7 @@ public static class CategorySystem
             }
 
             var attr = field.GetCustomAttribute<CategoryAttribute>();
-            if (isRootOwner)
-            {
-                string rootKey = slot.ModelInterfaceType.FullName ?? slot.ModelInterfaceType.Name;
-                slot.ConfigureRoot(attr, field.Name, rootKey);
-            }
-            else
-            {
-                slot.ConfigureChild(attr, field.Name);
-            }
+            slot.Configure(attr, field.Name);
         }
     }
 
@@ -532,34 +509,65 @@ public static class CategorySystem
         }
     }
 
-    internal static bool BindModelInstanceSlots(object? modelInstance)
+    public static void BindAndResolveRecursive(object? root)
     {
-        bool anyModified = false;
-        GetOwnedCategorySlots(modelInstance, ref anyModified);
-        return anyModified;
+        if (root == null)
+            return;
+
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        Visit(root, visited);
+
+        // Register root configuration slots (e.g., PlayerSpecs) in Library._rootSlots
+        if (root.GetType().GetCustomAttribute<ModelAttribute>(inherit: false) == null)
+        {
+            Library.RegisterRootOwner(root);
+        }
+
+        static void Visit(object current, HashSet<object> visitedSet)
+        {
+            var type = current.GetType();
+            if (type.IsPrimitive || type == typeof(string) || type.IsEnum || type.IsValueType)
+                return;
+
+            if (!visitedSet.Add(current))
+                return;
+
+            BindSlots(current);
+
+            foreach (var field in CategoryRegistry.GetPublicFields(type))
+            {
+                var val = field.GetValue(current);
+                if (val == null)
+                    continue;
+
+                if (val is ICategorySlot slot)
+                {
+                    slot.Resolve();
+                    var activeObj = slot.GetActiveInstanceObject();
+                    if (activeObj != null)
+                        Visit(activeObj, visitedSet);
+                }
+                else if (field.FieldType.IsClass && field.FieldType != typeof(string))
+                {
+                    Visit(val, visitedSet);
+                }
+            }
+        }
     }
 
+    // Collects all ICategorySlot fields belonging to an object (traversing through Nested Fields like MotionSolver,
+    // without crossing into child Models).
     public static List<ICategorySlot> GetOwnedCategorySlots(object? modelInstance)
-    {
-        bool dummy = false;
-        return GetOwnedCategorySlots(modelInstance, ref dummy);
-    }
-
-    private static List<ICategorySlot> GetOwnedCategorySlots(object? modelInstance, ref bool anyModified)
     {
         var slots = new List<ICategorySlot>();
         if (modelInstance == null)
             return slots;
 
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-        CollectSlots(modelInstance, visited, slots, ref anyModified);
+        CollectSlots(modelInstance, visited, slots);
         return slots;
 
-        static void CollectSlots(
-            object current,
-            HashSet<object> visitedSet,
-            List<ICategorySlot> result,
-            ref bool modified)
+        static void CollectSlots(object current, HashSet<object> visitedSet, List<ICategorySlot> result)
         {
             var type = current.GetType();
             if (type.IsPrimitive || type == typeof(string) || type.IsEnum || type.IsValueType)
@@ -577,22 +585,22 @@ public static class CategorySystem
                 if (val is ICategorySlot slot)
                 {
                     var attr = field.GetCustomAttribute<CategoryAttribute>();
-                    if (slot.ConfigureChild(attr, field.Name))
+                    if (slot.CategoryAttribute == null && attr != null)
                     {
-                        modified = true;
+                        slot.Configure(attr, field.Name);
                     }
                     result.Add(slot);
                 }
                 else if (field.FieldType.IsClass && field.FieldType != typeof(string))
                 {
-                    CollectSlots(val, visitedSet, result, ref modified);
+                    CollectSlots(val, visitedSet, result);
                 }
             }
         }
     }
 }
 
-// --- 5. CLIENT DATA INITIALIZATION & MODEL LIBRARY ---
+// --- 5. GLOBAL MODEL LIBRARY, OWNERSHIP TRACKING & SEARCH ENGINE ---
 
 public sealed class ModelEntry
 {
@@ -602,16 +610,13 @@ public sealed class ModelEntry
     public string CategoryTags { get; set; } = string.Empty;
     public long LastUpdatedTicks { get; set; } = DateTime.UtcNow.Ticks;
 
-    [JsonIgnore] public bool IsDefault { get; set; }
-    [JsonIgnore] public object? Instance { get; set; }
+    [JsonIgnore]
+    public bool IsDefault { get; set; }
+
+    [JsonIgnore]
+    public object? Instance { get; set; }
 
     public JsonElement? RawData { get; set; }
-}
-
-public sealed class RootSlotRecord
-{
-    public string? ModelGuid { get; set; }
-    public List<string> HistoryGuids { get; set; } = new();
 }
 
 public sealed record ModelSearchResult(
@@ -619,6 +624,7 @@ public sealed record ModelSearchResult(
     string ModelName,
     Type ModelType,
     bool IsDefault,
+    bool IsOrphaned,
     long LastUpdatedTicks,
     string? ParentGuid = null,
     string? ParentModelName = null,
@@ -635,13 +641,16 @@ public sealed record ModelSearchResult(
 
 public static class Library
 {
-    private const string RootSlotsFileName = "_RootSlots.json";
-
     private static readonly Dictionary<string, ModelEntry> _models = new(StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<string, RootSlotRecord> _rootSlots = new(StringComparer.OrdinalIgnoreCase);
-    private static bool _initialized;
+    private static readonly HashSet<ICategorySlot> _rootSlots = new(ReferenceEqualityComparer.Instance);
+    private static readonly Dictionary<Type, List<ICategorySlot>> _rootSlotsByOwnerType = new();
 
-    public static string StorageDirectory { get; private set; } = string.Empty;
+    private static bool _initialized;
+    private static bool _isLoading;
+
+    public static int Version { get; private set; } = 1;
+
+    public static string PresetsDirectory { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Presets");
 
     public static Action? OnLibraryChanged { get; set; }
 
@@ -662,178 +671,151 @@ public static class Library
         return opts;
     }
 
-    private static void RequireInitialized()
+    public static void RegisterRootOwner(object rootOwner)
     {
-        if (!_initialized)
-        {
-            Log.Logic.Fatal("Library is not initialized. Call Library.Initialize() in client startup first.");
-        }
-    }
-
-    public static void Initialize(
-        string relativeDataFolder = "_Data",
-        [CallerFilePath] string callerFilePath = "")
-    {
-        if (string.IsNullOrWhiteSpace(callerFilePath))
-            Log.Logic.Fatal("Library.Initialize requires a valid caller path to resolve the data directory.");
-
-        var callerDir = Path.GetDirectoryName(callerFilePath)!;
-        StorageDirectory = Path.GetFullPath(Path.Combine(callerDir, relativeDataFolder));
-
-        _models.Clear();
-        _rootSlots.Clear();
-
-        if (!Directory.Exists(StorageDirectory))
-            Directory.CreateDirectory(StorageDirectory);
-
-        // 1. Load Root Slots index
-        var rootSlotsPath = GetRootSlotsFilePath();
-        if (File.Exists(rootSlotsPath))
-        {
-            try
-            {
-                var rootJson = File.ReadAllText(rootSlotsPath);
-                var loadedRoots = JsonSerializer.Deserialize<Dictionary<string, RootSlotRecord>>(rootJson, JsonOptions);
-                if (loadedRoots != null)
-                {
-                    foreach (var kvp in loadedRoots)
-                        _rootSlots[kvp.Key] = kvp.Value;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Logic.Error($"Failed to load '{rootSlotsPath}': {ex.Message}");
-            }
-        }
-
-        // 2. Load all Model JSON files
-        foreach (var file in Directory.GetFiles(StorageDirectory, "*.json"))
-        {
-            if (string.Equals(Path.GetFileName(file), RootSlotsFileName, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            try
-            {
-                var json = File.ReadAllText(file);
-                var entry = JsonSerializer.Deserialize<ModelEntry>(json, JsonOptions);
-                if (entry == null || string.IsNullOrWhiteSpace(entry.Guid))
-                    continue;
-
-                var modelType = CategoryRegistry.FindModelType(entry.ModelType);
-                if (modelType == null)
-                    continue;
-
-                entry.Name = CategoryRegistry.SanitizeName(entry.Name, modelType.Name);
-                if (entry.LastUpdatedTicks <= 0)
-                    entry.LastUpdatedTicks = File.GetLastWriteTimeUtc(file).Ticks;
-
-                if (entry.RawData.HasValue)
-                    entry.Instance = entry.RawData.Value.Deserialize(modelType, JsonOptions);
-
-                entry.Instance ??= Activator.CreateInstance(modelType)!;
-
-                if (string.IsNullOrWhiteSpace(entry.CategoryTags))
-                {
-                    var modelAttr = modelType.GetCustomAttribute<ModelAttribute>(false);
-                    entry.CategoryTags = modelAttr?.GetTagsDescription() ?? modelType.Name;
-                }
-
-                _models[entry.Guid] = entry;
-            }
-            catch (Exception ex)
-            {
-                Log.Logic.Error($"Failed to load model file '{file}': {ex.Message}");
-            }
-        }
-
-        _initialized = true;
-
-        // 3. Bind and validate child slots on all loaded models (and auto-heal any mismatched slot types)
-        foreach (var entry in _models.Values.ToList())
-        {
-            if (entry.Instance != null)
-            {
-                bool modified = CategorySystem.BindModelInstanceSlots(entry.Instance);
-                if (modified)
-                {
-                    SaveModelToFile(entry);
-                }
-            }
-        }
-
-        Log.Logic.Info($"Model Library initialized with {_models.Count} model(s) in '{StorageDirectory}'.");
-    }
-
-    public static bool IsModelInstance(object? obj)
-    {
-        RequireInitialized();
-        if (obj == null)
-            return false;
-
-        return _models.Values.Any(m => ReferenceEquals(m.Instance, obj));
-    }
-
-    public static string? GetModelGuidByInstance(object? obj)
-    {
-        RequireInitialized();
-        if (obj == null)
-            return null;
-
-        return _models.Values.FirstOrDefault(m => ReferenceEquals(m.Instance, obj))?.Guid;
-    }
-
-    public static bool TryRestoreRootSlot(string rootSlotKey, out string? modelGuid, out List<string> historyGuids)
-    {
-        RequireInitialized();
-        if (_rootSlots.TryGetValue(rootSlotKey, out var record) ||
-            _rootSlots.TryGetValue(rootSlotKey.Split('.').Last(), out record))
-        {
-            modelGuid = record.ModelGuid;
-            historyGuids = record.HistoryGuids ?? new List<string>();
-            return !string.IsNullOrWhiteSpace(modelGuid) && ContainsModel(modelGuid);
-        }
-
-        modelGuid = null;
-        historyGuids = new List<string>();
-        return false;
-    }
-
-    public static void SaveRootSlot(string rootSlotKey, string? modelGuid, List<string> historyGuids)
-    {
-        RequireInitialized();
-        if (string.IsNullOrWhiteSpace(rootSlotKey))
+        if (rootOwner == null)
             return;
 
-        _rootSlots[rootSlotKey] = new RootSlotRecord
-        {
-            ModelGuid = modelGuid,
-            HistoryGuids = historyGuids
-                .Where(g => !string.IsNullOrWhiteSpace(g) && ContainsModel(g))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList()
-        };
+        var ownerType = rootOwner.GetType();
+        var slots = CategorySystem.GetOwnedCategorySlots(rootOwner);
+        _rootSlotsByOwnerType[ownerType] = slots;
 
-        var json = JsonSerializer.Serialize(_rootSlots, JsonOptions);
-        File.WriteAllText(GetRootSlotsFilePath(), json);
+        _rootSlots.Clear();
+        foreach (var list in _rootSlotsByOwnerType.Values)
+        {
+            foreach (var slot in list)
+            {
+                _rootSlots.Add(slot);
+            }
+        }
+
+        Version++;
     }
 
-    private static string GetRootSlotsFilePath() => Path.Combine(StorageDirectory, RootSlotsFileName);
+    public static void RegisterRootSlot(ICategorySlot slot)
+    {
+        if (slot != null && _rootSlots.Add(slot))
+        {
+            Version++;
+        }
+    }
+
+    public static void NotifyHistoryOrSlotChanged()
+    {
+        Version++;
+        OnLibraryChanged?.Invoke();
+    }
+
+    // Spaces in model names are replaced with underscores (_)
+    public static string SanitizeModelName(string? typeName, string fallback = "Model")
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+            return fallback.Replace(' ', '_');
+
+        return typeName.Trim().Replace(' ', '_');
+    }
+
+    public static void Initialize(string? customDirectory = null)
+    {
+        if (customDirectory != null)
+            PresetsDirectory = customDirectory;
+
+        _isLoading = true;
+        _models.Clear();
+
+        try
+        {
+            if (!Directory.Exists(PresetsDirectory))
+            {
+                Directory.CreateDirectory(PresetsDirectory);
+            }
+
+            foreach (var file in Directory.GetFiles(PresetsDirectory, "*.json"))
+            {
+                try
+                {
+                    var json = File.ReadAllText(file);
+                    var entry = JsonSerializer.Deserialize<ModelEntry>(json, JsonOptions);
+                    if (entry == null || string.IsNullOrWhiteSpace(entry.Guid))
+                        continue;
+
+                    var modelType = CategoryRegistry.FindModelType(entry.ModelType);
+                    if (modelType == null)
+                    {
+                        Log.Logic.Warning($"Model file '{file}' references unknown ModelType '{entry.ModelType}'. Skipping.");
+                        continue;
+                    }
+
+                    entry.Name = SanitizeModelName(entry.Name, modelType.Name);
+                    if (entry.LastUpdatedTicks <= 0)
+                    {
+                        entry.LastUpdatedTicks = File.GetLastWriteTimeUtc(file).Ticks;
+                    }
+
+                    if (entry.RawData.HasValue)
+                    {
+                        entry.Instance = entry.RawData.Value.Deserialize(modelType, JsonOptions);
+                    }
+
+                    entry.Instance ??= Activator.CreateInstance(modelType)!;
+
+                    if (string.IsNullOrWhiteSpace(entry.CategoryTags))
+                    {
+                        var modelAttr = modelType.GetCustomAttribute<ModelAttribute>(false);
+                        entry.CategoryTags = modelAttr?.GetTagsDescription() ?? modelType.Name;
+                    }
+
+                    _models[entry.Guid] = entry;
+                }
+                catch (Exception ex)
+                {
+                    Log.Logic.Error($"Failed to load model file '{file}': {ex.Message}");
+                }
+            }
+
+            _initialized = true;
+
+            foreach (var entry in _models.Values.ToList())
+            {
+                if (entry.Instance != null)
+                {
+                    foreach (var slot in CategorySystem.GetOwnedCategorySlots(entry.Instance))
+                    {
+                        slot.PruneDeletedHistory();
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            Version++;
+        }
+
+        Log.Logic.Info($"Model Library initialized with {_models.Count} model(s) from '{PresetsDirectory}'.");
+    }
+
+    public static void EnsureInitialized()
+    {
+        if (!_initialized && !_isLoading)
+            Initialize();
+    }
 
     public static bool ContainsModel(string? guid)
     {
-        RequireInitialized();
+        EnsureInitialized();
         return !string.IsNullOrWhiteSpace(guid) && _models.ContainsKey(guid);
     }
 
     public static IReadOnlyCollection<ModelEntry> GetAllModels()
     {
-        RequireInitialized();
+        EnsureInitialized();
         return _models.Values;
     }
 
     public static T? GetModel<T>(string? guid) where T : class
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (string.IsNullOrWhiteSpace(guid))
             return null;
 
@@ -845,7 +827,7 @@ public static class Library
 
     public static ModelEntry? GetModelEntry(string? guid)
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (string.IsNullOrWhiteSpace(guid))
             return null;
 
@@ -854,9 +836,17 @@ public static class Library
 
     public static ModelEntry CreateCopyFromDefault(Type modelType, CategoryAttribute? slotCategory = null, string? customName = null)
     {
-        RequireInitialized();
+        EnsureInitialized();
         var instance = Activator.CreateInstance(modelType)!;
-        CategorySystem.BindModelInstanceSlots(instance);
+
+        var childSlots = CategorySystem.GetOwnedCategorySlots(instance);
+        foreach (var childSlot in childSlots)
+        {
+            if (string.IsNullOrWhiteSpace(childSlot.ModelGuid))
+            {
+                childSlot.CopyModelByGuidOrDefault(null, childSlot.FallbackType);
+            }
+        }
 
         var modelAttr = modelType.GetCustomAttribute<ModelAttribute>(false);
         var tags = modelAttr?.GetTagsDescription() ?? slotCategory?.GetTagsDescription() ?? modelType.Name;
@@ -864,7 +854,7 @@ public static class Library
         var entry = new ModelEntry
         {
             Guid = Guid.NewGuid().ToString("N"),
-            Name = CategoryRegistry.SanitizeName(customName ?? modelType.Name, modelType.Name),
+            Name = SanitizeModelName(customName ?? modelType.Name, modelType.Name),
             ModelType = modelType.FullName ?? modelType.Name,
             CategoryTags = tags,
             LastUpdatedTicks = DateTime.UtcNow.Ticks,
@@ -874,13 +864,14 @@ public static class Library
 
         _models[entry.Guid] = entry;
         SaveModelToFile(entry);
+        Version++;
         OnLibraryChanged?.Invoke();
         return entry;
     }
 
     public static ModelEntry? CopyExistingModel(string sourceGuid, CategoryAttribute? slotCategory = null)
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (!_models.TryGetValue(sourceGuid, out var sourceEntry) || sourceEntry.Instance == null)
             return null;
 
@@ -891,7 +882,14 @@ public static class Library
         foreach (var childSlot in clonedSlots)
         {
             childSlot.PruneDeletedHistory();
-            childSlot.CopyModelByGuidOrDefault(childSlot.ModelGuid, childSlot.FallbackType);
+            if (!string.IsNullOrWhiteSpace(childSlot.ModelGuid))
+            {
+                childSlot.CopyModelByGuidOrDefault(childSlot.ModelGuid, childSlot.FallbackType);
+            }
+            else
+            {
+                childSlot.CopyModelByGuidOrDefault(null, childSlot.FallbackType);
+            }
         }
 
         var modelAttr = runtimeType.GetCustomAttribute<ModelAttribute>(false);
@@ -900,7 +898,7 @@ public static class Library
         var newEntry = new ModelEntry
         {
             Guid = Guid.NewGuid().ToString("N"),
-            Name = CategoryRegistry.SanitizeName(sourceEntry.Name, runtimeType.Name),
+            Name = SanitizeModelName(sourceEntry.Name, runtimeType.Name),
             ModelType = runtimeType.FullName ?? runtimeType.Name,
             CategoryTags = tags,
             LastUpdatedTicks = DateTime.UtcNow.Ticks,
@@ -910,41 +908,69 @@ public static class Library
 
         _models[newEntry.Guid] = newEntry;
         SaveModelToFile(newEntry);
+        Version++;
         OnLibraryChanged?.Invoke();
         return newEntry;
     }
 
+    public static ModelEntry RegisterMigratedInlineModel(object inlineInstance, CategoryAttribute? slotCategory = null)
+    {
+        EnsureInitialized();
+        var runtimeType = inlineInstance.GetType();
+        var modelAttr = runtimeType.GetCustomAttribute<ModelAttribute>(false);
+        var tags = modelAttr?.GetTagsDescription() ?? slotCategory?.GetTagsDescription() ?? runtimeType.Name;
+
+        var entry = new ModelEntry
+        {
+            Guid = Guid.NewGuid().ToString("N"),
+            Name = SanitizeModelName(runtimeType.Name),
+            ModelType = runtimeType.FullName ?? runtimeType.Name,
+            CategoryTags = tags,
+            LastUpdatedTicks = DateTime.UtcNow.Ticks,
+            IsDefault = false,
+            Instance = inlineInstance
+        };
+
+        _models[entry.Guid] = entry;
+        SaveModelToFile(entry);
+        Version++;
+        return entry;
+    }
+
     public static void TouchModel(string guid)
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (_models.TryGetValue(guid, out var entry))
         {
             entry.LastUpdatedTicks = DateTime.UtcNow.Ticks;
             SaveModelToFile(entry);
+            Version++;
         }
     }
 
     public static void SaveModel(string? guid)
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (!string.IsNullOrWhiteSpace(guid) && _models.TryGetValue(guid, out var entry))
         {
             entry.LastUpdatedTicks = DateTime.UtcNow.Ticks;
             SaveModelToFile(entry);
+            Version++;
         }
     }
 
     public static void RenameModel(string? guid, string newName)
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (!string.IsNullOrWhiteSpace(guid) && _models.TryGetValue(guid, out var entry))
         {
-            var sanitized = CategoryRegistry.SanitizeName(newName, entry.Name);
+            var sanitized = SanitizeModelName(newName, entry.Name);
             if (!string.IsNullOrWhiteSpace(sanitized))
             {
                 entry.Name = sanitized;
                 entry.LastUpdatedTicks = DateTime.UtcNow.Ticks;
                 SaveModelToFile(entry);
+                Version++;
                 OnLibraryChanged?.Invoke();
             }
         }
@@ -952,19 +978,23 @@ public static class Library
 
     public static void DeleteModel(string guid)
     {
-        RequireInitialized();
+        EnsureInitialized();
         if (_models.Remove(guid))
         {
             var path = GetModelFilePath(guid);
             if (File.Exists(path))
+            {
                 File.Delete(path);
-
+            }
+            Version++;
             OnLibraryChanged?.Invoke();
         }
     }
 
     public static T DeepClone<T>(T source) where T : class
-        => (T)DeepCloneObject(source, source.GetType());
+    {
+        return (T)DeepCloneObject(source, source.GetType());
+    }
 
     public static object DeepCloneObject(object source, Type runtimeType)
     {
@@ -978,30 +1008,70 @@ public static class Library
         if (entry.IsDefault)
             return;
 
+        if (!Directory.Exists(PresetsDirectory))
+            Directory.CreateDirectory(PresetsDirectory);
+
         if (entry.Instance != null)
         {
-            entry.RawData = JsonSerializer.SerializeToElement(entry.Instance, entry.Instance.GetType(), JsonOptions);
+            var element = JsonSerializer.SerializeToElement(entry.Instance, entry.Instance.GetType(), JsonOptions);
+            entry.RawData = element;
         }
 
         var json = JsonSerializer.Serialize(entry, JsonOptions);
         File.WriteAllText(GetModelFilePath(entry.Guid), json);
     }
 
-    private static string GetModelFilePath(string guid) => Path.Combine(StorageDirectory, $"{guid}.json");
+    private static string GetModelFilePath(string guid) => Path.Combine(PresetsDirectory, $"{guid}.json");
 
-    // --- 6. SEARCH ENGINE ---
+    // --- 6. OWNERSHIP CALCULATION & SEARCH ENGINE ---
+
+    // Collects all model GUIDs currently bound to any slot in _rootSlots or Library models.
+    // A model in Library is Owned if its GUID is in this set, and Orphaned otherwise.
+    private static HashSet<string> CollectOwnedModelGuids()
+    {
+        var ownedGuids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var rootSlot in _rootSlots)
+        {
+            if (!string.IsNullOrWhiteSpace(rootSlot.ModelGuid))
+            {
+                ownedGuids.Add(rootSlot.ModelGuid);
+            }
+        }
+
+        foreach (var entry in _models.Values)
+        {
+            if (entry.Instance == null)
+                continue;
+
+            var childSlots = CategorySystem.GetOwnedCategorySlots(entry.Instance);
+            foreach (var slot in childSlots)
+            {
+                if (!string.IsNullOrWhiteSpace(slot.ModelGuid))
+                {
+                    ownedGuids.Add(slot.ModelGuid);
+                }
+            }
+        }
+
+        return ownedGuids;
+    }
 
     public static IReadOnlyList<ModelSearchResult> SearchModels(
         CategoryAttribute? category,
         Type modelInterfaceType,
         string? rawQuery)
     {
-        RequireInitialized();
+        EnsureInitialized();
         ParseSearchQuery(rawQuery, out var hasFilters, out var hadFilters, out var onlyDefaults, out var pattern);
 
+        // Pre-calculate Owned vs. Orphaned status once per search execution (Section 6)
+        var ownedGuids = CollectOwnedModelGuids();
         var results = new List<ModelSearchResult>();
+
         bool hasParentFilter = hasFilters.Count > 0 || hadFilters.Count > 0;
 
+        // 1. Default Templates (New)
         if (!hasParentFilter)
         {
             var allowedDescriptors = CategoryRegistry.GetAllowedModels(category, modelInterfaceType);
@@ -1016,6 +1086,7 @@ public static class Library
                     ModelName: defEntry.Name,
                     ModelType: desc.ModelType,
                     IsDefault: true,
+                    IsOrphaned: false,
                     LastUpdatedTicks: 0L,
                     ParentGuid: null,
                     ParentModelName: null,
@@ -1025,8 +1096,11 @@ public static class Library
         }
 
         if (onlyDefaults)
+        {
             return SortSearchResults(results);
+        }
 
+        // 2. Library Models without parent filter
         if (!hasParentFilter)
         {
             foreach (var entry in _models.Values)
@@ -1041,11 +1115,14 @@ public static class Library
                 if (!TryScoreMatch(entry.Name, pattern, out int patternScore))
                     continue;
 
+                bool isOrphaned = !ownedGuids.Contains(entry.Guid);
+
                 results.Add(new ModelSearchResult(
                     Guid: entry.Guid,
                     ModelName: entry.Name,
                     ModelType: instanceType,
                     IsDefault: false,
+                    IsOrphaned: isOrphaned,
                     LastUpdatedTicks: entry.LastUpdatedTicks,
                     ParentGuid: null,
                     ParentModelName: null,
@@ -1056,6 +1133,7 @@ public static class Library
             return SortSearchResults(results);
         }
 
+        // 3. Library Models with has: / had: parent filter (supports transitive parenting)
         string primaryParentFilter = hasFilters.Count > 0 ? hasFilters[0] : hadFilters[0];
         bool primaryIsHad = hasFilters.Count == 0;
 
@@ -1086,11 +1164,14 @@ public static class Library
                 if (!SatisfiesAdditionalParentFilters(childEntry.Guid, hasFilters, hadFilters))
                     continue;
 
+                bool isOrphaned = !ownedGuids.Contains(childEntry.Guid);
+
                 results.Add(new ModelSearchResult(
                     Guid: childEntry.Guid,
                     ModelName: childEntry.Name,
                     ModelType: childType,
                     IsDefault: false,
+                    IsOrphaned: isOrphaned,
                     LastUpdatedTicks: childEntry.LastUpdatedTicks,
                     ParentGuid: parentEntry.Guid,
                     ParentModelName: parentEntry.Name,
@@ -1107,27 +1188,29 @@ public static class Library
         List<string> hasFilters,
         List<string> hadFilters)
     {
-        foreach (var filter in hasFilters)
+        for (int i = 0; i < hasFilters.Count; i++)
         {
-            bool matched = _models.Values.Any(p =>
+            string filter = hasFilters[i];
+            bool matchedAnyParent = _models.Values.Any(p =>
                 p.Instance != null &&
                 TryScoreMatch(p.Name, filter, out _) &&
                 GetTransitiveDescendants(p, includeHistory: false).Any(d =>
                     string.Equals(d.Guid, candidateGuid, StringComparison.OrdinalIgnoreCase)));
 
-            if (!matched)
+            if (!matchedAnyParent)
                 return false;
         }
 
-        foreach (var filter in hadFilters)
+        for (int i = 0; i < hadFilters.Count; i++)
         {
-            bool matched = _models.Values.Any(p =>
+            string filter = hadFilters[i];
+            bool matchedAnyParent = _models.Values.Any(p =>
                 p.Instance != null &&
                 TryScoreMatch(p.Name, filter, out _) &&
                 GetTransitiveDescendants(p, includeHistory: true).Any(d =>
                     string.Equals(d.Guid, candidateGuid, StringComparison.OrdinalIgnoreCase)));
 
-            if (!matched)
+            if (!matchedAnyParent)
                 return false;
         }
 
@@ -1179,7 +1262,9 @@ public static class Library
                 int countBefore = slot.HistoryGuids.Count;
                 slot.PruneDeletedHistory();
                 if (slot.HistoryGuids.Count != countBefore)
+                {
                     anyPruned = true;
+                }
 
                 foreach (var histGuid in slot.HistoryGuids)
                 {
@@ -1187,15 +1272,20 @@ public static class Library
                         guids.Add(histGuid);
                 }
             }
-            else if (!string.IsNullOrWhiteSpace(slot.ModelGuid) && ContainsModel(slot.ModelGuid))
+            else
             {
-                if (!guids.Contains(slot.ModelGuid, StringComparer.OrdinalIgnoreCase))
-                    guids.Add(slot.ModelGuid);
+                if (!string.IsNullOrWhiteSpace(slot.ModelGuid) && ContainsModel(slot.ModelGuid))
+                {
+                    if (!guids.Contains(slot.ModelGuid, StringComparer.OrdinalIgnoreCase))
+                        guids.Add(slot.ModelGuid);
+                }
             }
         }
 
         if (anyPruned)
+        {
             SaveModelToFile(parent);
+        }
 
         return guids;
     }
@@ -1223,9 +1313,13 @@ public static class Library
         foreach (var token in tokens)
         {
             if (token.StartsWith("has:", StringComparison.OrdinalIgnoreCase))
+            {
                 hasFilters.Add(token[4..]);
+            }
             else if (token.StartsWith("had:", StringComparison.OrdinalIgnoreCase))
+            {
                 hadFilters.Add(token[4..]);
+            }
             else if (token.StartsWith("default:", StringComparison.OrdinalIgnoreCase))
             {
                 onlyDefaults = true;
@@ -1234,7 +1328,9 @@ public static class Library
                     patternParts.Add(remainder);
             }
             else
+            {
                 patternParts.Add(token);
+            }
         }
 
         pattern = string.Join("_", patternParts);
@@ -1258,17 +1354,28 @@ public static class Library
         score = 10000;
 
         if (string.Equals(targetName, queryPattern, StringComparison.Ordinal))
+        {
             score += 50000;
+        }
         else if (string.Equals(targetName, queryPattern, StringComparison.OrdinalIgnoreCase))
+        {
             score += 40000;
+        }
         else if (index == 0)
+        {
             score += 25000;
+        }
         else if (targetName[index - 1] == '_' ||
                  (char.IsUpper(targetName[index]) && char.IsLower(targetName[index - 1])))
+        {
             score += 12000;
+        }
 
         score -= index * 50;
-        score -= Math.Max(0, targetName.Length - queryPattern.Length) * 15;
+
+        int lengthDiff = Math.Max(0, targetName.Length - queryPattern.Length);
+        score -= lengthDiff * 15;
+
         return true;
     }
 
@@ -1340,8 +1447,6 @@ public sealed class CategorySlotJsonConverterFactory : JsonConverterFactory
         public override CategorySlot<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             var slot = new CategorySlot<T>();
-            slot.MarkAsChildSlot();
-
             if (reader.TokenType != JsonTokenType.StartObject)
                 return slot;
 
@@ -1349,12 +1454,35 @@ public sealed class CategorySlotJsonConverterFactory : JsonConverterFactory
             var root = doc.RootElement;
 
             if (root.TryGetProperty("ModelGuid", out var modelGuidProp))
+            {
                 slot.ModelGuid = modelGuidProp.GetString();
+            }
+            else if (root.TryGetProperty("PresetGuid", out var legacyGuidProp))
+            {
+                slot.ModelGuid = legacyGuidProp.GetString();
+            }
 
             if (root.TryGetProperty("HistoryGuids", out var historyProp) && historyProp.ValueKind == JsonValueKind.Array)
             {
                 foreach (var item in historyProp.EnumerateArray())
-                    slot.RecordHistory(item.GetString());
+                {
+                    var guid = item.GetString();
+                    slot.RecordHistory(guid);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(slot.ModelGuid) &&
+                root.TryGetProperty("ModelType", out var mtProp) &&
+                root.TryGetProperty("InlineData", out var inlineElement) &&
+                inlineElement.ValueKind == JsonValueKind.Object)
+            {
+                var concreteType = CategoryRegistry.FindModelType(mtProp.GetString());
+                if (concreteType != null && typeof(T).IsAssignableFrom(concreteType))
+                {
+                    var instance = inlineElement.Deserialize(concreteType, options) ?? Activator.CreateInstance(concreteType)!;
+                    var migrated = Library.RegisterMigratedInlineModel(instance);
+                    slot.ModelGuid = migrated.Guid;
+                }
             }
 
             slot.RecordHistory(slot.ModelGuid);
