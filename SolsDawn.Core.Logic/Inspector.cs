@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using ImGuiNET;
+using Microsoft.Xna.Framework;
+using NumVector2 = System.Numerics.Vector2;
+using NumVector4 = System.Numerics.Vector4;
 
 namespace SolsDawn.Core.Logic;
 
@@ -38,11 +39,8 @@ public class StepAttribute(float speed) : Attribute
     public float Speed { get; } = speed;
 }
 
-public static partial class AutoInspector
+public static class AutoInspector
 {
-    [GeneratedRegex("(\\B[A-Z])")]
-    private static partial Regex PascalCaseRegex();
-
     private class FieldMeta
     {
         public FieldInfo Field { get; set; } = null!;
@@ -53,18 +51,26 @@ public static partial class AutoInspector
         public float Max { get; set; }
         public string Label { get; set; } = string.Empty;
         public bool IsCategorySlot { get; set; }
+        public bool IsReadOnly { get; set; }
     }
 
     private static readonly Dictionary<Type, List<FieldMeta>> _cache = new();
-    private static readonly Dictionary<string, string> _presetNameDrafts = new();
-    private static readonly Dictionary<string, string> _renameDrafts = new();
 
+    // UI state per CategorySlot
+    private static readonly Dictionary<string, bool> _slotExpanded = new();
+    private static readonly Dictionary<string, bool> _slotExpandedBeforeClick = new();
+    private static readonly Dictionary<string, string> _slotSearchQueries = new();
+    private static readonly Dictionary<string, string> _modelNameDrafts = new();
+    private static string? _pendingSearchOpenSlotId;
+
+    // Library Browser state
     private static string _librarySearchQuery = string.Empty;
     private static string _libraryTagFilter = string.Empty;
 
     public static Action? OnAnyValueChanged { get; set; }
 
-    public static string FormatLabel(string rawName) => PascalCaseRegex().Replace(rawName, " $1");
+    // Rule 1: Do not inject spaces into camelCase/PascalCase field names
+    public static string FormatLabel(string rawName) => rawName;
 
     public static bool Draw(object target)
     {
@@ -88,6 +94,7 @@ public static partial class AutoInspector
             var field = meta.Field;
             var label = meta.Label;
 
+            // 2.3. Category (CategorySlot)
             if (meta.IsCategorySlot)
             {
                 if (field.GetValue(target) is ICategorySlot slot)
@@ -99,38 +106,16 @@ public static partial class AutoInspector
                 continue;
             }
 
-            if (field.FieldType == typeof(float))
+            // 2.1. Regular Fields (float / int / bool / Vector2 / Color / string / Enum)
+            if (IsRegularFieldType(field.FieldType))
             {
-                var value = (float)field.GetValue(target)!;
-                bool changed = meta.Min != float.MinValue && meta.Max != float.MaxValue
-                    ? ImGui.SliderFloat(label, ref value, meta.Min, meta.Max)
-                    : ImGui.DragFloat(label, ref value, meta.Speed, meta.Min, meta.Max);
+                if (DrawRegularField(target, meta))
+                    anyChanged = true;
+                continue;
+            }
 
-                if (changed)
-                {
-                    field.SetValue(target, value);
-                    anyChanged = true;
-                }
-            }
-            else if (field.FieldType == typeof(int))
-            {
-                var value = (int)field.GetValue(target)!;
-                if (ImGui.DragInt(label, ref value, Math.Max(1f, meta.Speed), (int)meta.Min, (int)meta.Max))
-                {
-                    field.SetValue(target, value);
-                    anyChanged = true;
-                }
-            }
-            else if (field.FieldType == typeof(bool))
-            {
-                var value = (bool)field.GetValue(target)!;
-                if (ImGui.Checkbox(label, ref value))
-                {
-                    field.SetValue(target, value);
-                    anyChanged = true;
-                }
-            }
-            else if (field.FieldType.IsClass && field.FieldType != typeof(string))
+            // 2.2. Nested Field (container class with its own fields, e.g., MotionSolver)
+            if (field.FieldType.IsClass && field.FieldType != typeof(string))
             {
                 var nestedObj = field.GetValue(target);
                 if (nestedObj != null)
@@ -153,6 +138,132 @@ public static partial class AutoInspector
             OnAnyValueChanged?.Invoke();
 
         return anyChanged;
+    }
+
+    private static bool IsRegularFieldType(Type t)
+    {
+        return t == typeof(float) ||
+               t == typeof(int) ||
+               t == typeof(bool) ||
+               t == typeof(string) ||
+               t == typeof(Vector2) ||
+               t == typeof(NumVector2) ||
+               t == typeof(Color) ||
+               t.IsEnum;
+    }
+
+    // 2.1. Regular Field: FieldName | [Slider/Input] (disabled if Readonly)
+    private static bool DrawRegularField(object target, FieldMeta meta)
+    {
+        var field = meta.Field;
+        var label = meta.Label;
+        bool isReadOnly = meta.IsReadOnly;
+        bool changed = false;
+
+        ImGui.PushID(field.Name);
+
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted(label);
+        ImGui.SameLine();
+        ImGui.TextDisabled("|");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-1f);
+
+        if (isReadOnly)
+            ImGui.BeginDisabled(true);
+
+        if (field.FieldType == typeof(float))
+        {
+            var value = (float)field.GetValue(target)!;
+            bool edited = meta.Min != float.MinValue && meta.Max != float.MaxValue
+                ? ImGui.SliderFloat("##val", ref value, meta.Min, meta.Max)
+                : ImGui.DragFloat("##val", ref value, meta.Speed, meta.Min, meta.Max);
+
+            if (edited && !isReadOnly)
+            {
+                field.SetValue(target, value);
+                changed = true;
+            }
+        }
+        else if (field.FieldType == typeof(int))
+        {
+            var value = (int)field.GetValue(target)!;
+            bool edited = meta.Min != float.MinValue && meta.Max != float.MaxValue
+                ? ImGui.SliderInt("##val", ref value, (int)meta.Min, (int)meta.Max)
+                : ImGui.DragInt("##val", ref value, Math.Max(1f, meta.Speed), (int)meta.Min, (int)meta.Max);
+
+            if (edited && !isReadOnly)
+            {
+                field.SetValue(target, value);
+                changed = true;
+            }
+        }
+        else if (field.FieldType == typeof(bool))
+        {
+            var value = (bool)field.GetValue(target)!;
+            if (ImGui.Checkbox("##val", ref value) && !isReadOnly)
+            {
+                field.SetValue(target, value);
+                changed = true;
+            }
+        }
+        else if (field.FieldType == typeof(Vector2))
+        {
+            var xnaVec = (Vector2)field.GetValue(target)!;
+            var numVec = new NumVector2(xnaVec.X, xnaVec.Y);
+            if (ImGui.DragFloat2("##val", ref numVec, meta.Speed, meta.Min, meta.Max) && !isReadOnly)
+            {
+                field.SetValue(target, new Vector2(numVec.X, numVec.Y));
+                changed = true;
+            }
+        }
+        else if (field.FieldType == typeof(NumVector2))
+        {
+            var numVec = (NumVector2)field.GetValue(target)!;
+            if (ImGui.DragFloat2("##val", ref numVec, meta.Speed, meta.Min, meta.Max) && !isReadOnly)
+            {
+                field.SetValue(target, numVec);
+                changed = true;
+            }
+        }
+        else if (field.FieldType == typeof(Color))
+        {
+            var c = (Color)field.GetValue(target)!;
+            var vec4 = new NumVector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
+            if (ImGui.ColorEdit4("##val", ref vec4, ImGuiColorEditFlags.NoInputs) && !isReadOnly)
+            {
+                field.SetValue(target, new Color(vec4.X, vec4.Y, vec4.Z, vec4.W));
+                changed = true;
+            }
+        }
+        else if (field.FieldType == typeof(string))
+        {
+            var str = (string?)field.GetValue(target) ?? string.Empty;
+            if (ImGui.InputText("##val", ref str, 128) && !isReadOnly)
+            {
+                field.SetValue(target, str);
+                changed = true;
+            }
+        }
+        else if (field.FieldType.IsEnum)
+        {
+            var currentVal = field.GetValue(target)!;
+            var names = Enum.GetNames(field.FieldType);
+            int idx = Array.IndexOf(names, currentVal.ToString());
+            if (idx < 0) idx = 0;
+            if (ImGui.Combo("##val", ref idx, names, names.Length) && !isReadOnly)
+            {
+                var parsed = Enum.Parse(field.FieldType, names[idx]);
+                field.SetValue(target, parsed);
+                changed = true;
+            }
+        }
+
+        if (isReadOnly)
+            ImGui.EndDisabled();
+
+        ImGui.PopID();
+        return changed;
     }
 
     private static List<FieldMeta> BuildMetaList(Type type)
@@ -186,285 +297,352 @@ public static partial class AutoInspector
                 Max = max,
                 Speed = speed,
                 Label = label,
-                IsCategorySlot = isSlot
+                IsCategorySlot = isSlot,
+                IsReadOnly = field.IsInitOnly
             });
         }
 
         return metaList;
     }
 
-    private static bool DrawCategorySlot(ICategorySlot slot, string categoryDisplayName)
+    // 2.3. Category: Category [ModelName]
+    // - Single-click: expands/collapses Model Editor
+    // - Double-click: opens Search Area
+    private static bool DrawCategorySlot(ICategorySlot slot, string categoryName)
     {
         bool changed = false;
-        var state = slot.State;
-        var activeInstance = slot.GetActiveInstanceObject();
-        var activeType = activeInstance.GetType();
         var slotId = $"{slot.GetHashCode()}_{slot.FieldName}";
-
         ImGui.PushID(slotId);
 
-        // Tint red if Error_Missing
-        int pushedColors = 0;
-        if (state == SlotState.Error_Missing)
+        if (!_slotExpanded.TryGetValue(slotId, out bool isExpanded))
         {
-            ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.65f, 0.12f, 0.12f, 0.85f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.75f, 0.18f, 0.18f, 0.90f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.85f, 0.22f, 0.22f, 1.00f));
-            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(1.0f, 0.2f, 0.2f, 1.0f));
-            pushedColors = 4;
+            isExpanded = false;
+            _slotExpanded[slotId] = isExpanded;
         }
 
-        // 1. Slot Header: Category Name + Active Model Type
-        string headerTitle = $"{categoryDisplayName} [{activeType.Name}]###SlotHeader_{slot.FieldName}";
-        bool isOpen = ImGui.CollapsingHeader(headerTitle, ImGuiTreeNodeFlags.DefaultOpen);
+        string activeModelName = slot.GetActiveModelName();
+        string arrow = isExpanded ? "v" : ">";
+        string headerLabel = $"{arrow} {categoryName} [{activeModelName}]###CatHeader_{slot.FieldName}";
 
-        if (isOpen)
+        int pushedColors = 0;
+        if (slot.IsMissingModel)
         {
-            ImGui.Indent(10f);
+            ImGui.PushStyleColor(ImGuiCol.Header, new NumVector4(0.65f, 0.12f, 0.12f, 0.85f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new NumVector4(0.75f, 0.18f, 0.18f, 0.90f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new NumVector4(0.85f, 0.22f, 0.22f, 1.00f));
+            pushedColors = 3;
+        }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.Header, new NumVector4(0.22f, 0.27f, 0.36f, 0.85f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new NumVector4(0.28f, 0.35f, 0.48f, 0.95f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new NumVector4(0.32f, 0.42f, 0.58f, 1.00f));
+            pushedColors = 3;
+        }
 
-            // 2. State Indicator & Missing Asset Warning
-            DrawStateIndicator(slot, state);
+        // Render Category [ModelName] bar
+        ImGui.Selectable(headerLabel, true, ImGuiSelectableFlags.AllowDoubleClick);
+        var headerMin = ImGui.GetItemRectMin();
+        var headerMax = ImGui.GetItemRectMax();
 
-            // 3. Model Selector (Dropdown) via Resolution Handshake
-            var allowedModels = CategoryRegistry.GetAllowedModels(slot.CategoryAttribute, slot.ModelInterfaceType);
-            if (ImGui.BeginCombo("Model", activeType.Name))
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Click: Expand/Collapse Model Editor\nDouble-Click: Open Model Search");
+
+            if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
             {
-                foreach (var descriptor in allowedModels)
+                // Restore pre-click expanded state so double-clicking doesn't flip the editor state
+                if (_slotExpandedBeforeClick.TryGetValue(slotId, out bool prevExpanded))
                 {
-                    bool isSelected = descriptor.ModelType == activeType && state == SlotState.Inline;
-                    if (ImGui.Selectable(descriptor.Name, isSelected))
-                    {
-                        slot.SelectModel(descriptor.ModelType);
-                        activeInstance = slot.GetActiveInstanceObject();
-                        activeType = activeInstance.GetType();
-                        state = slot.State;
-                        changed = true;
-                    }
-
-                    if (isSelected)
-                        ImGui.SetItemDefaultFocus();
+                    isExpanded = prevExpanded;
+                    _slotExpanded[slotId] = isExpanded;
                 }
-                ImGui.EndCombo();
+
+                _pendingSearchOpenSlotId = slotId;
+                if (!_slotSearchQueries.ContainsKey(slotId))
+                    _slotSearchQueries[slotId] = string.Empty;
+
+                ImGui.OpenPopup("CategorySearchPopup");
             }
-
-            // 4. Link / Unlink Authoring Controls
-            DrawAuthoringControls(slot, slotId, activeType.Name, ref changed);
-
-            // 5. Value Inspector (recursive AutoInspector on GetActiveInstance())
-            if (state == SlotState.Linked)
+            else if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
-                var presetEntry = Library.GetPresetEntry(slot.PresetGuid);
-                string presetTitle = presetEntry?.Name ?? slot.PresetGuid ?? "Preset";
-                ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.2f, 1.0f),
-                    $"Editing Global Preset '{presetTitle}' (changes affect all users of this preset)");
+                _slotExpandedBeforeClick[slotId] = isExpanded;
+                isExpanded = !isExpanded;
+                _slotExpanded[slotId] = isExpanded;
             }
-
-            bool instanceEdited = Draw(activeInstance);
-            if (instanceEdited)
-            {
-                if (state == SlotState.Linked && !string.IsNullOrWhiteSpace(slot.PresetGuid))
-                {
-                    Library.SavePreset(slot.PresetGuid);
-                }
-                changed = true;
-            }
-
-            ImGui.Unindent(10f);
-            ImGui.Spacing();
         }
 
         if (pushedColors > 0)
             ImGui.PopStyleColor(pushedColors);
 
+        // Search Area Popup (Unity / Google-style search dropdown)
+        if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax))
+        {
+            changed = true;
+            _slotExpanded[slotId] = true;
+            isExpanded = true;
+        }
+
+        // Model Editor (when expanded)
+        if (isExpanded)
+        {
+            ImGui.Indent(12f);
+
+            if (slot.IsMissingModel)
+            {
+                ImGui.TextColored(new NumVector4(1.0f, 0.3f, 0.3f, 1.0f),
+                    $"Missing Model [{slot.ModelGuid}]. Using default fallback.");
+            }
+
+            if (DrawModelEditor(slot))
+            {
+                changed = true;
+            }
+
+            ImGui.Unindent(12f);
+            ImGui.Spacing();
+        }
+
         ImGui.PopID();
         return changed;
     }
 
-    private static void DrawStateIndicator(ICategorySlot slot, SlotState state)
+    private static bool DrawCategorySearchPopup(
+        ICategorySlot slot,
+        string slotId,
+        NumVector2 headerMin,
+        NumVector2 headerMax)
     {
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextDisabled("State:");
-        ImGui.SameLine();
+        bool changed = false;
+        float width = Math.Max(headerMax.X - headerMin.X, 380f);
+        ImGui.SetNextWindowPos(new NumVector2(headerMin.X, headerMax.Y));
+        ImGui.SetNextWindowSize(new NumVector2(width, 290f), ImGuiCond.Always);
 
-        switch (state)
+        if (!ImGui.BeginPopup("CategorySearchPopup"))
+            return false;
+
+        if (!_slotSearchQueries.TryGetValue(slotId, out var query))
+            query = string.Empty;
+
+        if (_pendingSearchOpenSlotId == slotId)
         {
-            case SlotState.Inline:
-                ImGui.TextColored(new Vector4(0.35f, 0.90f, 0.45f, 1.0f), "[Inline (Unique)]");
-                break;
-
-            case SlotState.Linked:
-                var entry = Library.GetPresetEntry(slot.PresetGuid);
-                ImGui.TextColored(new Vector4(0.35f, 0.75f, 1.0f, 1.0f),
-                    $"[Linked Preset: {entry?.Name ?? slot.PresetGuid}]");
-                break;
-
-            case SlotState.Error_Missing:
-                ImGui.TextColored(new Vector4(1.0f, 0.25f, 0.25f, 1.0f), "[ERROR: MISSING]");
-                ImGui.TextColored(new Vector4(1.0f, 0.30f, 0.30f, 1.0f),
-                    $"Missing Asset: [{slot.PresetGuid}]. Using default fallback.");
-                break;
-        }
-    }
-
-    private static void DrawAuthoringControls(ICategorySlot slot, string slotId, string activeModelName, ref bool changed)
-    {
-        if (!_presetNameDrafts.TryGetValue(slotId, out var draftName))
-        {
-            draftName = $"{slot.FieldName}_{activeModelName}";
-            _presetNameDrafts[slotId] = draftName;
+            ImGui.SetKeyboardFocusHere();
+            _pendingSearchOpenSlotId = null;
         }
 
-        if (ImGui.Button("Save as Library Preset"))
+        ImGui.SetNextItemWidth(-1f);
+        if (ImGui.InputTextWithHint("##ModelSearchInput", "Search (e.g. has:Model had:Model default: pattern)...", ref query, 128))
         {
-            _presetNameDrafts[slotId] = $"{slot.FieldName}_{activeModelName}";
-            ImGui.OpenPopup("SavePresetPopup");
+            _slotSearchQueries[slotId] = query;
         }
 
-        if (ImGui.BeginPopup("SavePresetPopup"))
-        {
-            ImGui.Text("Preset Name:");
-            ImGui.InputText("##PresetNameInput", ref draftName, 64);
-            _presetNameDrafts[slotId] = draftName;
+        ImGui.TextDisabled("Left-Click: Copy Model   |   Shift + Left-Click: Share Original");
+        ImGui.Separator();
 
-            if (ImGui.Button("Confirm Save"))
+        var results = Library.SearchModels(slot.CategoryAttribute, slot.ModelInterfaceType, query);
+
+        ImGui.BeginChild("##SearchResultsList", new NumVector2(0, 0), ImGuiChildFlags.None);
+
+        if (results.Count == 0)
+        {
+            ImGui.TextDisabled("No matching models found.");
+        }
+        else
+        {
+            foreach (var res in results)
             {
-                slot.SaveAsPreset(draftName);
-                changed = true;
-                ImGui.CloseCurrentPopup();
-            }
-            ImGui.SameLine();
-            if (ImGui.Button("Cancel"))
-            {
-                ImGui.CloseCurrentPopup();
-            }
-            ImGui.EndPopup();
-        }
+                bool isCurrent = !res.IsDefault &&
+                                 string.Equals(slot.ModelGuid, res.Guid, StringComparison.OrdinalIgnoreCase);
 
-        ImGui.SameLine();
+                string itemLabel = $"{res.DisplayLabel}###SearchItem_{res.Guid}_{res.ParentGuid ?? "root"}";
 
-        if (ImGui.Button("Load Library Preset"))
-        {
-            ImGui.OpenPopup("LoadPresetPopup");
-        }
+                if (res.IsDefault)
+                    ImGui.PushStyleColor(ImGuiCol.Text, new NumVector4(0.70f, 0.75f, 0.82f, 1.0f));
 
-        if (ImGui.BeginPopup("LoadPresetPopup"))
-        {
-            var compatiblePresets = Library.GetAllowedPresets(slot.CategoryAttribute, slot.ModelInterfaceType);
-            if (compatiblePresets.Count == 0)
-            {
-                ImGui.TextDisabled("No compatible presets in Library.");
-            }
-            else
-            {
-                foreach (var preset in compatiblePresets)
+                if (ImGui.Selectable(itemLabel, isCurrent))
                 {
-                    bool isCurrent = slot.IsPreset && string.Equals(slot.PresetGuid, preset.Guid, StringComparison.OrdinalIgnoreCase);
-                    string itemLabel = $"{preset.Name} ({preset.Instance?.GetType().Name})##{preset.Guid}";
-                    if (ImGui.Selectable(itemLabel, isCurrent))
+                    bool shiftHeld = ImGui.GetIO().KeyShift;
+                    if (shiftHeld && !res.IsDefault)
                     {
-                        slot.LinkPreset(preset.Guid);
-                        changed = true;
-                        ImGui.CloseCurrentPopup();
+                        slot.ReferenceModel(res.Guid);
                     }
+                    else
+                    {
+                        slot.CopyModel(res);
+                    }
+
+                    changed = true;
+                    ImGui.CloseCurrentPopup();
+                }
+
+                if (res.IsDefault)
+                    ImGui.PopStyleColor();
+
+                if (ImGui.IsItemHovered())
+                {
+                    string modeHint = res.IsDefault
+                        ? "Default Model (Always Copied)"
+                        : $"Type: {res.ModelType.Name}\nGUID: {res.Guid}";
+                    ImGui.SetTooltip(modeHint);
                 }
             }
-            ImGui.EndPopup();
         }
 
-        if (slot.IsPreset)
+        ImGui.EndChild();
+        ImGui.EndPopup();
+        return changed;
+    }
+
+    // Model Editor: Displays the model's name and its contents (all its fields, nested fields, and child categories)
+    private static bool DrawModelEditor(ICategorySlot slot)
+    {
+        bool changed = false;
+        var activeInstance = slot.GetActiveInstanceObject();
+        var modelEntry = slot.GetActiveModelEntry();
+        var activeGuid = slot.ModelGuid ?? modelEntry?.Guid ?? "default";
+
+        // 1. Model Name field (spaces automatically replaced with underscores)
+        string currentName = modelEntry?.Name ?? activeInstance.GetType().Name;
+        if (!_modelNameDrafts.TryGetValue(activeGuid, out var nameDraft) ||
+            !ImGui.IsAnyItemActive())
         {
-            ImGui.SameLine();
-            if (ImGui.Button("Make Unique"))
+            nameDraft = currentName;
+            _modelNameDrafts[activeGuid] = nameDraft;
+        }
+
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("ModelName");
+        ImGui.SameLine();
+        ImGui.TextDisabled("|");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-1f);
+
+        bool isDefaultEntry = modelEntry?.IsDefault ?? false;
+        if (isDefaultEntry)
+            ImGui.BeginDisabled(true);
+
+        if (ImGui.InputText("##ModelNameEdit", ref nameDraft, 64))
+        {
+            // Rule 1: Replace spaces with underscores (_)
+            nameDraft = nameDraft.Replace(' ', '_');
+            _modelNameDrafts[activeGuid] = nameDraft;
+
+            if (!isDefaultEntry && !string.IsNullOrWhiteSpace(slot.ModelGuid) && !string.IsNullOrWhiteSpace(nameDraft))
             {
-                slot.MakeUnique();
+                Library.RenameModel(slot.ModelGuid, nameDraft);
                 changed = true;
             }
         }
+
+        if (isDefaultEntry)
+            ImGui.EndDisabled();
+
+        // 2. Model Contents (all fields, nested fields, and child categories)
+        bool contentsEdited = Draw(activeInstance);
+        if (contentsEdited)
+        {
+            if (!isDefaultEntry && !string.IsNullOrWhiteSpace(slot.ModelGuid))
+            {
+                Library.SaveModel(slot.ModelGuid);
+            }
+            changed = true;
+        }
+
+        return changed;
     }
 
-    // 6. Library Browser Window
+    // Library Browser Window
     public static void DrawLibraryBrowser(ref bool isOpen)
     {
         if (!isOpen)
             return;
 
-        ImGui.SetNextWindowSize(new Vector2(520, 420), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new NumVector2(520, 420), ImGuiCond.FirstUseEver);
         if (!ImGui.Begin("Library Browser", ref isOpen))
         {
             ImGui.End();
             return;
         }
 
-        ImGui.InputText("Filter Name / Model", ref _librarySearchQuery, 64);
-        ImGui.InputText("Filter Category Tags", ref _libraryTagFilter, 64);
+        ImGui.InputText("FilterName", ref _librarySearchQuery, 64);
+        ImGui.InputText("FilterTags", ref _libraryTagFilter, 64);
         ImGui.Separator();
 
-        var presets = Library.GetAllPresets().ToList();
-        if (presets.Count == 0)
+        var models = Library.GetAllModels()
+            .OrderByDescending(m => m.LastUpdatedTicks)
+            .ToList();
+
+        if (models.Count == 0)
         {
-            ImGui.TextDisabled("No saved presets in /Presets/ folder.");
+            ImGui.TextDisabled("No saved models in /Presets/ folder.");
             ImGui.End();
             return;
         }
 
         string? guidToDelete = null;
 
-        foreach (var preset in presets)
+        foreach (var model in models)
         {
-            var modelName = preset.Instance?.GetType().Name ?? preset.ModelType;
+            var typeName = model.Instance?.GetType().Name ?? model.ModelType;
 
             if (!string.IsNullOrWhiteSpace(_librarySearchQuery) &&
-                !preset.Name.Contains(_librarySearchQuery, StringComparison.OrdinalIgnoreCase) &&
-                !modelName.Contains(_librarySearchQuery, StringComparison.OrdinalIgnoreCase))
+                !model.Name.Contains(_librarySearchQuery, StringComparison.OrdinalIgnoreCase) &&
+                !typeName.Contains(_librarySearchQuery, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
             if (!string.IsNullOrWhiteSpace(_libraryTagFilter) &&
-                !preset.CategoryTags.Contains(_libraryTagFilter, StringComparison.OrdinalIgnoreCase))
+                !model.CategoryTags.Contains(_libraryTagFilter, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            ImGui.PushID(preset.Guid);
+            ImGui.PushID(model.Guid);
 
-            bool nodeOpen = ImGui.TreeNodeEx($"{preset.Name} [{modelName}]###PresetNode_{preset.Guid}", ImGuiTreeNodeFlags.FramePadding);
+            bool nodeOpen = ImGui.TreeNodeEx($"{model.Name} [{typeName}]###ModelNode_{model.Guid}", ImGuiTreeNodeFlags.FramePadding);
 
             if (nodeOpen)
             {
-                ImGui.TextDisabled($"GUID: {preset.Guid}");
-                ImGui.TextDisabled($"Tags: {preset.CategoryTags}");
+                ImGui.TextDisabled($"GUID: {model.Guid}");
+                ImGui.TextDisabled($"Tags: {model.CategoryTags}");
 
-                if (!_renameDrafts.TryGetValue(preset.Guid, out var renameDraft))
+                if (!_modelNameDrafts.TryGetValue(model.Guid, out var renameDraft))
                 {
-                    renameDraft = preset.Name;
-                    _renameDrafts[preset.Guid] = renameDraft;
+                    renameDraft = model.Name;
+                    _modelNameDrafts[model.Guid] = renameDraft;
                 }
 
-                ImGui.SetNextItemWidth(200f);
-                if (ImGui.InputText("##RenamePreset", ref renameDraft, 64))
-                {
-                    _renameDrafts[preset.Guid] = renameDraft;
-                }
+                ImGui.AlignTextToFramePadding();
+                ImGui.TextUnformatted("ModelName");
                 ImGui.SameLine();
-                if (ImGui.Button("Rename"))
-                {
-                    Library.RenamePreset(preset.Guid, renameDraft);
-                }
+                ImGui.TextDisabled("|");
                 ImGui.SameLine();
-                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.75f, 0.15f, 0.15f, 1.0f));
+                ImGui.SetNextItemWidth(220f);
+                if (ImGui.InputText("##RenameModel", ref renameDraft, 64))
+                {
+                    renameDraft = renameDraft.Replace(' ', '_');
+                    _modelNameDrafts[model.Guid] = renameDraft;
+                    if (!string.IsNullOrWhiteSpace(renameDraft))
+                    {
+                        Library.RenameModel(model.Guid, renameDraft);
+                    }
+                }
+
+                ImGui.SameLine();
+                ImGui.PushStyleColor(ImGuiCol.Button, new NumVector4(0.75f, 0.15f, 0.15f, 1.0f));
                 if (ImGui.Button("Delete"))
                 {
-                    guidToDelete = preset.Guid;
+                    guidToDelete = model.Guid;
                 }
                 ImGui.PopStyleColor();
 
-                if (preset.Instance != null)
+                if (model.Instance != null)
                 {
                     ImGui.Spacing();
-                    if (Draw(preset.Instance))
+                    if (Draw(model.Instance))
                     {
-                        Library.SavePreset(preset.Guid);
+                        Library.SaveModel(model.Guid);
                     }
                 }
 
@@ -476,7 +654,7 @@ public static partial class AutoInspector
 
         if (guidToDelete != null)
         {
-            Library.DeletePreset(guidToDelete);
+            Library.DeleteModel(guidToDelete);
         }
 
         ImGui.End();
