@@ -285,6 +285,17 @@ public sealed class Collider : Component
         Animation = new ColliderAnimation(Debug.Collider.Category.Default, _body.FixtureList, 1);
     }
 
+    public void SetShape(Shape shape)
+    {
+        var previous = _body.FixtureList[0];
+        var fixture = _body.CreateFixture(shape);
+        fixture.Tag = previous.Tag;
+        fixture.CollisionCategories = previous.CollisionCategories;
+        fixture.CollidesWith = previous.CollidesWith;
+        fixture.IsSensor = previous.IsSensor;
+        _body.Remove(previous);
+    }
+
     private bool HandleBodyCollision(Fixture sender, Fixture other, Contact collision)
     {
         if (OnCollision is null)

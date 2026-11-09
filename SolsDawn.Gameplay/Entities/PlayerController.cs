@@ -10,10 +10,12 @@ namespace SolsDawn.Gameplay.Entities;
 public class PlayerController
 {
     private readonly Player _player;
+    private float _colliderRadius;
 
     public PlayerController(Player player)
     {
         _player = player;
+        _colliderRadius = _player.Board.Specs.GetActiveInstance().ColliderRadius;
         _player.Enter(_player.Board.Specs.GetActiveInstance().Idle.GetActiveInstance());
     }
 
@@ -21,6 +23,12 @@ public class PlayerController
     {
         var board = _player.Board;
         var specs = board.Specs.GetActiveInstance();
+
+        if (specs.ColliderRadius != _colliderRadius)
+        {
+            _colliderRadius = specs.ColliderRadius;
+            _player.Collider.SetShape(Shapes.Circle(_colliderRadius));
+        }
 
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");

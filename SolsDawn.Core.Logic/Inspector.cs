@@ -65,8 +65,8 @@ public static class AutoInspector
     private static readonly NumVector4 ColorReferenceText      = new(0.86f, 0.88f, 0.90f, 1.00f);
     private static readonly NumVector4 ColorReferenceHoverBg   = new(0.26f, 0.36f, 0.48f, 0.55f);
 
-    private static readonly NumVector4 ColorCopyText           = new(0.45f, 0.82f, 0.78f, 1.00f);
-    private static readonly NumVector4 ColorCopyHoverBg        = new(0.12f, 0.65f, 0.62f, 0.45f);
+    private static readonly NumVector4 ColorCopyText           = new(0.56f, 0.78f, 0.60f, 1.00f);
+    private static readonly NumVector4 ColorCopyHoverBg        = new(0.28f, 0.52f, 0.34f, 0.45f);
 
     private static readonly NumVector4 ColorDefaultTemplateText = new(0.50f, 0.54f, 0.58f, 1.00f);
 
@@ -77,13 +77,14 @@ public static class AutoInspector
 
     private static readonly Dictionary<Type, List<FieldMeta>> _cache = new();
 
-    private static readonly Dictionary<string, bool> _slotExpanded = new();
-    private static readonly Dictionary<string, bool> _slotExpandedBeforeClick = new();
-    private static readonly Dictionary<string, string> _slotSearchQueries = new();
-    private static readonly Dictionary<string, CachedSearchState> _slotSearchCache = new();
+    private static readonly Dictionary<uint, bool> _slotExpanded = new();
+    private static readonly Dictionary<uint, string> _slotSearchQueries = new();
+    private static readonly Dictionary<uint, CachedSearchState> _slotSearchCache = new();
     private static readonly Dictionary<string, string> _modelNameDrafts = new();
-    private static string? _pendingSearchOpenSlotId;
-    private static int _drawDepth;
+    private static uint? _pendingSearchOpenSlotId;
+    private static uint? _renamingSlotId;
+    private static bool _renameFocusPending;
+    private static string _renameDraft = string.Empty;
 
     private static string _librarySearchQuery = string.Empty;
     private static string _libraryTagFilter = string.Empty;
@@ -92,19 +93,22 @@ public static class AutoInspector
 
     public static string FormatLabel(string rawName) => rawName;
 
-    public static bool Draw(object target)
+    public static bool Draw(ModelEntry entry)
     {
-        if (target == null)
-            return false;
+        bool changed = DrawFields(entry.Instance!, ModelEdit.ForModel(entry));
 
-        CategorySystem.BindSlots(target);
+        if (!ImGui.IsAnyItemActive())
+            Library.FlushDirty();
 
+        if (changed)
+            OnAnyValueChanged?.Invoke();
+
+        return changed;
+    }
+
+    private static bool DrawFields(object target, ModelEdit edit)
+    {
         var type = target.GetType();
-        if (_drawDepth == 0 && type.GetCustomAttribute<ModelAttribute>(inherit: false) == null)
-        {
-            Library.RegisterRootOwner(target);
-        }
-
         if (!_cache.TryGetValue(type, out var metaList))
         {
             metaList = BuildMetaList(type);
@@ -112,59 +116,42 @@ public static class AutoInspector
         }
 
         bool anyChanged = false;
-        _drawDepth++;
-        ImGui.PushID(target.GetHashCode());
 
-        try
+        foreach (var meta in metaList)
         {
-            foreach (var meta in metaList)
+            var field = meta.Field;
+            var label = meta.Label;
+
+            if (meta.IsCategorySlot)
             {
-                var field = meta.Field;
-                var label = meta.Label;
+                if (field.GetValue(target) is ICategorySlot slot && DrawCategorySlot(slot, label, edit, field))
+                    anyChanged = true;
+                continue;
+            }
 
-                if (meta.IsCategorySlot)
+            if (IsRegularFieldType(field.FieldType))
+            {
+                if (DrawRegularField(target, meta, edit))
+                    anyChanged = true;
+                continue;
+            }
+
+            if (field.FieldType.IsClass && field.FieldType != typeof(string))
+            {
+                var nestedObj = field.GetValue(target);
+                if (nestedObj != null)
                 {
-                    if (field.GetValue(target) is ICategorySlot slot)
+                    ImGui.PushID(field.Name);
+                    if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
                     {
-                        slot.Configure(meta.CategoryAttr, field.Name);
-                        if (DrawCategorySlot(slot, label))
+                        if (DrawFields(nestedObj, edit.Container(field)))
                             anyChanged = true;
+                        ImGui.TreePop();
                     }
-                    continue;
-                }
-
-                if (IsRegularFieldType(field.FieldType))
-                {
-                    if (DrawRegularField(target, meta))
-                        anyChanged = true;
-                    continue;
-                }
-
-                if (field.FieldType.IsClass && field.FieldType != typeof(string))
-                {
-                    var nestedObj = field.GetValue(target);
-                    if (nestedObj != null)
-                    {
-                        ImGui.PushID(field.Name);
-                        if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
-                        {
-                            if (Draw(nestedObj))
-                                anyChanged = true;
-                            ImGui.TreePop();
-                        }
-                        ImGui.PopID();
-                    }
+                    ImGui.PopID();
                 }
             }
         }
-        finally
-        {
-            ImGui.PopID();
-            _drawDepth--;
-        }
-
-        if (anyChanged && _drawDepth == 0)
-            OnAnyValueChanged?.Invoke();
 
         return anyChanged;
     }
@@ -181,7 +168,7 @@ public static class AutoInspector
                t.IsEnum;
     }
 
-    private static bool DrawRegularField(object target, FieldMeta meta)
+    private static bool DrawRegularField(object target, FieldMeta meta, ModelEdit edit)
     {
         var field = meta.Field;
         var label = meta.Label;
@@ -209,7 +196,7 @@ public static class AutoInspector
 
             if (edited && !isReadOnly)
             {
-                field.SetValue(target, value);
+                edit.SetField(field, value);
                 changed = true;
             }
         }
@@ -222,7 +209,7 @@ public static class AutoInspector
 
             if (edited && !isReadOnly)
             {
-                field.SetValue(target, value);
+                edit.SetField(field, value);
                 changed = true;
             }
         }
@@ -231,7 +218,7 @@ public static class AutoInspector
             var value = (bool)field.GetValue(target)!;
             if (ImGui.Checkbox("##val", ref value) && !isReadOnly)
             {
-                field.SetValue(target, value);
+                edit.SetField(field, value);
                 changed = true;
             }
         }
@@ -241,7 +228,7 @@ public static class AutoInspector
             var numVec = new NumVector2(xnaVec.X, xnaVec.Y);
             if (ImGui.DragFloat2("##val", ref numVec, meta.Speed, meta.Min, meta.Max) && !isReadOnly)
             {
-                field.SetValue(target, new Vector2(numVec.X, numVec.Y));
+                edit.SetField(field, new Vector2(numVec.X, numVec.Y));
                 changed = true;
             }
         }
@@ -250,7 +237,7 @@ public static class AutoInspector
             var numVec = (NumVector2)field.GetValue(target)!;
             if (ImGui.DragFloat2("##val", ref numVec, meta.Speed, meta.Min, meta.Max) && !isReadOnly)
             {
-                field.SetValue(target, numVec);
+                edit.SetField(field, numVec);
                 changed = true;
             }
         }
@@ -260,7 +247,7 @@ public static class AutoInspector
             var vec4 = new NumVector4(c.R / 255f, c.G / 255f, c.B / 255f, c.A / 255f);
             if (ImGui.ColorEdit4("##val", ref vec4, ImGuiColorEditFlags.NoInputs) && !isReadOnly)
             {
-                field.SetValue(target, new Color(vec4.X, vec4.Y, vec4.Z, vec4.W));
+                edit.SetField(field, new Color(vec4.X, vec4.Y, vec4.Z, vec4.W));
                 changed = true;
             }
         }
@@ -269,7 +256,7 @@ public static class AutoInspector
             var str = (string?)field.GetValue(target) ?? string.Empty;
             if (ImGui.InputText("##val", ref str, 128) && !isReadOnly)
             {
-                field.SetValue(target, str);
+                edit.SetField(field, str);
                 changed = true;
             }
         }
@@ -282,7 +269,7 @@ public static class AutoInspector
             if (ImGui.Combo("##val", ref idx, names, names.Length) && !isReadOnly)
             {
                 var parsed = Enum.Parse(field.FieldType, names[idx]);
-                field.SetValue(target, parsed);
+                edit.SetField(field, parsed);
                 changed = true;
             }
         }
@@ -333,73 +320,63 @@ public static class AutoInspector
         return metaList;
     }
 
-    private static bool DrawCategorySlot(ICategorySlot slot, string categoryName)
+    private static bool DrawCategorySlot(ICategorySlot slot, string slotName, ModelEdit edit, FieldInfo field)
     {
         bool changed = false;
-        var slotId = $"{slot.GetHashCode()}_{slot.FieldName}";
-        ImGui.PushID(slotId);
+        ImGui.PushID(slot.FieldName);
+        uint slotId = ImGui.GetID("##slot");
 
-        if (!_slotExpanded.TryGetValue(slotId, out bool isExpanded))
+        _slotExpanded.TryGetValue(slotId, out bool isExpanded);
+        if (ImGui.ArrowButton("##expand", isExpanded ? ImGuiDir.Down : ImGuiDir.Right))
         {
-            isExpanded = false;
+            isExpanded = !isExpanded;
             _slotExpanded[slotId] = isExpanded;
         }
 
-        string activeModelName = slot.GetActiveModelName();
-        string arrow = isExpanded ? "v" : ">";
-        string headerLabel = $"{arrow} {categoryName} [{activeModelName}]###CatHeader_{slot.FieldName}";
+        ImGui.SameLine();
 
-        int pushedColors = 0;
-        if (slot.IsMissingModel)
+        var activeEntry = slot.GetActiveModelEntry();
+        bool isMissing = slot.IsMissingModel;
+
+        if (_renamingSlotId == slotId)
         {
-            ImGui.PushStyleColor(ImGuiCol.Header, new NumVector4(0.65f, 0.12f, 0.12f, 0.85f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new NumVector4(0.75f, 0.18f, 0.18f, 0.90f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new NumVector4(0.85f, 0.22f, 0.22f, 1.00f));
-            pushedColors = 3;
+            DrawSlotRename(activeEntry);
         }
         else
         {
-            ImGui.PushStyleColor(ImGuiCol.Header, new NumVector4(0.22f, 0.27f, 0.36f, 0.85f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new NumVector4(0.28f, 0.35f, 0.48f, 0.95f));
-            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new NumVector4(0.32f, 0.42f, 0.58f, 1.00f));
-            pushedColors = 3;
+            ImGui.PushStyleColor(ImGuiCol.Header, isMissing ? new NumVector4(0.65f, 0.12f, 0.12f, 0.85f) : new NumVector4(0.22f, 0.27f, 0.36f, 0.85f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, isMissing ? new NumVector4(0.75f, 0.18f, 0.18f, 0.90f) : new NumVector4(0.28f, 0.35f, 0.48f, 0.95f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, isMissing ? new NumVector4(0.85f, 0.22f, 0.22f, 1.00f) : new NumVector4(0.32f, 0.42f, 0.58f, 1.00f));
+            ImGui.Selectable($"{slotName} {activeEntry.Name}###CatHeader", true);
+            ImGui.PopStyleColor(3);
+
+            bool popupOpen = ImGui.IsPopupOpen("CategorySearchPopup");
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup))
+            {
+                if (!popupOpen)
+                    ImGui.SetTooltip("Click: Open Model Search\nDouble-Click: Rename Model");
+
+                if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+                {
+                    if (!isMissing && !activeEntry.IsDefault)
+                        BeginRename(slotId, activeEntry.Name);
+                }
+                else if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !popupOpen)
+                {
+                    _pendingSearchOpenSlotId = slotId;
+                    if (!_slotSearchQueries.ContainsKey(slotId))
+                        _slotSearchQueries[slotId] = string.Empty;
+
+                    _slotSearchCache.Remove(slotId);
+                    ImGui.OpenPopup("CategorySearchPopup");
+                }
+            }
         }
 
-        ImGui.Selectable(headerLabel, true, ImGuiSelectableFlags.AllowDoubleClick);
         var headerMin = ImGui.GetItemRectMin();
         var headerMax = ImGui.GetItemRectMax();
 
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetTooltip("Click: Expand/Collapse Model Editor\nDouble-Click: Open Model Search");
-
-            if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
-            {
-                if (_slotExpandedBeforeClick.TryGetValue(slotId, out bool prevExpanded))
-                {
-                    isExpanded = prevExpanded;
-                    _slotExpanded[slotId] = isExpanded;
-                }
-
-                _pendingSearchOpenSlotId = slotId;
-                if (!_slotSearchQueries.ContainsKey(slotId))
-                    _slotSearchQueries[slotId] = string.Empty;
-
-                _slotSearchCache.Remove(slotId);
-                ImGui.OpenPopup("CategorySearchPopup");
-            }
-            else if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-            {
-                _slotExpandedBeforeClick[slotId] = isExpanded;
-                isExpanded = !isExpanded;
-                _slotExpanded[slotId] = isExpanded;
-            }
-        }
-
-        if (pushedColors > 0)
-            ImGui.PopStyleColor(pushedColors);
-
-        if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax))
+        if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax, edit, field))
         {
             changed = true;
             _slotExpanded[slotId] = true;
@@ -410,16 +387,18 @@ public static class AutoInspector
         {
             ImGui.Indent(12f);
 
-            if (slot.IsMissingModel)
+            if (isMissing)
             {
                 ImGui.TextColored(new NumVector4(1.0f, 0.3f, 0.3f, 1.0f),
                     $"Missing Model [{slot.ModelGuid}]. Using default fallback.");
+                ImGui.BeginDisabled(true);
             }
 
-            if (DrawModelEditor(slot))
-            {
+            if (DrawFields(slot.GetActiveInstanceObject(), edit.Slot(field)))
                 changed = true;
-            }
+
+            if (isMissing)
+                ImGui.EndDisabled();
 
             ImGui.Unindent(12f);
             ImGui.Spacing();
@@ -429,7 +408,32 @@ public static class AutoInspector
         return changed;
     }
 
-    private static IReadOnlyList<ModelSearchResult> GetOrRunSearch(ICategorySlot slot, string slotId, string query)
+    private static void BeginRename(uint slotId, string currentName)
+    {
+        _renamingSlotId = slotId;
+        _renameDraft = currentName;
+        _renameFocusPending = true;
+    }
+
+    private static void DrawSlotRename(ModelEntry entry)
+    {
+        if (_renameFocusPending)
+        {
+            ImGui.SetKeyboardFocusHere();
+            _renameFocusPending = false;
+        }
+
+        ImGui.SetNextItemWidth(-1f);
+        ImGui.InputText("##RenameSlotModel", ref _renameDraft, 64, ImGuiInputTextFlags.AutoSelectAll);
+
+        if (ImGui.IsItemDeactivated())
+        {
+            Library.RenameModel(entry.Guid, _renameDraft);
+            _renamingSlotId = null;
+        }
+    }
+
+    private static IReadOnlyList<ModelSearchResult> GetOrRunSearch(ICategorySlot slot, uint slotId, string query, string ownerGuid)
     {
         int currentVersion = Library.Version;
         if (_slotSearchCache.TryGetValue(slotId, out var cached) &&
@@ -439,16 +443,18 @@ public static class AutoInspector
             return cached.Results;
         }
 
-        var results = Library.SearchModels(slot.CategoryAttribute, slot.ModelInterfaceType, query);
+        var results = Library.SearchModels(slot.CategoryAttribute, slot.ModelInterfaceType, query, ownerGuid);
         _slotSearchCache[slotId] = new CachedSearchState(query, Library.Version, results);
         return results;
     }
 
     private static bool DrawCategorySearchPopup(
         ICategorySlot slot,
-        string slotId,
+        uint slotId,
         NumVector2 headerMin,
-        NumVector2 headerMax)
+        NumVector2 headerMax,
+        ModelEdit edit,
+        FieldInfo field)
     {
         bool changed = false;
         float width = Math.Max(headerMax.X - headerMin.X, 420f);
@@ -477,11 +483,11 @@ public static class AutoInspector
 
         bool shiftHeld = ImGui.GetIO().KeyShift;
         ImGui.TextDisabled(shiftHeld
-            ? "[SHIFT HELD] Owned -> Reference | Orphaned -> Copy | Default -> Copy"
-            : "Owned -> Copy | Orphaned -> Reference | Default -> Copy (Hold Shift to invert)");
+            ? "[SHIFT HELD] Owned -> Reference | Orphaned -> Copy | Default -> Reference"
+            : "Owned -> Copy | Orphaned -> Reference | Default -> Reference (Hold Shift to invert)");
         ImGui.Separator();
 
-        var results = GetOrRunSearch(slot, slotId, query);
+        var results = GetOrRunSearch(slot, slotId, query, edit.Current().Entry.Guid);
 
         ImGui.BeginChild("##SearchResultsList", new NumVector2(0, 0), ImGuiChildFlags.None);
 
@@ -499,23 +505,22 @@ public static class AutoInspector
                 var res = results[i];
                 ImGui.PushID($"{res.Guid}_{res.ParentGuid ?? "root"}_{i}");
 
-                bool isCurrent = !res.IsDefault &&
-                                 string.Equals(slot.ModelGuid, res.Guid, StringComparison.OrdinalIgnoreCase);
+                bool isCurrent = string.Equals(slot.GetActiveModelEntry().Guid, res.Guid, StringComparison.OrdinalIgnoreCase);
 
-                bool willCopy = res.IsDefault || (res.IsOrphaned ? shiftHeld : !shiftHeld);
+                bool willCopy = res.WillCopy(shiftHeld);
 
                 NumVector4 textColor;
                 NumVector4 hoverBgColor;
 
-                if (isCurrent)
+                if (res.IsDefault)
+                {
+                    textColor = ColorDefaultTemplateText;
+                    hoverBgColor = ColorReferenceHoverBg;
+                }
+                else if (isCurrent)
                 {
                     textColor = ColorCurrentText;
                     hoverBgColor = ColorCurrentHoverBg;
-                }
-                else if (res.IsDefault)
-                {
-                    textColor = ColorDefaultTemplateText;
-                    hoverBgColor = ColorCopyHoverBg;
                 }
                 else if (willCopy)
                 {
@@ -586,14 +591,9 @@ public static class AutoInspector
 
                 if (rowClicked && !removeClicked)
                 {
-                    if (willCopy)
-                    {
-                        slot.CopyModel(res);
-                    }
-                    else
-                    {
-                        slot.ReferenceModel(res.Guid);
-                    }
+                    var created = edit.ApplySearchResult(field, res, willCopy);
+                    if (created != null)
+                        BeginRename(slotId, created.Name);
 
                     _slotSearchCache.Remove(slotId);
                     changed = true;
@@ -606,7 +606,6 @@ public static class AutoInspector
             if (guidToDelete != null)
             {
                 Library.DeleteModel(guidToDelete);
-                slot.PruneDeletedHistory();
                 _slotSearchCache.Remove(slotId);
                 changed = true;
             }
@@ -625,8 +624,8 @@ public static class AutoInspector
 
         if (res.IsDefault)
         {
-            stateLabel = "Default Template (New)";
-            controlsHint = "LMB: Copy | Shift+LMB: Copy (Always Copy)";
+            stateLabel = "Default Model";
+            controlsHint = "LMB: Reference | Shift+LMB: Reference (Always Reference)";
         }
         else if (res.IsOrphaned)
         {
@@ -643,60 +642,6 @@ public static class AutoInspector
             $"Pending Action: {pendingAction}\n" +
             $"{controlsHint}\n" +
             $"State: {stateLabel} | Type: {res.ModelType.Name}");
-    }
-
-    private static bool DrawModelEditor(ICategorySlot slot)
-    {
-        bool changed = false;
-        var activeInstance = slot.GetActiveInstanceObject();
-        var modelEntry = slot.GetActiveModelEntry();
-        var activeGuid = slot.ModelGuid ?? modelEntry?.Guid ?? "default";
-
-        string currentName = modelEntry?.Name ?? activeInstance.GetType().Name;
-        if (!_modelNameDrafts.TryGetValue(activeGuid, out var nameDraft) ||
-            !ImGui.IsAnyItemActive())
-        {
-            nameDraft = currentName;
-            _modelNameDrafts[activeGuid] = nameDraft;
-        }
-
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextUnformatted("ModelName");
-        ImGui.SameLine();
-        ImGui.TextDisabled("|");
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(-1f);
-
-        bool isDefaultEntry = modelEntry?.IsDefault ?? false;
-        if (isDefaultEntry)
-            ImGui.BeginDisabled(true);
-
-        if (ImGui.InputText("##ModelNameEdit", ref nameDraft, 64))
-        {
-            nameDraft = nameDraft.Replace(' ', '_');
-            _modelNameDrafts[activeGuid] = nameDraft;
-
-            if (!isDefaultEntry && !string.IsNullOrWhiteSpace(slot.ModelGuid) && !string.IsNullOrWhiteSpace(nameDraft))
-            {
-                Library.RenameModel(slot.ModelGuid, nameDraft);
-                changed = true;
-            }
-        }
-
-        if (isDefaultEntry)
-            ImGui.EndDisabled();
-
-        bool contentsEdited = Draw(activeInstance);
-        if (contentsEdited)
-        {
-            if (!isDefaultEntry && !string.IsNullOrWhiteSpace(slot.ModelGuid))
-            {
-                Library.SaveModel(slot.ModelGuid);
-            }
-            changed = true;
-        }
-
-        return changed;
     }
 
     public static void DrawLibraryBrowser(ref bool isOpen)
@@ -721,7 +666,7 @@ public static class AutoInspector
 
         if (models.Count == 0)
         {
-            ImGui.TextDisabled("No saved models in /Presets/ folder.");
+            ImGui.TextDisabled("No saved models.");
             ImGui.End();
             return;
         }
@@ -776,21 +721,21 @@ public static class AutoInspector
                     }
                 }
 
-                ImGui.SameLine();
-                ImGui.PushStyleColor(ImGuiCol.Button, new NumVector4(0.75f, 0.15f, 0.15f, 1.0f));
-                if (ImGui.Button("Delete"))
+                if (model.Guid != Library.RootGuid)
                 {
-                    guidToDelete = model.Guid;
+                    ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Button, new NumVector4(0.75f, 0.15f, 0.15f, 1.0f));
+                    if (ImGui.Button("Delete"))
+                    {
+                        guidToDelete = model.Guid;
+                    }
+                    ImGui.PopStyleColor();
                 }
-                ImGui.PopStyleColor();
 
                 if (model.Instance != null)
                 {
                     ImGui.Spacing();
-                    if (Draw(model.Instance))
-                    {
-                        Library.SaveModel(model.Guid);
-                    }
+                    Draw(model);
                 }
 
                 ImGui.TreePop();

@@ -26,8 +26,7 @@ public class PlayerModelAttribute : ModelAttribute
 
 public record PlayerBoard
 {
-    [PlayerCategory]
-    public CategorySlot<PlayerSpecs> Specs = new();
+    public required CategorySlot<PlayerSpecs> Specs;
 
     [MemberNotNullWhen(true, nameof(CurrentPlatform))]
     public bool OnGround => CurrentPlatform is not null;

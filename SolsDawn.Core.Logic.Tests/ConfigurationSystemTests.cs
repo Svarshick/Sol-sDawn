@@ -1,0 +1,485 @@
+using System.Reflection;
+using System.Text.Json;
+using SolsDawn.Core.Logic;
+using Xunit;
+
+namespace SolsDawn.Core.Logic.Tests;
+
+public sealed class ConfigurationSystemTests : IDisposable
+{
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "solsdawn-" + Guid.NewGuid().ToString("N"));
+
+    public ConfigurationSystemTests() => Library.Initialize(_directory);
+
+    public void Dispose() => Directory.Delete(_directory, recursive: true);
+
+    private static FieldInfo Field<T>(string name) => typeof(T).GetField(name)!;
+
+    private static ModelEntry Create<T>(string name) => Library.CreateCopyFromDefault(typeof(T), null, name);
+
+    private static T Instance<T>(ModelEntry entry) => (T)entry.Instance!;
+
+    private static ModelSearchResult Result(string guid, IEnumerable<ModelSearchResult> results) =>
+        results.Single(r => r.Guid == guid);
+
+    private static IReadOnlyList<ModelSearchResult> SearchWeapons(string? query = null, string category = "one-handed") =>
+        Library.SearchModels(new TagCategory(category, typeof(Sword)), typeof(IWeapon), query);
+
+    private string FilePath(string guid) => Path.Combine(_directory, guid + ".json");
+
+    private static void Reference<T>(ModelEntry owner, string slotField, ModelEntry target)
+    {
+        var slot = (ICategorySlot)typeof(T).GetField(slotField)!.GetValue(owner.Instance)!;
+        slot.ReferenceModel(target.Guid);
+        Library.SaveModel(owner.Guid);
+    }
+
+    [Fact]
+    public void CFG02_SlotStoresGuidOfReferencedModel()
+    {
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("S");
+        Reference<Hero>(hero, "Weapon", sword);
+
+        Assert.Equal(sword.Guid, Instance<Hero>(hero).Weapon.ModelGuid);
+        Assert.Same(sword.Instance, Instance<Hero>(hero).Weapon.GetActiveInstance());
+    }
+
+    [Fact]
+    public void CFG04_ContainerIsSavedInsideOwnerWithoutOwnFile()
+    {
+        var hero = Create<Hero>("H");
+        Instance<Hero>(hero).Gear.Weight = 7f;
+        Library.SaveModel(hero.Guid);
+        var filesBefore = Directory.GetFiles(_directory).Length;
+
+        Library.Initialize(_directory);
+
+        Assert.Equal(1, filesBefore);
+        Assert.Equal(7f, Library.GetModel<Hero>(hero.Guid)!.Gear.Weight);
+    }
+
+    [Fact]
+    public void CFG05_RuntimeStateIsNotSaved()
+    {
+        var hero = Create<Hero>("H");
+        Instance<Hero>(hero).Gear.RuntimeCounter = 9;
+        Library.SaveModel(hero.Guid);
+
+        Assert.DoesNotContain("RuntimeCounter", File.ReadAllText(FilePath(hero.Guid)));
+    }
+
+    [Fact]
+    public void CFG06_NewSlotReferencesCategoryDefaultWithoutFiles()
+    {
+        var hero = new Hero();
+        CategorySystem.Bind(hero);
+
+        Assert.IsType<Sword>(hero.Weapon.GetActiveInstance());
+        Assert.True(hero.Weapon.GetActiveModelEntry().IsDefault);
+        Assert.IsType<Spear>(hero.Gear.Backup.GetActiveInstance());
+        Assert.Empty(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public void CFG10_SearchReturnsOnlyFittingCategory()
+    {
+        var sword = Create<Sword>("Blade");
+        var spear = Create<Spear>("Pike");
+
+        var results = SearchWeapons();
+
+        Assert.Contains(results, r => r.Guid == sword.Guid);
+        Assert.DoesNotContain(results, r => r.Guid == spear.Guid);
+        Assert.DoesNotContain(results, r => r.ModelType == typeof(Spear));
+    }
+
+    [Fact]
+    public void CFG15_RootPersistsAcrossLaunchesAsRootJson()
+    {
+        var root = Library.LoadRoot<TestRoot>();
+        var squad = Create<Squad>("Alpha");
+        root.Team.ReferenceModel(squad.Guid);
+        Library.SaveModel(Library.RootGuid);
+
+        Library.Initialize(_directory);
+
+        Assert.True(File.Exists(FilePath("root")));
+        Assert.Equal(squad.Guid, Library.LoadRoot<TestRoot>().Team.ModelGuid);
+    }
+
+    [Fact]
+    public void CFG16_RootIsNotOfferedAndCannotBeDeleted()
+    {
+        Library.LoadRoot<TestRoot>();
+
+        Assert.DoesNotContain(Library.SearchModels(null, typeof(object), null), r => r.Guid == Library.RootGuid);
+
+        Library.DeleteModel(Library.RootGuid);
+        Assert.True(Library.ContainsModel(Library.RootGuid));
+    }
+
+    [Fact]
+    public void CFG18_LoadRootNeverOverwritesAnUnreadableRootFile()
+    {
+        File.WriteAllText(FilePath("root"), "{ not json");
+        Library.Initialize(_directory);
+
+        Assert.Throws<InvalidOperationException>(Library.LoadRoot<TestRoot>);
+        Assert.Equal("{ not json", File.ReadAllText(FilePath("root")));
+    }
+
+    [Fact]
+    public void CFG21_DefaultModelsCreateNoFileAndCannotBeDeleted()
+    {
+        var entry = CategoryRegistry.GetDefaultModelEntry(typeof(Sword));
+
+        Library.DeleteModel(entry.Guid);
+
+        Assert.Same(entry, Library.GetModelEntry(entry.Guid));
+        Assert.Empty(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public void CFG22_SelectingDefaultReferencesItEvenWithShift()
+    {
+        var hero = Create<Hero>("H");
+        var result = Result(CategoryRegistry.GetDefaultModelEntry(typeof(Sword)).Guid, SearchWeapons());
+
+        Assert.False(result.WillCopy(shiftHeld: false));
+        Assert.False(result.WillCopy(shiftHeld: true));
+
+        var created = ModelEdit.ForModel(hero).ApplySearchResult(Field<Hero>("Weapon"), result, copy: false);
+
+        Assert.Null(created);
+        Assert.Equal(result.Guid, Instance<Hero>(hero).Weapon.ModelGuid);
+        Assert.Single(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public void CFG23_FirstEditOfDefaultCreatesNamedCopyAndLeavesDefaultUnchanged()
+    {
+        var hero = Create<Hero>("Hero1");
+        var edit = ModelEdit.ForModel(hero).Slot(Field<Hero>("Weapon"));
+
+        edit.SetField(Field<Sword>("Damage"), 42f);
+
+        var weapon = Instance<Hero>(hero).Weapon;
+        Assert.Equal(42f, ((Sword)weapon.GetActiveInstance()).Damage);
+        Assert.False(weapon.GetActiveModelEntry().IsDefault);
+        Assert.Equal("Hero1_Weapon", weapon.GetActiveModelName());
+        Assert.Equal(1f, ((Sword)CategoryRegistry.GetDefaultModelEntry(typeof(Sword)).Instance!).Damage);
+    }
+
+    [Fact]
+    public void CFG23_SecondEditReusesTheCopy()
+    {
+        var hero = Create<Hero>("H");
+        var edit = ModelEdit.ForModel(hero).Slot(Field<Hero>("Weapon"));
+
+        edit.SetField(Field<Sword>("Damage"), 2f);
+        var count = Library.GetAllModels().Count;
+        edit.SetField(Field<Sword>("Damage"), 3f);
+
+        Assert.Equal(count, Library.GetAllModels().Count);
+    }
+
+    [Fact]
+    public void CFG23_EditInsideNestedDefaultsCopiesWholeChain()
+    {
+        var root = Library.LoadRoot<TestRoot>();
+        var rootEntry = Library.GetModelEntry(Library.RootGuid)!;
+        var edit = ModelEdit.ForModel(rootEntry)
+            .Slot(Field<TestRoot>("Team"))
+            .Slot(Field<Squad>("Leader"))
+            .Slot(Field<Hero>("Weapon"));
+
+        edit.SetField(Field<Sword>("Damage"), 9f);
+        Library.FlushDirty();
+        Library.Initialize(_directory);
+
+        var loaded = Library.LoadRoot<TestRoot>();
+        var squad = loaded.Team.GetActiveInstance();
+        var hero = squad.Leader.GetActiveInstance();
+        Assert.Equal(9f, ((Sword)hero.Weapon.GetActiveInstance()).Damage);
+        Assert.Equal("TestRoot_Team", loaded.Team.GetActiveModelName());
+        Assert.Equal("TestRoot_Team_Leader", squad.Leader.GetActiveModelName());
+        Assert.Equal("TestRoot_Team_Leader_Weapon", hero.Weapon.GetActiveModelName());
+    }
+
+    [Fact]
+    public void CFG23_EditThroughContainerInsideDefault()
+    {
+        var hero = Create<Hero>("H");
+        var edit = ModelEdit.ForModel(hero).Container(Field<Hero>("Gear")).Slot(Field<Loadout>("Backup"));
+
+        edit.SetField(Field<Spear>("Reach"), 8f);
+
+        Assert.Equal(8f, ((Spear)Instance<Hero>(hero).Gear.Backup.GetActiveInstance()).Reach);
+        Assert.Equal("H_Backup", Instance<Hero>(hero).Gear.Backup.GetActiveModelName());
+    }
+
+    [Fact]
+    public void CFG23_ChangingSlotInsideDefaultCountsAsEdit()
+    {
+        var squad = Create<Squad>("S");
+        var sword = Create<Sword>("Blade");
+        var edit = ModelEdit.ForModel(squad).Slot(Field<Squad>("Leader"));
+
+        edit.ApplySearchResult(Field<Hero>("Weapon"), Result(sword.Guid, SearchWeapons()), copy: false);
+
+        var leader = Instance<Squad>(squad).Leader;
+        Assert.False(leader.GetActiveModelEntry().IsDefault);
+        Assert.Equal(sword.Guid, leader.GetActiveInstance().Weapon.ModelGuid);
+    }
+
+    [Fact]
+    public void CFG33_CFG34_ActionDependsOnOrphanStateAndShift()
+    {
+        var hero = Create<Hero>("H");
+        var used = Create<Sword>("Used");
+        var orphan = Create<Sword>("Lone");
+        Reference<Hero>(hero, "Weapon", used);
+
+        var results = SearchWeapons();
+
+        Assert.True(Result(used.Guid, results).WillCopy(false));
+        Assert.False(Result(used.Guid, results).WillCopy(true));
+        Assert.False(Result(orphan.Guid, results).WillCopy(false));
+        Assert.True(Result(orphan.Guid, results).WillCopy(true));
+    }
+
+    [Fact]
+    public void CFG35_SearchHidesModelsThatWouldContainTheirOwner()
+    {
+        var parent = Create<Node>("Parent");
+        var child = Create<Node>("Child");
+        var other = Create<Node>("Other");
+        Reference<Node>(parent, "Child", child);
+
+        var results = Library.SearchModels(new TagCategory("node", typeof(Node)), typeof(Node), null, child.Guid);
+
+        Assert.DoesNotContain(results, r => r.Guid == parent.Guid);
+        Assert.DoesNotContain(results, r => r.Guid == child.Guid);
+        Assert.Contains(results, r => r.Guid == other.Guid);
+    }
+
+    [Fact]
+    public void CFG40_HasReturnsTransitiveDescendants()
+    {
+        var squad = Create<Squad>("Alpha");
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("Blade");
+        Reference<Squad>(squad, "Leader", hero);
+        Reference<Hero>(hero, "Weapon", sword);
+
+        var results = SearchWeapons("has:Alpha");
+
+        Assert.Equal(sword.Guid, Assert.Single(results).Guid);
+    }
+
+    [Fact]
+    public void CFG41_HadIncludesPastReferences()
+    {
+        var hero = Create<Hero>("Holder");
+        var old = Create<Sword>("Old");
+        var current = Create<Sword>("New");
+        Reference<Hero>(hero, "Weapon", old);
+        Reference<Hero>(hero, "Weapon", current);
+
+        Assert.Equal(current.Guid, Assert.Single(SearchWeapons("has:Holder")).Guid);
+        Assert.Contains(SearchWeapons("had:Holder"), r => r.Guid == old.Guid);
+    }
+
+    [Fact]
+    public void CFG42_DefaultTagReturnsOnlyDefaultModels()
+    {
+        Create<Sword>("Sword");
+
+        var result = Assert.Single(SearchWeapons("default:Sword"));
+
+        Assert.True(result.IsDefault);
+        Assert.Equal("default: Sword", result.DisplayLabel);
+    }
+
+    [Fact]
+    public void CFG43_SameNameMostRecentlyUsedFirst_DefaultsLast()
+    {
+        var first = Create<Sword>("Twin");
+        var second = Create<Sword>("Twin");
+        Library.SaveModel(first.Guid);
+
+        var results = SearchWeapons();
+
+        Assert.Equal(first.Guid, results[0].Guid);
+        Assert.Equal(second.Guid, results[1].Guid);
+        Assert.True(results[^1].IsDefault);
+    }
+
+    [Fact]
+    public void CFG44_ResultReachedThroughSeveralParentsIsListedOnce()
+    {
+        var a = Create<Hero>("Pair_A");
+        var b = Create<Hero>("Pair_B");
+        var sword = Create<Sword>("Blade");
+        Reference<Hero>(a, "Weapon", sword);
+        Reference<Hero>(b, "Weapon", sword);
+
+        Assert.Equal(sword.Guid, Assert.Single(SearchWeapons("has:Pair")).Guid);
+    }
+
+    [Fact]
+    public void CFG50_CFG51_HistoryIsKeptAfterDeleteAndCleanedLazilyByHad()
+    {
+        var hero = Create<Hero>("Holder");
+        var old = Create<Sword>("Old");
+        Reference<Hero>(hero, "Weapon", old);
+        var slot = Instance<Hero>(hero).Weapon;
+        slot.ReferenceModel(CategoryRegistry.GetDefaultModelEntry(typeof(Sword)).Guid);
+
+        Library.DeleteModel(old.Guid);
+        Assert.Contains(old.Guid, slot.HistoryGuids);
+
+        Library.SaveModel(hero.Guid);
+        Library.Initialize(_directory);
+        var reloaded = Library.GetModel<Hero>(hero.Guid)!.Weapon;
+        Assert.Contains(old.Guid, reloaded.HistoryGuids);
+
+        Assert.Empty(SearchWeapons("had:Holder"));
+        Assert.DoesNotContain(old.Guid, reloaded.HistoryGuids);
+    }
+
+    [Fact]
+    public void CFG52_CFG53_DeletedReferenceBecomesPhantomUntilChanged()
+    {
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("Blade");
+        var replacement = Create<Sword>("Other");
+        Reference<Hero>(hero, "Weapon", sword);
+        var slot = Instance<Hero>(hero).Weapon;
+
+        Library.DeleteModel(sword.Guid);
+
+        Assert.True(slot.IsMissingModel);
+        Assert.IsType<Sword>(slot.GetActiveInstance());
+        Assert.Equal(sword.Guid, slot.ModelGuid);
+
+        slot.ReferenceModel(replacement.Guid);
+        Assert.False(slot.IsMissingModel);
+    }
+
+    [Fact]
+    public void CFG54_PhantomCannotBeEdited()
+    {
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("Blade");
+        Reference<Hero>(hero, "Weapon", sword);
+        Library.DeleteModel(sword.Guid);
+        var edit = ModelEdit.ForModel(hero).Slot(Field<Hero>("Weapon"));
+
+        Assert.Throws<InvalidOperationException>(() => edit.SetField(Field<Sword>("Damage"), 5f));
+        Assert.Equal(1f, ((Sword)CategoryRegistry.GetDefaultModelEntry(typeof(Sword)).Instance!).Damage);
+    }
+
+    [Fact]
+    public void CFG61_CopyIsIndependentAndKeepsDefaultsReferenced()
+    {
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("Blade");
+        Reference<Hero>(hero, "Weapon", sword);
+
+        var copy = Library.CopyExistingModel(hero.Guid)!;
+
+        var copiedHero = Instance<Hero>(copy);
+        Assert.NotEqual(hero.Guid, copy.Guid);
+        Assert.NotEqual(sword.Guid, copiedHero.Weapon.ModelGuid);
+        Assert.True(copiedHero.Gear.Backup.GetActiveModelEntry().IsDefault);
+
+        ((Sword)copiedHero.Weapon.GetActiveInstance()).Damage = 50f;
+        Assert.Equal(1f, Instance<Sword>(sword).Damage);
+        Assert.Equal(4, Library.GetAllModels().Count);
+    }
+
+    [Fact]
+    public void CFG65_SpacesInNamesBecomeUnderscores()
+    {
+        var sword = Create<Sword>("Old");
+
+        Library.RenameModel(sword.Guid, "Big Blade");
+
+        Assert.Equal("Big_Blade", sword.Name);
+    }
+
+    [Fact]
+    public void CFG68_MissingFieldTakesCodeDefault()
+    {
+        var hero = Create<Hero>("H");
+        var path = FilePath(hero.Guid);
+        var json = File.ReadAllText(path).Replace("\"Speed\": 5,", "");
+        Assert.DoesNotContain("Speed", json);
+        File.WriteAllText(path, json);
+
+        Library.Initialize(_directory);
+
+        Assert.Equal(5f, Library.GetModel<Hero>(hero.Guid)!.Speed);
+    }
+
+    [Fact]
+    public void CFG69_FileOfUnknownTypeIsLeftUntouchedAndSlotBecomesPhantom()
+    {
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("Blade");
+        Reference<Hero>(hero, "Weapon", sword);
+        var path = FilePath(sword.Guid);
+        var json = File.ReadAllText(path).Replace("Tests.Sword", "Tests.Removed");
+        File.WriteAllText(path, json);
+
+        Library.Initialize(_directory);
+
+        Assert.Equal(json, File.ReadAllText(path));
+        Assert.True(Library.GetModel<Hero>(hero.Guid)!.Weapon.IsMissingModel);
+    }
+
+    [Fact]
+    public void CFG90_UsingLibraryBeforeInitializeFails()
+    {
+        var field = typeof(Library).GetField("_initialized", BindingFlags.NonPublic | BindingFlags.Static)!;
+        field.SetValue(null, false);
+
+        Assert.Throws<InvalidOperationException>(() => Library.ContainsModel("x"));
+
+        field.SetValue(null, true);
+    }
+
+    [Fact]
+    public void CFG93_EditWritesFileOnlyOnFlushAndOnlyForEditedModel()
+    {
+        var hero = Create<Hero>("H");
+        var sword = Create<Sword>("Blade");
+        Reference<Hero>(hero, "Weapon", sword);
+        var heroWrite = File.ReadAllText(FilePath(hero.Guid));
+        var edit = ModelEdit.ForModel(hero).Slot(Field<Hero>("Weapon"));
+
+        edit.SetField(Field<Sword>("Damage"), 11f);
+
+        Assert.Equal(11f, Instance<Sword>(sword).Damage);
+        Assert.Contains("\"Damage\": 1", File.ReadAllText(FilePath(sword.Guid)));
+
+        Library.FlushDirty();
+
+        Assert.Contains("\"Damage\": 11", File.ReadAllText(FilePath(sword.Guid)));
+        Assert.Equal(heroWrite, File.ReadAllText(FilePath(hero.Guid)));
+    }
+
+    [Fact]
+    public void CFG94_SaveLeavesNoTemporaryFileAndValidJson()
+    {
+        var sword = Create<Sword>("Blade");
+
+        Library.SaveModel(sword.Guid);
+
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
+        using var document = JsonDocument.Parse(File.ReadAllText(FilePath(sword.Guid)));
+        Assert.Equal("Blade", document.RootElement.GetProperty("Name").GetString());
+    }
+}

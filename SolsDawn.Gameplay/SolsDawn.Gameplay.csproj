@@ -31,4 +31,8 @@
   <ItemGroup>
     <Folder Include="_Data\" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <None Update="_Data\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

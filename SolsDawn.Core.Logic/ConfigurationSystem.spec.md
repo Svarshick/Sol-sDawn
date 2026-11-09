@@ -98,7 +98,7 @@ Requirements are `CFG-nn`.
 ## Storage
 
 - **CFG-90** `SolsDawn.Core.Logic` knows no path. `SolsDawn.Gameplay` passes one to `Library.Initialize(path)`.
-- **CFG-91** Model files live in `SolsDawn.Gameplay/_Data/`, tracked by git and shared by all platforms.
+- **CFG-91** Model files live in `SolsDawn.Gameplay/_Data/`, shared by all platforms. The folder is not ignored by git, so designers can commit their data. Developers' working data there is not committed.
 - **CFG-92** Debug builds read and write that source folder directly. Release builds read a copy placed beside the executable at build time.
 - **CFG-93** The in-memory value changes every frame during an edit. The file is written once when the edit ends, and only for the edited model.
 - **CFG-94** Writes go to a temporary file that then replaces the real one, so a crash cannot corrupt a model.
@@ -131,23 +131,4 @@ Accepted for now, with the condition that ends them.
 
 ## Known gaps
 
-Current code against this spec. Remove each row when fixed.
-
-| Requirement | Current code |
-|---|---|
-| CFG-05 | `MotionSolver.Phase` is written into model files. |
-| CFG-06 | An unset slot is filled by creating a full copy of the default, with files. |
-| CFG-15 | No root model. `new PlayerBoard()` is never saved, so the first inspector draw creates a new model tree on every launch. |
-| CFG-21, CFG-54 | The inspector still edits fields of the shared default instance when showing a default or phantom. |
-| CFG-22, CFG-23, CFG-24, CFG-33 | Selecting a default always copies it. Nothing happens on first edit. |
-| CFG-35 | No check. A cycle would make copying recurse forever. |
-| CFG-44 | A model reached through several matching parents is listed once per parent. |
-| CFG-50 | `Library.Initialize` and the inspector's delete handler prune history eagerly. |
-| CFG-61 | Copying copies every nested model, including defaults. |
-| CFG-62 | Focus does not move after a copy. |
-| CFG-67 | The player's collider is built once from the default model. |
-| CFG-72, CFG-74, CFG-75 | Click expands the editor, double-click opens search, and the name is edited inside the editor. |
-| CFG-76 | Default rows are labelled `<Name> [Default]`. |
-| CFG-80 | Copy color is teal. |
-| CFG-81 | The Library Browser opens by default (`_showLibraryBrowser = true` in `SolsDawn.Gameplay/Debug.cs`). |
-| CFG-90 to CFG-94 | `Library` defaults to `bin/.../Presets`, writes on every edited frame for the model and its parents, and writes files in place. |
+None known.

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System;
 using SolsDawn.Core.Logic;
 
@@ -168,6 +169,7 @@ public class MotionSolver
     [MotionCategory(AllowedPhase.Turn, AllowedSpeed.Normal, typeof(LinearTurnModel))]
     public CategorySlot<IMotionModel> NormalTurn = new();
 
+    [JsonIgnore]
     public MovePhase Phase { get; private set; }
 
     public void ResetPhase(MovePhase phase = MovePhase.Drive) => Phase = phase;

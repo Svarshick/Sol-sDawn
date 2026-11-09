@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
 using SolsDawn.Core.Logic;
 using SolsDawn.Gameplay.Entities;
 using SolsDawn.Gameplay.Utils;
@@ -8,7 +11,8 @@ public static class GameLoop
 {
     public static async Job Start()
     {
-        Library.Initialize();
+        Library.Initialize(DataDirectory());
+        G.Config = Library.LoadRoot<GameConfig>();
         ImGuiDrawer = Debug.Draw;
         BeforeUpdate();
         Update();
@@ -18,6 +22,15 @@ public static class GameLoop
         {
             await NextFrame();
         }
+    }
+
+    private static string DataDirectory([CallerFilePath] string sourceFile = "")
+    {
+#if DEBUG
+        return Path.Combine(Path.GetDirectoryName(sourceFile)!, "_Data");
+#else
+        return Path.Combine(AppContext.BaseDirectory, "_Data");
+#endif
     }
 
     private static async Job BeforeUpdate()
@@ -36,7 +49,7 @@ public static class GameLoop
         rightSlope.Transform.Position = new Vector2(60, 10);
         rightSlope.Transform.Rotation = ASin(10 / 50f);
 
-        var playerBoard = new PlayerBoard();
+        var playerBoard = new PlayerBoard { Specs = G.Config.Player };
         var playerAnimations = new PlayerAnimations(playerBoard);
         G.Player = new Player(
             CreateObject(),
@@ -73,4 +86,5 @@ public static class GameLoop
 public static class G
 {
     public static Player Player = null!;
+    public static GameConfig Config = null!;
 }

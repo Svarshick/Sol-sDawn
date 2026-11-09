@@ -5,7 +5,7 @@ namespace SolsDawn.Gameplay;
 
 public static class Debug
 {
-    private static bool _showLibraryBrowser = true;
+    private static bool _showLibraryBrowser;
 
     public static void Draw()
     {
@@ -23,7 +23,7 @@ public static class Debug
         ImGui.Checkbox("Library Browser", ref _showLibraryBrowser);
         ImGui.Separator();
 
-        AutoInspector.Draw(G.Player.Board);
+        AutoInspector.Draw(Library.GetModelEntry(Library.RootGuid)!);
 
         ImGui.End();
 

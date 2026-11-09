@@ -104,3 +104,5 @@ _*
 /native/**/*.make
 /native/**/Makefile
 /native/**/*.mgfxo.h
+
+!SolsDawn.Gameplay/_Data/

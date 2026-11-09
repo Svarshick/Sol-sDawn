@@ -15,6 +15,7 @@ MonoGame game on .NET 10.
 `dotnet` is installed through mise, so prefix commands with `mise exec --`.
 
 - Compile check of all game code: `mise exec -- dotnet build SolsDawn.Gameplay/SolsDawn.Gameplay.csproj`
+- Tests: `mise exec -- dotnet run --project SolsDawn.Core.Logic.Tests/SolsDawn.Core.Logic.Tests.csproj`. `dotnet test` does not work with this xUnit v3 setup.
 - Full platform build: `mise exec -- dotnet build SolsDawn.DesktopGL/SolsDawn.DesktopGL.csproj`. Its content step compiles shaders and needs Wine.
 
 ## Rules
@@ -22,6 +23,7 @@ MonoGame game on .NET 10.
 - Do not write comments in code. If an existing comment could be important, ask before removing it.
 - Generated and third-party code keeps its comments: `SolsDawn.Content`, `SolsDawn.DesktopGL`, `SolsDawn.DesktopVK`, `DrawVertDeclaration.cs`, `ImGuiRenderer.cs`, `InputExtended.cs`.
 - `SolsDawn.Gameplay/Test.cs` holds manual scenarios that run in the game loop. They are not unit tests; do not convert them.
+- Do not commit `SolsDawn.Gameplay/_Data/`. Designers own what is committed there, and local working data must not overwrite it.
 - Everything code-specific is in English: code, specs, identifiers.
 - Tests use xUnit v3.
 
