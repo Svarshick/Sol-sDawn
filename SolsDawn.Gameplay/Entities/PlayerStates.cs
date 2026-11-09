@@ -63,12 +63,13 @@ public class IdleState : PlayerState
 [StateModel(AllowedState.Run)]
 public class RunState : PlayerState
 {
-    [Inspect] public MotionSolver Motion = new();
+    [MovementCategory(typeof(MotionSolver))]
+    public CategorySlot<IMovementModel> Movement = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        Motion.ResetPhase();
+        var memory = new MovementMemory();
 
         while (true)
         {
@@ -85,7 +86,7 @@ public class RunState : PlayerState
             var inDir = Sign(Input.Move.X);
             var vx = Vector2.Dot(board.Velocity, tangent);
 
-            vx = Motion.Calculate(vx, inDir, DeltaTime);
+            vx = Movement.GetActiveInstance().Calculate(vx, inDir, DeltaTime, ref memory);
 
             board.Velocity = new Vector2(vx, 0).Rotated(angle);
             await NextFrame();
@@ -105,12 +106,13 @@ public class CelesteJumpState : JumpState
     [Inspect(min: 0)] public float VerticalDashFinalSpeed = 20;
     [Inspect(min: 0)] public float VerticalFriction = 15;
 
-    [Inspect] public MotionSolver HorizontalMotion = new();
+    [MovementCategory(typeof(MotionSolver))]
+    public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        HorizontalMotion.ResetPhase();
+        var memory = new MovementMemory();
 
         {
             var initInDir = Sign(Input.Move.X);
@@ -155,7 +157,7 @@ public class CelesteJumpState : JumpState
             }
 
             var inDir = Sign(Input.Move.X);
-            var vx = HorizontalMotion.Calculate(board.Velocity.X, inDir, DeltaTime);
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);
@@ -171,12 +173,13 @@ public class PrimitiveJumpState : JumpState
     [Inspect(min: 0)] public float VerticalStartSpeed = 20;
     [Inspect(min: 0)] public float VerticalFriction = 15;
 
-    [Inspect] public MotionSolver HorizontalMotion = new();
+    [MovementCategory(typeof(MotionSolver))]
+    public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        HorizontalMotion.ResetPhase();
+        var memory = new MovementMemory();
 
         {
             var inDir = Sign(Input.Move.X);
@@ -193,7 +196,7 @@ public class PrimitiveJumpState : JumpState
             }
 
             var inDir = Sign(Input.Move.X);
-            var vx = HorizontalMotion.Calculate(board.Velocity.X, inDir, DeltaTime);
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);
@@ -208,12 +211,13 @@ public class FallState : PlayerState
     [Inspect(min: 0)] public float VerticalAcceleration = 15;
     [Inspect(min: 0)] public float VerticalMaxSpeed = 30;
 
-    [Inspect] public MotionSolver HorizontalMotion = new();
+    [MovementCategory(typeof(MotionSolver))]
+    public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        HorizontalMotion.ResetPhase();
+        var memory = new MovementMemory();
 
         while (true)
         {
@@ -224,7 +228,7 @@ public class FallState : PlayerState
             }
 
             var inDir = Sign(Input.Move.X);
-            var vx = HorizontalMotion.Calculate(board.Velocity.X, inDir, DeltaTime);
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = Max(-VerticalMaxSpeed, board.Velocity.Y - VerticalAcceleration * DeltaTime);
 
             board.Velocity = new Vector2(vx, vy);

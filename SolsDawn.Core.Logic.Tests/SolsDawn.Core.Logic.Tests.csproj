@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />
+    <ProjectReference Include="../SolsDawn.Gameplay/SolsDawn.Gameplay.csproj" />
   </ItemGroup>
 
   <ItemGroup>

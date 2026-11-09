@@ -14,7 +14,7 @@ Requirements are `CFG-nn`.
 | Model type | A class of configuration, e.g. `Player` with `speed` and `name`. |
 | Model | An instance of a model type, with its own GUID. |
 | Slot | A model-typed field, e.g. `Player.weapon`. |
-| Container | A group of fields inside a model, with no identity of its own, e.g. `MotionSolver`. |
+| Container | A group of fields inside a model, with no identity of its own, e.g. `Player.gear`. |
 | Category | A constraint on which model types fit a slot, e.g. "one-handed". |
 | Default model | The one built-in model of a model type, like a default for a struct. |
 | Root model | The model that is the config itself. |
@@ -125,9 +125,7 @@ Requirements are `CFG-nn`.
 
 ## Known limits
 
-Accepted for now, with the condition that ends them.
-
-- **LIM-01** A container's runtime state, such as `MotionSolver.Phase`, is one value per model, so entities referencing the same model overwrite each other's state. This is safe only while one entity uses these models. It must be changed before a second entity uses the same config.
+None known.
 
 ## Known gaps
 

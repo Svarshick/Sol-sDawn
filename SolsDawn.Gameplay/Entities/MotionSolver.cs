@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using System;
 using SolsDawn.Core.Logic;
 
@@ -146,7 +145,8 @@ public class LinearTurnModel : IMotionModel
     }
 }
 
-public class MotionSolver
+[MovementModel]
+public class MotionSolver : IMovementModel
 {
     [Inspect(0.5f, 0f, 100f)]
     public float ControlledSpeed = 10f;
@@ -169,26 +169,22 @@ public class MotionSolver
     [MotionCategory(AllowedPhase.Turn, AllowedSpeed.Normal, typeof(LinearTurnModel))]
     public CategorySlot<IMotionModel> NormalTurn = new();
 
-    [JsonIgnore]
-    public MovePhase Phase { get; private set; }
-
-    public void ResetPhase(MovePhase phase = MovePhase.Drive) => Phase = phase;
-
-    public float Calculate(float velocity, int inDir, float dt)
+    public float Calculate(float velocity, int inDir, float dt, ref MovementMemory memory)
     {
         var speed = Math.Abs(velocity);
         var velDir = Math.Sign(velocity);
         var isGreatSpeed = speed > ControlledSpeed;
 
-        Phase = inDir switch
+        var phase = inDir switch
         {
             0 => MovePhase.Brake,
             _ when inDir == velDir && speed >= ControlledSpeed => MovePhase.Drive,
-            _ when inDir == -velDir || Phase == MovePhase.Turn => MovePhase.Turn,
+            _ when inDir == -velDir || (MovePhase)memory.Phase == MovePhase.Turn => MovePhase.Turn,
             _ => MovePhase.Drive
         };
+        memory.Phase = (int)phase;
 
-        return (isGreatSpeed, Phase) switch
+        return (isGreatSpeed, phase) switch
         {
             (true, MovePhase.Drive)  => GreatSpeedDrive.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),
             (true, MovePhase.Brake)  => GreatSpeedBrake.GetActiveInstance().Calculate(velocity, inDir, dt, ControlledSpeed),

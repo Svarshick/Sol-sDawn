@@ -34,8 +34,6 @@ MonoGame game on .NET 10.
 - Workflow: change the spec, implement it, check the result against the requirement IDs.
 - Each spec has a rule in `.claude/rules/` whose `paths` list the files it covers. When adding a spec or moving those files, update the rule.
 
-Before a second entity uses the same config models as the player, resolve LIM-01 in `SolsDawn.Core.Logic/ConfigurationSystem.spec.md`.
-
 ## Docs
 
 `Docs/` holds designer drafts and may be in Russian. It is not a source of truth for code behaviour.

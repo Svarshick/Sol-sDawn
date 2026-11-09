@@ -5,6 +5,7 @@ using Xunit;
 
 namespace SolsDawn.Core.Logic.Tests;
 
+[Collection("Library")]
 public sealed class ConfigurationSystemTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "solsdawn-" + Guid.NewGuid().ToString("N"));
