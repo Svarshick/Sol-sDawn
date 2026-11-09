@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5">
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.6.1">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
     <ProjectReference Include="../SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />

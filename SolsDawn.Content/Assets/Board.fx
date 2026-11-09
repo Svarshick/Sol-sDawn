@@ -1,4 +1,14 @@
-#define PS_PROFILE ps_3_0
+#if OPENGL
+    #define SV_POSITION POSITION
+    #define VS_SHADERMODEL vs_3_0
+    #define PS_SHADERMODEL ps_3_0
+#elif VULKAN
+    #define VS_SHADERMODEL vs_6_0
+    #define PS_SHADERMODEL ps_6_0
+#else
+    #define VS_SHADERMODEL vs_4_0_level_9_1
+    #define PS_SHADERMODEL ps_4_0_level_9_1
+#endif
 
 float2 CameraPosition;
 float Zoom;
@@ -36,6 +46,6 @@ technique Board
 {
     pass Pass0
     {
-        PixelShader = compile PS_PROFILE MainPS();
+        PixelShader = compile PS_SHADERMODEL MainPS();
     }
 };

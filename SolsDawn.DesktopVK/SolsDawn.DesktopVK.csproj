@@ -5,8 +5,8 @@
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>false</TieredCompilation>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>../SolsDawn.Core/Assets/Icon.ico</ApplicationIcon>
-    <AssemblyName>SolsDawn</AssemblyName>
+    <ApplicationIcon>../sdf.Core/Assets/Icon.ico</ApplicationIcon>
+    <AssemblyName>sdf</AssemblyName>
     <MonoGamePlatform>DesktopVK</MonoGamePlatform>
   </PropertyGroup>
   <ItemGroup>
@@ -14,10 +14,13 @@
     <ProjectReference Include="../SolsDawn.Gameplay/SolsDawn.Gameplay.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.5" />
-    <PackageReference Include="MonoGame.Runtime.Windows.Vulkan" Version="3.8.5" />
-    <PackageReference Include="MonoGame.Runtime.Linux.Vulkan" Version="3.8.5" />
-    <PackageReference Include="MonoGame.Runtime.Mac.Vulkan" Version="3.8.5" />
+    <UpToDateCheckInput Include="../Content/Assets/**/*" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MonoGame.Framework.Native" Version="3.8.6.1" />
+    <PackageReference Include="MonoGame.Runtime.Windows.Vulkan" Version="3.8.6.1" />
+    <PackageReference Include="MonoGame.Runtime.Linux.Vulkan" Version="3.8.6.1" />
+    <PackageReference Include="MonoGame.Runtime.Mac.Vulkan" Version="3.8.6.1" />
   </ItemGroup>
   <Import Project="../SolsDawn.Content/BuildContent.targets" />
 </Project>

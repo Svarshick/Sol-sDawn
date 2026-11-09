@@ -39,11 +39,13 @@ public class Builder : ContentBuilder
         // By default, no content will be imported from the Assets folder using the default importer for their file type.
         // Please define your content collection rules here.
 
-        // Import all content in the Assets folder using the default importer for their file type.
         contentCollection.Include<WildcardRule>("*");
 
         /* Examples
-         
+
+        // Import all content in the Assets folder using the default importer for their file type.
+        contentCollection.Include<WildcardRule>("*");
+
         // Only copy content from the assets folder rather than build it with the pipeline.
         contentCollection.IncludeCopy<WildcardRule>("*.json");
 
