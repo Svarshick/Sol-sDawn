@@ -327,13 +327,19 @@ public static class AutoInspector
         uint slotId = ImGui.GetID("##slot");
 
         _slotExpanded.TryGetValue(slotId, out bool isExpanded);
-        if (ImGui.ArrowButton("##expand", isExpanded ? ImGuiDir.Down : ImGuiDir.Right))
+        float column = Math.Max(ImGui.GetWindowWidth() * 0.45f, ImGui.GetCursorPosX() + 80f);
+        float foldWidth = column - ImGui.GetCursorPosX() - ImGui.GetStyle().ItemSpacing.X;
+        if (ImGui.Selectable($"   {slotName}###Fold", false, ImGuiSelectableFlags.None, new NumVector2(foldWidth, 0f)))
         {
             isExpanded = !isExpanded;
             _slotExpanded[slotId] = isExpanded;
         }
 
-        ImGui.SameLine();
+        var foldMin = ImGui.GetItemRectMin();
+        float rowHeight = ImGui.GetItemRectSize().Y;
+        DrawArrow(foldMin + new NumVector2(rowHeight * 0.5f, rowHeight * 0.5f), rowHeight, isExpanded);
+
+        ImGui.SameLine(column);
 
         var activeEntry = slot.GetActiveModelEntry();
         bool isMissing = slot.IsMissingModel;
@@ -347,8 +353,9 @@ public static class AutoInspector
             ImGui.PushStyleColor(ImGuiCol.Header, isMissing ? new NumVector4(0.65f, 0.12f, 0.12f, 0.85f) : new NumVector4(0.22f, 0.27f, 0.36f, 0.85f));
             ImGui.PushStyleColor(ImGuiCol.HeaderHovered, isMissing ? new NumVector4(0.75f, 0.18f, 0.18f, 0.90f) : new NumVector4(0.28f, 0.35f, 0.48f, 0.95f));
             ImGui.PushStyleColor(ImGuiCol.HeaderActive, isMissing ? new NumVector4(0.85f, 0.22f, 0.22f, 1.00f) : new NumVector4(0.32f, 0.42f, 0.58f, 1.00f));
-            ImGui.Selectable($"{slotName} {activeEntry.Name}###CatHeader", true);
+            ImGui.Selectable($"{activeEntry.Name}###CatHeader", true);
             ImGui.PopStyleColor(3);
+            DrawArrow(ImGui.GetItemRectMax() - new NumVector2(rowHeight * 0.5f, rowHeight * 0.5f), rowHeight, true);
 
             bool popupOpen = ImGui.IsPopupOpen("CategorySearchPopup");
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup))
@@ -377,11 +384,7 @@ public static class AutoInspector
         var headerMax = ImGui.GetItemRectMax();
 
         if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax, edit, field))
-        {
             changed = true;
-            _slotExpanded[slotId] = true;
-            isExpanded = true;
-        }
 
         if (isExpanded)
         {
@@ -406,6 +409,18 @@ public static class AutoInspector
 
         ImGui.PopID();
         return changed;
+    }
+
+    private static void DrawArrow(NumVector2 center, float size, bool pointsDown)
+    {
+        float r = size * 0.22f;
+        uint color = ImGui.GetColorU32(ImGuiCol.Text);
+        var drawList = ImGui.GetWindowDrawList();
+
+        if (pointsDown)
+            drawList.AddTriangleFilled(center + new NumVector2(0f, r), center + new NumVector2(-r, -r * 0.6f), center + new NumVector2(r, -r * 0.6f), color);
+        else
+            drawList.AddTriangleFilled(center + new NumVector2(r, 0f), center + new NumVector2(-r * 0.6f, r), center + new NumVector2(-r * 0.6f, -r), color);
     }
 
     private static void BeginRename(uint slotId, string currentName)

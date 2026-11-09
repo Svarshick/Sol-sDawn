@@ -106,11 +106,11 @@ Requirements are `CFG-nn`.
 ## UI
 
 - **CFG-70** Constants are edited through input fields. A slider may be added when the field has a min and max.
-- **CFG-71** A slot displays `<SlotName> <ModelName>`.
-- **CFG-72** Clicking a slot opens its search.
+- **CFG-71** A slot is one row of two zones. The left zone shows a fold arrow and `<SlotName>`. The right zone shows `<ModelName>`, styled as a dropdown field. Right zones line up in a column across rows, including nested ones.
+- **CFG-72** Clicking the right zone opens the slot's search.
 - **CFG-73** The search opens as an overlay on top of other elements, as in Chrome or Unity.
-- **CFG-74** Double-clicking a slot edits the model's name.
-- **CFG-75** An arrow on the left of a slot expands the nested model's fields.
+- **CFG-74** Double-clicking the right zone edits the model's name.
+- **CFG-75** Clicking anywhere in the left zone folds or unfolds the nested model's fields. Slots are folded by default, and the fold state is kept when the slot's model changes.
 - **CFG-76** Default models are always at the bottom of the results, in muted gray, in the format `default: <ModelType>`.
 - **CFG-77** A row that will be copied is slightly highlighted. A row that will be referenced has the regular color, except default rows (CFG-76).
 - **CFG-78** Colors describe what the click will do, not whether the model is an orphan, so they change while Shift is held.
