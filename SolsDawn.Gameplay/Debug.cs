@@ -23,7 +23,6 @@ public static class Debug
         ImGui.Checkbox("Library Browser", ref _showLibraryBrowser);
         ImGui.Separator();
 
-        // Root of config is now G.Player.Board -> renders CategorySlot "Specs [PlayerSpecs]" at root
         AutoInspector.Draw(G.Player.Board);
 
         ImGui.End();

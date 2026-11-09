@@ -1,4 +1,3 @@
-//Vibecoded
 using Microsoft.Xna.Framework;
 
 namespace SolsDawn.Core;

@@ -59,27 +59,24 @@ public static class AutoInspector
         int LibraryVersion,
         IReadOnlyList<ModelSearchResult> Results);
 
-    // Section 4: ImGui Palette Constants
-    private static readonly NumVector4 ColorCurrentText        = new(1.00f, 1.00f, 1.00f, 1.00f); // White (Default)
-    private static readonly NumVector4 ColorCurrentHoverBg     = new(0.16f, 0.29f, 0.48f, 0.85f); // Dark Blue (ImGui Default Active)
+    private static readonly NumVector4 ColorCurrentText        = new(1.00f, 1.00f, 1.00f, 1.00f);
+    private static readonly NumVector4 ColorCurrentHoverBg     = new(0.16f, 0.29f, 0.48f, 0.85f);
 
-    private static readonly NumVector4 ColorReferenceText      = new(0.86f, 0.88f, 0.90f, 1.00f); // Light Gray (Default)
-    private static readonly NumVector4 ColorReferenceHoverBg   = new(0.26f, 0.36f, 0.48f, 0.55f); // Muted Gray-Blue (ImGui Default Hover)
+    private static readonly NumVector4 ColorReferenceText      = new(0.86f, 0.88f, 0.90f, 1.00f);
+    private static readonly NumVector4 ColorReferenceHoverBg   = new(0.26f, 0.36f, 0.48f, 0.55f);
 
-    private static readonly NumVector4 ColorCopyText           = new(0.45f, 0.82f, 0.78f, 1.00f); // Muted Teal (Soft Teal)
-    private static readonly NumVector4 ColorCopyHoverBg        = new(0.12f, 0.65f, 0.62f, 0.45f); // Bright Teal (with transparency)
+    private static readonly NumVector4 ColorCopyText           = new(0.45f, 0.82f, 0.78f, 1.00f);
+    private static readonly NumVector4 ColorCopyHoverBg        = new(0.12f, 0.65f, 0.62f, 0.45f);
 
-    private static readonly NumVector4 ColorDefaultTemplateText = new(0.50f, 0.54f, 0.58f, 1.00f); // Dark Gray / Dimmed
+    private static readonly NumVector4 ColorDefaultTemplateText = new(0.50f, 0.54f, 0.58f, 1.00f);
 
-    // Section 5.2: [ X ] Remove from History Button Colors
-    private static readonly NumVector4 ColorRemoveBtnBg        = new(0.35f, 0.07f, 0.09f, 0.90f); // Dark Maroon
-    private static readonly NumVector4 ColorRemoveBtnText      = new(0.82f, 0.42f, 0.42f, 1.00f); // Maroon-tinted text
-    private static readonly NumVector4 ColorRemoveBtnHoverBg   = new(0.90f, 0.16f, 0.16f, 1.00f); // Bright Red
-    private static readonly NumVector4 ColorRemoveBtnHoverText = new(1.00f, 0.95f, 0.95f, 1.00f); // Bright highlight text
+    private static readonly NumVector4 ColorRemoveBtnBg        = new(0.35f, 0.07f, 0.09f, 0.90f);
+    private static readonly NumVector4 ColorRemoveBtnText      = new(0.82f, 0.42f, 0.42f, 1.00f);
+    private static readonly NumVector4 ColorRemoveBtnHoverBg   = new(0.90f, 0.16f, 0.16f, 1.00f);
+    private static readonly NumVector4 ColorRemoveBtnHoverText = new(1.00f, 0.95f, 0.95f, 1.00f);
 
     private static readonly Dictionary<Type, List<FieldMeta>> _cache = new();
 
-    // UI state per CategorySlot
     private static readonly Dictionary<string, bool> _slotExpanded = new();
     private static readonly Dictionary<string, bool> _slotExpandedBeforeClick = new();
     private static readonly Dictionary<string, string> _slotSearchQueries = new();
@@ -88,7 +85,6 @@ public static class AutoInspector
     private static string? _pendingSearchOpenSlotId;
     private static int _drawDepth;
 
-    // Library Browser state
     private static string _librarySearchQuery = string.Empty;
     private static string _libraryTagFilter = string.Empty;
 
@@ -126,7 +122,6 @@ public static class AutoInspector
                 var field = meta.Field;
                 var label = meta.Label;
 
-                // 2.3. Category (CategorySlot)
                 if (meta.IsCategorySlot)
                 {
                     if (field.GetValue(target) is ICategorySlot slot)
@@ -138,7 +133,6 @@ public static class AutoInspector
                     continue;
                 }
 
-                // 2.1. Regular Fields (float / int / bool / Vector2 / Color / string / Enum)
                 if (IsRegularFieldType(field.FieldType))
                 {
                     if (DrawRegularField(target, meta))
@@ -146,7 +140,6 @@ public static class AutoInspector
                     continue;
                 }
 
-                // 2.2. Nested Field (container class with its own fields, e.g., MotionSolver)
                 if (field.FieldType.IsClass && field.FieldType != typeof(string))
                 {
                     var nestedObj = field.GetValue(target);
@@ -406,7 +399,6 @@ public static class AutoInspector
         if (pushedColors > 0)
             ImGui.PopStyleColor(pushedColors);
 
-        // Model Selector Search Popup
         if (DrawCategorySearchPopup(slot, slotId, headerMin, headerMax))
         {
             changed = true;
@@ -414,7 +406,6 @@ public static class AutoInspector
             isExpanded = true;
         }
 
-        // Expanded Model Editor
         if (isExpanded)
         {
             ImGui.Indent(12f);
@@ -490,7 +481,6 @@ public static class AutoInspector
             : "Owned -> Copy | Orphaned -> Reference | Default -> Copy (Hold Shift to invert)");
         ImGui.Separator();
 
-        // Section 6: IsOrphaned is pre-calculated in Library.SearchModels and cached in ModelSearchResult
         var results = GetOrRunSearch(slot, slotId, query);
 
         ImGui.BeginChild("##SearchResultsList", new NumVector2(0, 0), ImGuiChildFlags.None);
@@ -512,13 +502,8 @@ public static class AutoInspector
                 bool isCurrent = !res.IsDefault &&
                                  string.Equals(slot.ModelGuid, res.Guid, StringComparison.OrdinalIgnoreCase);
 
-                // Section 3: Interaction Logic based exclusively on pre-calculated IsOrphaned & Shift
-                // - Default templates: Always Copy
-                // - Orphaned: LMB = Reference, Shift+LMB = Copy
-                // - Owned: LMB = Copy, Shift+LMB = Reference
                 bool willCopy = res.IsDefault || (res.IsOrphaned ? shiftHeld : !shiftHeld);
 
-                // Section 4: Color Scheme & Visualization (swaps in real-time with Shift)
                 NumVector4 textColor;
                 NumVector4 hoverBgColor;
 
@@ -554,7 +539,6 @@ public static class AutoInspector
                 ImGui.PushStyleColor(ImGuiCol.HeaderActive, hoverBgColor);
                 ImGui.PushStyleColor(ImGuiCol.Header, ColorCurrentHoverBg);
 
-                // Section 5.1: Left Side (Selectable area)
                 bool rowClicked = ImGui.Selectable(
                     $"{res.DisplayLabel}###RowSelect",
                     isCurrent,
@@ -570,7 +554,6 @@ public static class AutoInspector
                     DrawSearchResultTooltip(res, willCopy);
                 }
 
-                // Section 5.2: Right Side (Delete Model [ X ] button)
                 bool removeClicked = false;
                 if (!res.IsDefault)
                 {
@@ -601,7 +584,6 @@ public static class AutoInspector
                     }
                 }
 
-                // Guard so clicking [ X ] never triggers the Selectable
                 if (rowClicked && !removeClicked)
                 {
                     if (willCopy)

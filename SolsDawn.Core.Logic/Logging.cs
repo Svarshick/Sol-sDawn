@@ -72,7 +72,6 @@ public static class Log
         }
         catch
         {
-            // ignored
         }
 
         var levelSize = 9;

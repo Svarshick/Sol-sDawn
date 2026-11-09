@@ -205,7 +205,7 @@ public delegate bool CircleCastFixtureFilter(Vector2 from, Vector2 to, float rad
 public struct CircleCastResult
 {
     public bool Hit;
-    public float Fraction; // 0.0 to 1.0 (How far along the path it hit)
+    public float Fraction;
     public Fixture HitFixture;
 }
 
@@ -254,7 +254,7 @@ public sealed class Collider : Component
     }
 
     private double _activationTime;
-    public Body _body; //SHOULD BE PRIVATE. TEMPORARY FOR TESTS
+    public Body _body;
 
     public Collider(
         GameObject go,

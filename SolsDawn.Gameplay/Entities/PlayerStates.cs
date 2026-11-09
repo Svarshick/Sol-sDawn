@@ -3,8 +3,6 @@ using SolsDawn.Core.Logic;
 
 namespace SolsDawn.Gameplay.Entities;
 
-// --- 1. STATE CATEGORY & MODEL ATTRIBUTES ---
-
 [Flags]
 public enum AllowedState
 {
@@ -47,8 +45,6 @@ public class StateModelAttribute : ModelAttribute
 
     public override string GetTagsDescription() => $"States: {States}";
 }
-
-// --- 2. BASE PLAYER STATE & STATE MODELS ---
 
 public abstract class PlayerState : Core.Logic.Gameplay.State<Player>;
 

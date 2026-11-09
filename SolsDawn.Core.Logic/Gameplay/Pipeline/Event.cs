@@ -53,7 +53,7 @@ public class Event
     private readonly List<object> _fireCallbacks = new();
     private readonly List<object> _cancelCallbacks = new();
     
-    private readonly List<object> _buff = new(); //todo
+    private readonly List<object> _buff = new();
 
     public Event(Job owner)
     {

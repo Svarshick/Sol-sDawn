@@ -9,8 +9,6 @@ using Microsoft.Xna.Framework;
 
 namespace SolsDawn.Core.Logic;
 
-// --- 1. GENERIC ATTRIBUTE INFRASTRUCTURE ---
-
 [AttributeUsage(AttributeTargets.Field)]
 public abstract class CategoryAttribute : Attribute
 {
@@ -31,8 +29,6 @@ public abstract class ModelAttribute : Attribute
 
     public virtual string GetTagsDescription() => GetType().Name.Replace("ModelAttribute", "");
 }
-
-// --- 2. CATEGORY SLOT ---
 
 public interface ICategorySlot
 {
@@ -160,7 +156,6 @@ public class CategorySlot<T> : ICategorySlot where T : class
         HistoryGuids.RemoveAll(g => string.IsNullOrWhiteSpace(g) || !Library.ContainsModel(g));
     }
 
-    // Guaranteed never to return null
     public T GetActiveInstance()
     {
         if (_isDefaultTemplateSlot)
@@ -212,7 +207,6 @@ public class CategorySlot<T> : ICategorySlot where T : class
         return (T)CategoryRegistry.GetDefaultModelEntry(defaultType).Instance!;
     }
 
-    // Copy action: creates a new unique model instance with its own GUID
     public ModelEntry CopyModel(ModelSearchResult source)
     {
         ModelEntry created;
@@ -254,7 +248,6 @@ public class CategorySlot<T> : ICategorySlot where T : class
         return created;
     }
 
-    // Reference action: reuses the existing GUID
     public void ReferenceModel(string targetGuid)
     {
         var entry = Library.GetModelEntry(targetGuid);
@@ -268,8 +261,6 @@ public class CategorySlot<T> : ICategorySlot where T : class
         Library.NotifyHistoryOrSlotChanged();
     }
 }
-
-// --- 3. MODEL DISCOVERY, DEFAULT MODELS & RESOLUTION HANDSHAKE ---
 
 public sealed record ModelDescriptor(
     Type ModelType,
@@ -442,8 +433,6 @@ public static class CategoryRegistry
     }
 }
 
-// --- 4. CATEGORY SYSTEM & HIERARCHY TRAVERSAL ---
-
 public static class CategorySystem
 {
     public static void BindSlots(object owner)
@@ -517,7 +506,6 @@ public static class CategorySystem
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         Visit(root, visited);
 
-        // Register root configuration slots (e.g., PlayerSpecs) in Library._rootSlots
         if (root.GetType().GetCustomAttribute<ModelAttribute>(inherit: false) == null)
         {
             Library.RegisterRootOwner(root);
@@ -555,8 +543,6 @@ public static class CategorySystem
         }
     }
 
-    // Collects all ICategorySlot fields belonging to an object (traversing through Nested Fields like MotionSolver,
-    // without crossing into child Models).
     public static List<ICategorySlot> GetOwnedCategorySlots(object? modelInstance)
     {
         var slots = new List<ICategorySlot>();
@@ -599,8 +585,6 @@ public static class CategorySystem
         }
     }
 }
-
-// --- 5. GLOBAL MODEL LIBRARY, OWNERSHIP TRACKING & SEARCH ENGINE ---
 
 public sealed class ModelEntry
 {
@@ -706,7 +690,6 @@ public static class Library
         OnLibraryChanged?.Invoke();
     }
 
-    // Spaces in model names are replaced with underscores (_)
     public static string SanitizeModelName(string? typeName, string fallback = "Model")
     {
         if (string.IsNullOrWhiteSpace(typeName))
@@ -1023,10 +1006,6 @@ public static class Library
 
     private static string GetModelFilePath(string guid) => Path.Combine(PresetsDirectory, $"{guid}.json");
 
-    // --- 6. OWNERSHIP CALCULATION & SEARCH ENGINE ---
-
-    // Collects all model GUIDs currently bound to any slot in _rootSlots or Library models.
-    // A model in Library is Owned if its GUID is in this set, and Orphaned otherwise.
     private static HashSet<string> CollectOwnedModelGuids()
     {
         var ownedGuids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1065,13 +1044,11 @@ public static class Library
         EnsureInitialized();
         ParseSearchQuery(rawQuery, out var hasFilters, out var hadFilters, out var onlyDefaults, out var pattern);
 
-        // Pre-calculate Owned vs. Orphaned status once per search execution (Section 6)
         var ownedGuids = CollectOwnedModelGuids();
         var results = new List<ModelSearchResult>();
 
         bool hasParentFilter = hasFilters.Count > 0 || hadFilters.Count > 0;
 
-        // 1. Default Templates (New)
         if (!hasParentFilter)
         {
             var allowedDescriptors = CategoryRegistry.GetAllowedModels(category, modelInterfaceType);
@@ -1100,7 +1077,6 @@ public static class Library
             return SortSearchResults(results);
         }
 
-        // 2. Library Models without parent filter
         if (!hasParentFilter)
         {
             foreach (var entry in _models.Values)
@@ -1133,7 +1109,6 @@ public static class Library
             return SortSearchResults(results);
         }
 
-        // 3. Library Models with has: / had: parent filter (supports transitive parenting)
         string primaryParentFilter = hasFilters.Count > 0 ? hasFilters[0] : hadFilters[0];
         bool primaryIsHad = hasFilters.Count == 0;
 
@@ -1390,8 +1365,6 @@ public static class Library
             .ToList();
     }
 }
-
-// --- 7. CUSTOM JSON CONVERTERS ---
 
 public sealed class ColorJsonConverter : JsonConverter<Color>
 {

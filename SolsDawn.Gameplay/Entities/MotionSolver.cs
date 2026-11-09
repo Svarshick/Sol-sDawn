@@ -3,8 +3,6 @@ using SolsDawn.Core.Logic;
 
 namespace SolsDawn.Gameplay.Entities;
 
-// --- 1. GAME-SPECIFIC (MOTION) ATTRIBUTES & ENUMS ---
-
 [Flags]
 public enum AllowedPhase
 {
@@ -17,8 +15,8 @@ public enum AllowedPhase
 [Flags]
 public enum AllowedSpeed
 {
-    Normal     = 1 << 0, // for speed <= ControlledSpeed
-    GreatSpeed = 1 << 1, // for speed > ControlledSpeed
+    Normal     = 1 << 0,
+    GreatSpeed = 1 << 1,
     Any        = Normal | GreatSpeed
 }
 
@@ -72,8 +70,6 @@ public class MotionModelAttribute : ModelAttribute
 
     public override string GetTagsDescription() => $"Phases: {Phases} | Speed: {Speed}";
 }
-
-// --- 2. MODEL IMPLEMENTATIONS ---
 
 [MotionModel(AllowedPhase.Drive, AllowedSpeed.GreatSpeed)]
 public class FrictionGreatSpeedDrive : IMotionModel
@@ -148,8 +144,6 @@ public class LinearTurnModel : IMotionModel
         return nextVelocity;
     }
 }
-
-// --- 3. THE SOLVER (OWNER OF THE CATEGORIES) ---
 
 public class MotionSolver
 {

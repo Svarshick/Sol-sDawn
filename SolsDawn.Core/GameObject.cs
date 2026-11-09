@@ -11,7 +11,6 @@ public abstract class Component : IUpdatable, IDrawable
     {
         GameObject = gameObject;
         IsSticky = isSticky;
-        //NOTE exception issue https://aistudio.google.com/prompts/1vhcj4zRFCU6uZrlyz3pYAGzul-2SGJ9x
         gameObject.AddComponent(this);
     }
 

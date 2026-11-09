@@ -15,15 +15,15 @@ public class Input : IUpdatable
     public (Vector2 ScreenPosition, bool IsPressed) Fire { get; private set; }
     public (Vector2 ScreenPosition, bool IsPressed) Blade { get; private set; }
     
-    public event Action<Vector2>? OnMove; // (Direction)
-    public event Action? OnJump; // void
+    public event Action<Vector2>? OnMove;
+    public event Action? OnJump;
     
-    public event Action<Vector2>? OnTeleportStarted; // (ScreenPoint)
-    public event Action<Vector2, double>? OnTeleportUpdated; // (ScreenPoint, ElapsedTime)
-    public event Action<Vector2, double>? OnTeleportReleased; // (ScreenPoint, ElapsedTime)
+    public event Action<Vector2>? OnTeleportStarted;
+    public event Action<Vector2, double>? OnTeleportUpdated;
+    public event Action<Vector2, double>? OnTeleportReleased;
     
-    public event Action<Vector2>? OnFire; // (ScreenPosition)
-    public event Action<Vector2>? OnBlade; // (ScreenPosition)
+    public event Action<Vector2>? OnFire;
+    public event Action<Vector2>? OnBlade;
 
     public void Update()
     {

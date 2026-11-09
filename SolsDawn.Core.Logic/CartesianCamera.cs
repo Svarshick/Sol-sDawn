@@ -83,7 +83,7 @@ public class CartesianCamera
     {
         var viewport = _graphicsDevice.Viewport;
         return Matrix.CreateTranslation(new Vector3(-Position.X, -Position.Y, 0))
-               * Matrix.CreateScale(new Vector3(PPU * Zoom, -(PPU * Zoom), 1)) // The negative Y scale handles the axis flip
+               * Matrix.CreateScale(new Vector3(PPU * Zoom, -(PPU * Zoom), 1))
                * Matrix.CreateTranslation(new Vector3(viewport.Width / 2f, viewport.Height / 2f, 0));
     }
 
