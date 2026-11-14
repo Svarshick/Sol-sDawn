@@ -1,23 +1,32 @@
-+ 1. фреймворк для работы с коллизиями
-в итоге мы делаем подтипы атаки/типизируем данные атаки. swtich-case проходится по всем типам атак.
-Со временем могут обнаружится общие паттерны и типы атак сведутся к одному типу с параметрами или
-фиксированный небольшой набор типов (например, выпад (копье с направлением), размах (вращение вокруг оси)
++ 1. Collision framework
+In the end we make attack subtypes / type the attack data. A switch-case goes over all attack types.
+Over time common patterns may appear, and attack types reduce to one type with parameters or
+a small fixed set of types (for example, thrust (spear with direction), swing (rotation around an axis))
 
-+ 2. анимации
-оставляем стейты как есть
++ 2. Animations
+Keep the states as they are
 
-+ 3. рутины + Task -> кастомный IAsyncResult, который работает как рутина и хранит контекст
++ 3. Routines + Task -> custom IAsyncResult that works as a routine and keeps context
 
-4. редактор коллайдера
-пока кружки, треугольники, квадратики
+4. Collider editor
+Circles, triangles, squares for now
 
-МЕТАБЛОК
+META
 
-1. корректное изменение значений конфига в рантайме
+1. Correct runtime changes of config values
 
-2. снимок состояния и запись инпута. Например каждую минуту делать снимок и писать инпут
-следующей минуты. Если происходит бага, то можно воспроизвести. Держать по два+ экземпляра
-для едж кейсов "бага начинается в первой минуте, но продолжается во второй"
+2. State snapshot and input recording. For example, take a snapshot every minute and record the input
+of the next minute. If a bug happens, it can be reproduced. Keep two or more instances
+for edge cases like "the bug starts in the first minute but continues in the second"
+Blocker: Jobs are built on C# async, and a state machine can't be serialized. Options: re-simulate
+from a known point (fixed timestep + recorded input) or a custom language/VM for jobs.
 
-3. полноценный дебаг с отмоткой и мб ветвлением. Можно остановить игру, отмотать на несколько
-кадров. Изменить инпут, конфиг и запустить. Требует реализации предыдущих пунктов
+3. Full debugging with rewind and maybe branching. Stop the game, rewind a few
+frames, change input or config and run again. Requires the previous items
+
+4. Job visibility
+- Automatic job names: JobAsyncMethodBuilder.Start<TStateMachine> takes the method name from the
+  compiler type name (<BladeAttack>d__3 -> BladeAttack), cached per type. No call-site annotations.
+- Optional Job.Tag string for runtime details ("pw open", "stage 2").
+- ImGui job tree: walk from the root job through subjobs and BlockJob, show name, tag, status
+  and active timers.
