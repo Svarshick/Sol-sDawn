@@ -7,7 +7,7 @@ namespace SolsDawn.Gameplay.Entities;
 public class Player : Core.Logic.Gameplay.Entity<PlayerBoard, PlayerAnimations>
 {
     public Player(GameObject go, PlayerBoard board, PlayerAnimations animation)
-        : base(go, null, board, animation, Shapes.Circle(board.Specs.GetActiveInstance().ColliderRadius), Layer.None, Layer.None)
+        : base(go, null, board, animation, Shapes.Circle(board.Specs.GetActiveInstance().ColliderRadius), Layer.Player)
     {
     }
 }

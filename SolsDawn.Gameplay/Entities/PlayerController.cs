@@ -1,7 +1,5 @@
 using nkast.Aether.Physics2D;
 using nkast.Aether.Physics2D.Collision;
-using nkast.Aether.Physics2D.Common;
-using nkast.Aether.Physics2D.Dynamics;
 using SolsDawn.Core.Logic;
 using SolsDawn.Gameplay.Utils;
 
@@ -27,7 +25,7 @@ public class PlayerController
         if (specs.ColliderRadius != _colliderRadius)
         {
             _colliderRadius = specs.ColliderRadius;
-            _player.Collider.SetShape(Shapes.Circle(_colliderRadius));
+            _player.Collider.Shape = Shapes.Circle(_colliderRadius);
         }
 
         if (_player.State is null)
@@ -72,18 +70,17 @@ public class PlayerController
             _player.StateJob?.Update();
 
         var delta = board.Velocity * DeltaTime;
-        var result = Core.Logic.Gameplay.Physics.CircleCast(
+        var result = Physics.CircleCast(
             _player.Transform.Position,
             _player.Transform.Position + delta,
             specs.ColliderRadius,
-            Layer.Player,
             Layer.Wall,
-            filter: OneWayPlatformFilter);
+            OneWayPlatformFilter);
 
         if (result.Hit)
         {
             _player.Transform.Position += delta * result.Fraction;
-            board.CurrentPlatform = (result.HitFixture.Tag as Core.Logic.Gameplay.Collider)!.GameObject.GetComponent<Platform>();
+            board.CurrentPlatform = result.Collider.GameObject.GetComponent<Platform>();
         }
         else
         {
@@ -104,22 +101,19 @@ public class PlayerController
             return false;
 
         var specs = _player.Board.Specs.GetActiveInstance();
-        var xfA = new Transform(_player.Transform.WorldPosition, _player.Transform.WorldRotation);
-        var xfB = new Transform(platform.Transform.WorldPosition, platform.Transform.WorldRotation);
+        var xfA = _player.Collider.Pose;
+        var xfB = platform.Collider.Pose;
         return Collision.TestOverlap(
             Shapes.Circle(specs.ColliderRadius + Settings.LinearSlop),
             0,
-            platform._edge,
+            platform.Edge,
             0,
             ref xfA,
             ref xfB);
     }
 
-    private bool OneWayPlatformFilter(Vector2 from, Vector2 to, float radius, float fraction, Fixture fixture)
+    private bool OneWayPlatformFilter(Vector2 from, Vector2 to, float radius, float fraction, Collider collider)
     {
-        if (fixture.Tag is not Core.Logic.Gameplay.Collider collider)
-            return false;
-
         if (!collider.GameObject.TryGetComponent<Platform>(out var platform))
             return false;
 

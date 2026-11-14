@@ -72,7 +72,6 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     protected override void Update(GameTime gameTime)
     {
         Time.Update(gameTime);
-        Physics.Step(gameTime);
         
         _input.Update();
         if (_firstUpdate)

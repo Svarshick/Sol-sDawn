@@ -22,6 +22,8 @@
     <Using Include="SolsDawn.Core.Logic.Game" Alias="Game" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Entity" Alias="Entity" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.State" Alias="State" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.Collider" Alias="Collider" />
+    <Using Include="SolsDawn.Core.Logic.Gameplay.Physics" Alias="Physics" />
     
     <Using Include="SolsDawn.Core.Logic.Gameplay.Input.TeleportState" Alias="InputTeleportState" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job" />

@@ -21,8 +21,6 @@ public abstract class State<TEntity> : State
 public abstract class Entity : Component
 {
     public readonly Collider Collider;
-    public readonly Category SelfLayer;
-    public readonly Category CollidesLayer;
     
     public readonly Job? RootJob;
     public State? State { get; private set; }
@@ -32,14 +30,11 @@ public abstract class Entity : Component
         GameObject go, 
         Job? rootJob, 
         Shape shape,
-        Category selfLayer,
-        Category collidesLayer)
+        Category layer)
         : base(go, true)
     {
         RootJob = rootJob;
-        SelfLayer = selfLayer;
-        CollidesLayer = collidesLayer;
-        Collider = new(go, shape, SelfLayer, CollidesLayer, BodyType.Kinematic);
+        Collider = new(go, shape, layer);
     }
     
     public void Enter(State state)
@@ -82,9 +77,8 @@ public abstract class Entity<TBoard, TAnimation> : Entity
         TBoard board, 
         TAnimation animationPlayer, 
         Shape shape,
-        Category selfLayer,
-        Category collidesLayer) 
-        : base(go, job, shape, selfLayer, collidesLayer)
+        Category layer) 
+        : base(go, job, shape, layer)
     {
         Board = board;
         Animator = new Animator<TAnimation>(go, animationPlayer);
