@@ -31,7 +31,6 @@ public class PlayerController
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");
 
-        var previousState = _player.State;
         if (_player.State is IdleState or RunState)
         {
             if (!board.OnGround)
@@ -66,8 +65,7 @@ public class PlayerController
             }
         }
 
-        if (_player.State == previousState)
-            _player.StateJob?.Update();
+        _player.UpdateState();
 
         var delta = board.Velocity * DeltaTime;
         var result = Physics.CircleCast(

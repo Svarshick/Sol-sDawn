@@ -59,9 +59,19 @@ public abstract class Entity : Component
         using (JobContext.Use(RootJob))
         {
             State = state;
-            StateJob = state.Job(this);
+            JobAsyncMethodBuilder.DeferStart = true;
+            try
+            {
+                StateJob = state.Job(this);
+            }
+            finally
+            {
+                JobAsyncMethodBuilder.DeferStart = false;
+            }
         }
     }
+
+    public void UpdateState() => StateJob?.Update();
 }
 
 public abstract class Entity<TBoard, TAnimation> : Entity 

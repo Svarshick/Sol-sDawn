@@ -8,8 +8,12 @@ public struct JobAsyncMethodBuilder
 {
     [ThreadStatic] 
     internal static Job? PreallocatedJob;
+
+    [ThreadStatic]
+    internal static bool DeferStart;
     
     private readonly Job _job;
+    private readonly bool _deferStart;
 
     public static JobAsyncMethodBuilder Create()
     {
@@ -25,12 +29,15 @@ public struct JobAsyncMethodBuilder
         }
 
         JobContext.CurrentJob?.AddChild(job);
-        return new JobAsyncMethodBuilder(job);
+        var deferStart = DeferStart;
+        DeferStart = false;
+        return new JobAsyncMethodBuilder(job, deferStart);
     }
 
-    private JobAsyncMethodBuilder(Job job)
+    private JobAsyncMethodBuilder(Job job, bool deferStart)
     {
         _job = job;
+        _deferStart = deferStart;
     }
 
     public void Start<TStateMachine>(ref TStateMachine stateMachine) 
@@ -38,6 +45,11 @@ public struct JobAsyncMethodBuilder
     {
         if (_job.IsEnded)
             return;
+        if (_deferStart)
+        {
+            _job.NextFrameContinuation = JobStateMachineRunner<TStateMachine>.Rent(ref stateMachine, _job).MoveNextAction;
+            return;
+        }
         using (JobContext.Use(_job)) 
         {
             stateMachine.MoveNext();

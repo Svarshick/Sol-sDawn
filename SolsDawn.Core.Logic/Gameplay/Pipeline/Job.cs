@@ -108,7 +108,7 @@ public class Job
         _trackedResources.Add(timer);
     }
 
-    public void Update()
+    internal void Update()
     {
         if (IsEnded)
             return;
