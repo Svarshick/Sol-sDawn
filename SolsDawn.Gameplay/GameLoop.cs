@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 using SolsDawn.Core.Logic;
+using SolsDawn.Gameplay.Combat;
 using SolsDawn.Gameplay.Entities;
 using SolsDawn.Gameplay.Utils;
 
@@ -14,6 +15,7 @@ public static class GameLoop
         Library.Initialize(DataDirectory());
         G.Config = Library.LoadRoot<GameConfig>();
         ImGuiDrawer = Debug.Draw;
+        Effects.Run();
         BeforeUpdate();
         Update();
         AfterUpdate();
@@ -67,6 +69,10 @@ public static class GameLoop
 
     private static async Job Update()
     {
+        var enemyBoard = new EnemyBoard { Specs = G.Config.Enemy };
+        var enemy = new Enemy(CreateObject(new Vector2(14, 1.5f)), enemyBoard, new EnemyAnimations(enemyBoard));
+        enemy.Run();
+
         while (true)
         {
             await NextFrame();
@@ -77,6 +83,7 @@ public static class GameLoop
     {
         while (true)
         {
+            CombatSystem.Resolve();
             Camera.Position = G.Player.Transform.Position;
             await NextFrame();
         }

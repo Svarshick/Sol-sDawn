@@ -11,9 +11,31 @@ namespace SolsDawn.Core.Logic.Gameplay;
 public static class Physics
 {
     private static readonly List<Collider> Colliders = new();
+    private static readonly List<Collider> CollidersToAdd = new();
+    private static int _activeCasts;
 
-    internal static void Add(Collider collider) => Colliders.Add(collider);
-    internal static void Remove(Collider collider) => Colliders.Remove(collider);
+    internal static void Add(Collider collider) => CollidersToAdd.Add(collider);
+
+    private static void Sync()
+    {
+        if (_activeCasts > 0)
+            return;
+
+        int alive = 0;
+        for (int i = 0; i < Colliders.Count; i++)
+        {
+            if (!Colliders[i].IsDestroyed)
+                Colliders[alive++] = Colliders[i];
+        }
+        Colliders.RemoveRange(alive, Colliders.Count - alive);
+
+        foreach (var collider in CollidersToAdd)
+        {
+            if (!collider.IsDestroyed)
+                Colliders.Add(collider);
+        }
+        CollidersToAdd.Clear();
+    }
 
     public static CircleCastResult CircleCast(
         Vector2 from,
@@ -37,34 +59,43 @@ public static class Physics
             TMax = 1
         };
 
-        foreach (var collider in Colliders)
+        Sync();
+        _activeCasts++;
+        try
         {
-            if ((collider.Layer & layers) == Category.None)
-                continue;
-
-            var pose = collider.Pose;
-            var position = collider.Transform.WorldPosition;
-            var rotation = collider.Transform.WorldRotation;
-            toiInput.SweepB = new Sweep { C0 = position, C = position, A0 = rotation, A = rotation };
-
-            var shape = collider.Shape;
-            for (int childIndex = 0; childIndex < shape.ChildCount; childIndex++)
+            foreach (var collider in Colliders)
             {
-                shape.ComputeAABB(out var aabb, ref pose, childIndex);
-                if (!AABB.TestOverlap(ref movementBounds, ref aabb))
+                if (collider.IsDestroyed || (collider.Layer & layers) == Category.None)
                     continue;
 
-                toiInput.ProxyB = new DistanceProxy(shape, childIndex);
-                TimeOfImpact.CalculateTimeOfImpact(out var toiOutput, ref toiInput);
-                if (toiOutput.State == TOIOutputState.Touching && toiOutput.T < bestHit.Fraction)
+                var pose = collider.Pose;
+                var position = collider.Transform.WorldPosition;
+                var rotation = collider.Transform.WorldRotation;
+                toiInput.SweepB = new Sweep { C0 = position, C = position, A0 = rotation, A = rotation };
+
+                var shape = collider.Shape;
+                for (int childIndex = 0; childIndex < shape.ChildCount; childIndex++)
                 {
-                    if (filter?.Invoke(from, to, radius, toiOutput.T, collider) == false)
+                    shape.ComputeAABB(out var aabb, ref pose, childIndex);
+                    if (!AABB.TestOverlap(ref movementBounds, ref aabb))
                         continue;
-                    bestHit.Hit = true;
-                    bestHit.Fraction = toiOutput.T;
-                    bestHit.Collider = collider;
+
+                    toiInput.ProxyB = new DistanceProxy(shape, childIndex);
+                    TimeOfImpact.CalculateTimeOfImpact(out var toiOutput, ref toiInput);
+                    if (toiOutput.State == TOIOutputState.Touching && toiOutput.T < bestHit.Fraction)
+                    {
+                        if (filter?.Invoke(from, to, radius, toiOutput.T, collider) == false)
+                            continue;
+                        bestHit.Hit = true;
+                        bestHit.Fraction = toiOutput.T;
+                        bestHit.Collider = collider;
+                    }
                 }
             }
+        }
+        finally
+        {
+            _activeCasts--;
         }
 
         return bestHit;
@@ -88,12 +119,12 @@ public sealed class Collider : Component
     private readonly ColliderAnimation _animation;
     private readonly double _activationTime;
 
-    public Collider(GameObject go, Shape shape, Category layer) : base(go)
+    public Collider(GameObject go, Shape shape, Category layer, Debug.Collider.Category debugCategory = Debug.Collider.Category.Default) : base(go)
     {
         Shape = shape;
         Layer = layer;
         _activationTime = Time.TotalGameTime.TotalSeconds;
-        _animation = new ColliderAnimation(Debug.Collider.Category.Default, this, 1);
+        _animation = new ColliderAnimation(debugCategory, this, 1);
         _animation.Transform.Position = Transform.WorldPosition;
         _animation.Transform.Rotation = Transform.WorldRotation;
         Game.AnimationsPool.Add(_animation);
@@ -129,8 +160,6 @@ public sealed class Collider : Component
         {
             _animation.Kill();
         }
-
-        Physics.Remove(this);
     }
 }
 

@@ -1,6 +1,7 @@
 using nkast.Aether.Physics2D;
 using nkast.Aether.Physics2D.Collision;
 using SolsDawn.Core.Logic;
+using SolsDawn.Gameplay.Combat;
 using SolsDawn.Gameplay.Utils;
 
 namespace SolsDawn.Gameplay.Entities;
@@ -26,12 +27,48 @@ public class PlayerController
         {
             _colliderRadius = specs.ColliderRadius;
             _player.Collider.Shape = Shapes.Circle(_colliderRadius);
+            _player.Hurtbox.Collider.Shape = Shapes.Circle(_colliderRadius);
         }
 
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");
 
-        if (_player.State is IdleState or RunState)
+        var state = _player.State;
+        var center = _player.Transform.Position;
+        var canAttack = state is IdleState or RunState or JumpState or FallState or BounceState;
+        var canDownAttack = state is JumpState or FallState or BounceState or BladeState;
+
+        if (canDownAttack && !board.OnGround && Input.Jump)
+        {
+            board.DownAttackParried = false;
+            _player.Enter(specs.DownAttack.GetActiveInstance());
+        }
+        else if (canAttack && TryPointer(Input.Blade, center, out var bladePointer))
+        {
+            board.AttackPointer = bladePointer;
+            _player.Enter(specs.Blade.GetActiveInstance());
+        }
+        else if (canAttack && TryPointer(Input.Fire, center, out var firePointer))
+        {
+            board.AttackPointer = firePointer;
+            _player.Enter(specs.Fire.GetActiveInstance());
+        }
+        else if (state is BladeState or FireState or DownAttackState)
+        {
+            if (_player.StateJob is not { IsEnded: false })
+            {
+                if (state is DownAttackState && board.DownAttackParried)
+                    _player.Enter(specs.Bounce.GetActiveInstance());
+                else
+                    EnterGroundedOrFall();
+            }
+        }
+        else if (state is BounceState)
+        {
+            if (board.OnGround || board.Velocity.Y <= 0)
+                EnterGroundedOrFall();
+        }
+        else if (_player.State is IdleState or RunState)
         {
             if (!board.OnGround)
             {
@@ -75,6 +112,7 @@ public class PlayerController
             Layer.Wall,
             OneWayPlatformFilter);
 
+        board.MovementCastHit = result.Hit;
         if (result.Hit)
         {
             _player.Transform.Position += delta * result.Fraction;
@@ -90,6 +128,24 @@ public class PlayerController
                 _player.Board.CurrentPlatform = null;
             }
         }
+    }
+
+    private void EnterGroundedOrFall()
+    {
+        var board = _player.Board;
+        var specs = board.Specs.GetActiveInstance();
+        if (!board.OnGround)
+            _player.Enter(specs.Fall.GetActiveInstance());
+        else if (board.Velocity == Vector2.Zero && Input.Move == Vector2.Zero)
+            _player.Enter(specs.Idle.GetActiveInstance());
+        else
+            _player.Enter(specs.Run.GetActiveInstance());
+    }
+
+    private static bool TryPointer((Vector2 ScreenPosition, bool IsPressed) input, Vector2 center, out Vector2 pointer)
+    {
+        pointer = Camera.ScreenToWorld(input.ScreenPosition);
+        return input.IsPressed && CombatMath.IsValidPointer(center, pointer);
     }
 
     private bool TestOnGround()

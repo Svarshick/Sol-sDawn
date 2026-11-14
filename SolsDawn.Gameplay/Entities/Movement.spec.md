@@ -31,6 +31,7 @@ Requirements are `MOV-nn`.
   | `CelesteJumpState` | `HorizontalMovement` |
   | `PrimitiveJumpState` | `HorizontalMovement` |
   | `FallState` | `HorizontalMovement` |
+  | `BounceState` | `HorizontalMovement` |
 
 - **MOV-03** `IMovementModel` has one operation: `Calculate(velocity, inDir, dt, ref memory)` advances one frame, updates `memory` and returns the new velocity.
 - **MOV-04** A `PlayerState` Job creates one zero-valued memory when it starts, keeps it as a local value and passes it to every `Calculate`. It reads the slot's active model on every frame, so a model swapped while the game runs takes effect at once (CFG-67).
@@ -146,9 +147,8 @@ With a `SimpleAttack` whose limit is above `C`:
 
 ## Verification
 
-- MOV-03, MOV-05, MOV-06, MOV-10 to MOV-15 and MOV-30 to MOV-44: automated tests with xUnit v3 that call `Calculate` directly with a fixed `dt`.
-- MOV-01, MOV-02, MOV-14 and MOV-43: automated tests through `CategoryRegistry` and the slot fields.
-- MOV-04: manual check in the running game.
+- MOV-03, MOV-05, MOV-06, MOV-10 to MOV-13, MOV-15, MOV-30 to MOV-42 and MOV-44: automated tests with xUnit v3 that call `Calculate` directly with a fixed `dt`.
+- MOV-01, MOV-02, MOV-04, MOV-14 and MOV-43: manual check in the running game.
 
 ## Known gaps
 

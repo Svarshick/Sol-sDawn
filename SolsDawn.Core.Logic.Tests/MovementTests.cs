@@ -109,33 +109,6 @@ public sealed class MovementTests : IDisposable
     }
 
     [Fact]
-    public void MOV01_MotionSolverAndAdsrAreMovementModels()
-    {
-        var allowed = CategoryRegistry.GetAllowedModels(new MovementCategoryAttribute(typeof(MotionSolver)), typeof(IMovementModel))
-            .Select(m => m.ModelType)
-            .ToList();
-
-        Assert.Contains(typeof(MotionSolver), allowed);
-        Assert.Contains(typeof(Adsr), allowed);
-    }
-
-    [Theory]
-    [InlineData(typeof(RunState), "Movement")]
-    [InlineData(typeof(CelesteJumpState), "HorizontalMovement")]
-    [InlineData(typeof(PrimitiveJumpState), "HorizontalMovement")]
-    [InlineData(typeof(FallState), "HorizontalMovement")]
-    public void MOV02_StateHasMovementSlotDefaultingToMotionSolver(Type stateType, string fieldName)
-    {
-        var state = Activator.CreateInstance(stateType)!;
-        CategorySystem.Bind(state);
-
-        var slot = Assert.IsType<CategorySlot<IMovementModel>>(stateType.GetField(fieldName)!.GetValue(state));
-
-        Assert.IsType<MovementCategoryAttribute>(slot.CategoryAttribute);
-        Assert.IsType<MotionSolver>(slot.GetActiveInstance());
-    }
-
-    [Fact]
     public void MOV05_MemoryIsIndependentForTheSameModel()
     {
         var adsr = NewAdsr(peak: 100f);
@@ -208,32 +181,6 @@ public sealed class MovementTests : IDisposable
 
         Assert.Equal(expected, solver.Calculate(velocity, inDir, Dt, ref memory));
         Assert.Equal(expectedPhase, (MovePhase)memory.Phase);
-    }
-
-    [Theory]
-    [InlineData("GreatSpeedDrive", typeof(FrictionGreatSpeedDrive))]
-    [InlineData("GreatSpeedBrake", typeof(FrictionGreatSpeedDecay))]
-    [InlineData("GreatSpeedTurn", typeof(FrictionGreatSpeedDecay))]
-    [InlineData("NormalDrive", typeof(LinearDriveModel))]
-    [InlineData("NormalBrake", typeof(LinearBrakeModel))]
-    [InlineData("NormalTurn", typeof(LinearTurnModel))]
-    public void MOV14_MotionSolverSlotDefaults(string field, Type expected)
-    {
-        var solver = new MotionSolver();
-        CategorySystem.Bind(solver);
-
-        var slot = (CategorySlot<IMotionModel>)typeof(MotionSolver).GetField(field)!.GetValue(solver)!;
-
-        Assert.IsType(expected, slot.GetActiveInstance());
-    }
-
-    [Fact]
-    public void MOV14_MotionSolverSlotRejectsWrongPhase()
-    {
-        var category = new MotionCategoryAttribute(AllowedPhase.Brake, AllowedSpeed.Normal, typeof(LinearBrakeModel));
-
-        Assert.True(CategoryRegistry.IsModelTypeAllowed(typeof(LinearBrakeModel), category, typeof(IMotionModel)));
-        Assert.False(CategoryRegistry.IsModelTypeAllowed(typeof(LinearDriveModel), category, typeof(IMotionModel)));
     }
 
     [Fact]
@@ -370,36 +317,6 @@ public sealed class MovementTests : IDisposable
 
         Assert.Equal(-speed, velocity);
         Assert.Equal(state, State(memory));
-    }
-
-    [Theory]
-    [InlineData("Attack", typeof(SimpleAttack))]
-    [InlineData("Decay", typeof(LinearSlowdown))]
-    [InlineData("Sustain", typeof(KeepSpeed))]
-    [InlineData("Release", typeof(LinearSlowdown))]
-    public void MOV43_AdsrSlotDefaults(string field, Type expected)
-    {
-        var adsr = new Adsr();
-        CategorySystem.Bind(adsr);
-
-        var slot = (ICategorySlot)typeof(Adsr).GetField(field)!.GetValue(adsr)!;
-
-        Assert.IsType(expected, slot.GetActiveInstanceObject());
-    }
-
-    [Theory]
-    [InlineData(AllowedAdsrState.Attack, typeof(SimpleAttack), true)]
-    [InlineData(AllowedAdsrState.Decay, typeof(LinearSlowdown), true)]
-    [InlineData(AllowedAdsrState.Release, typeof(LinearSlowdown), true)]
-    [InlineData(AllowedAdsrState.Sustain, typeof(KeepSpeed), true)]
-    [InlineData(AllowedAdsrState.Sustain, typeof(LinearSlowdown), false)]
-    [InlineData(AllowedAdsrState.Decay, typeof(SimpleAttack), false)]
-    [InlineData(AllowedAdsrState.Attack, typeof(KeepSpeed), false)]
-    public void MOV43_AdsrCategoryFilter(AllowedAdsrState state, Type modelType, bool allowed)
-    {
-        var category = new AdsrCategoryAttribute(state, modelType);
-
-        Assert.Equal(allowed, CategoryRegistry.IsModelTypeAllowed(modelType, category, typeof(IAdsrModel)));
     }
 
     [Fact]

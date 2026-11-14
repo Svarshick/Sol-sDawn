@@ -30,3 +30,12 @@ frames, change input or config and run again. Requires the previous items
 - Optional Job.Tag string for runtime details ("pw open", "stage 2").
 - ImGui job tree: walk from the root job through subjobs and BlockJob, show name, tag, status
   and active timers.
+
+5. Combat input
+- Input buffering for Blade, Fire and Jump presses.
+- Cooldowns per attack model.
+
+6. Animation lifetime
+Traces and fades are added to the animations pool without an owner job, while some animations are job
+resources. Give every visual an owner (the job that made it, or a game-loop job for effects that outlive it)
+and clean up the animation workarounds.
