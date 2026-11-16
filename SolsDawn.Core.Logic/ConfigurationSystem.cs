@@ -12,13 +12,6 @@ namespace SolsDawn.Core.Logic;
 [AttributeUsage(AttributeTargets.Field)]
 public abstract class CategoryAttribute : Attribute
 {
-    public Type DefaultFallbackType { get; }
-
-    protected CategoryAttribute(Type defaultFallbackType)
-    {
-        DefaultFallbackType = defaultFallbackType;
-    }
-
     public virtual string GetTagsDescription() => GetType().Name.Replace("CategoryAttribute", "");
 }
 
@@ -27,8 +20,15 @@ public abstract class ModelAttribute : Attribute
 {
     public abstract bool Satisfies(CategoryAttribute slot);
 
+    public virtual int Breadth => 1;
+
     public virtual string GetTagsDescription() => GetType().Name.Replace("ModelAttribute", "");
 }
+
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class DefaultAttribute : Attribute;
+
+public sealed record DefaultsReport(IReadOnlyList<string> Warnings, IReadOnlyList<string> Errors);
 
 public interface ICategorySlot
 {
@@ -57,6 +57,7 @@ public class CategorySlot<T> : ICategorySlot where T : class
     public List<string> HistoryGuids { get; set; } = new();
 
     private bool _missingLogged;
+    private ModelEntry? _defaultEntry;
 
     [JsonIgnore] public CategoryAttribute? CategoryAttribute { get; private set; }
     [JsonIgnore] public string FieldName { get; private set; } = typeof(T).Name;
@@ -70,6 +71,7 @@ public class CategorySlot<T> : ICategorySlot where T : class
     public void Configure(CategoryAttribute? attribute, string fieldName)
     {
         CategoryAttribute = attribute;
+        _defaultEntry = null;
         if (!string.IsNullOrWhiteSpace(fieldName))
             FieldName = fieldName;
     }
@@ -127,7 +129,7 @@ public class CategorySlot<T> : ICategorySlot where T : class
     public string GetActiveModelName() => GetActiveModelEntry().Name;
 
     private ModelEntry GetDefaultEntry() =>
-        CategoryRegistry.GetDefaultModelEntry(CategoryRegistry.GetDefaultModelType(typeof(T), CategoryAttribute));
+        _defaultEntry ??= CategoryRegistry.GetDefaultModelEntry(CategoryRegistry.GetDefaultModelType(typeof(T), CategoryAttribute));
 
     public ModelEntry CopyModel(ModelSearchResult source)
     {
@@ -158,6 +160,7 @@ public class CategorySlot<T> : ICategorySlot where T : class
 public sealed record ModelDescriptor(
     Type ModelType,
     ModelAttribute Attribute,
+    bool IsMarkedDefault,
     string Name,
     string TagsDescription,
     ModelEntry DefaultEntry);
@@ -202,6 +205,7 @@ public static class CategoryRegistry
                     _models.Add(new ModelDescriptor(
                         type,
                         modelAttr,
+                        type.GetCustomAttribute<DefaultAttribute>(inherit: false) != null,
                         Library.SanitizeModelName(type.Name),
                         modelAttr.GetTagsDescription(),
                         defaultEntry));
@@ -299,21 +303,82 @@ public static class CategoryRegistry
         return null;
     }
 
-    public static Type GetDefaultModelType(Type modelInterfaceType, CategoryAttribute? category)
+    public static Type GetDefaultModelType(Type modelInterfaceType, CategoryAttribute? category) =>
+        ResolveDefault(modelInterfaceType, category, out _)
+        ?? throw new InvalidOperationException($"No model type fits {Describe(modelInterfaceType, category)}.");
+
+    public static Type? ResolveDefault(Type modelInterfaceType, CategoryAttribute? category, out IReadOnlyList<Type> tied)
     {
-        if (category?.DefaultFallbackType != null && modelInterfaceType.IsAssignableFrom(category.DefaultFallbackType))
-            return category.DefaultFallbackType;
+        tied = Array.Empty<Type>();
+        var candidates = GetAllowedModels(category, modelInterfaceType);
+        if (candidates.Count == 0)
+            return null;
 
-        var allowed = GetAllowedModels(category, modelInterfaceType);
-        if (allowed.Count > 0)
-            return allowed[0].ModelType;
+        var marked = candidates.Where(m => m.IsMarkedDefault).ToList();
+        var pool = marked.Count > 0 ? marked : candidates.ToList();
+        var breadth = pool.Min(m => m.Attribute.Breadth);
+        var narrowest = pool
+            .Where(m => m.Attribute.Breadth == breadth)
+            .OrderBy(m => m.ModelType.Name, StringComparer.Ordinal)
+            .ThenBy(m => m.ModelType.FullName, StringComparer.Ordinal)
+            .Select(m => m.ModelType)
+            .ToList();
 
-        var anyAssignable = EnsureModelsLoaded().FirstOrDefault(m => modelInterfaceType.IsAssignableFrom(m.ModelType));
-        if (anyAssignable != null)
-            return anyAssignable.ModelType;
-
-        throw new InvalidOperationException($"No valid Model Type found for {modelInterfaceType.Name}");
+        if (narrowest.Count > 1)
+            tied = narrowest;
+        return narrowest[0];
     }
+
+    public static DefaultsReport CheckDefaults(IEnumerable<Type> types)
+    {
+        var warnings = new List<string>();
+        var errors = new List<string>();
+        var visited = new HashSet<Type>();
+
+        foreach (var type in types)
+            Walk(type, type.Name);
+
+        return new DefaultsReport(warnings, errors);
+
+        void Walk(Type type, string path)
+        {
+            if (!visited.Add(type))
+                return;
+
+            foreach (var field in GetPublicFields(type))
+            {
+                var fieldType = field.FieldType;
+                var fieldPath = $"{path}.{field.Name}";
+
+                if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(CategorySlot<>))
+                {
+                    var modelType = fieldType.GetGenericArguments()[0];
+                    var category = field.GetCustomAttribute<CategoryAttribute>();
+                    var chosen = ResolveDefault(modelType, category, out var tied);
+                    if (chosen == null)
+                        errors.Add($"{fieldPath}: no model type fits {Describe(modelType, category)}");
+                    else if (tied.Count > 1)
+                        warnings.Add($"{fieldPath}: {string.Join(", ", tied.Select(t => t.Name))} tie as defaults, {chosen.Name} is chosen by name");
+                }
+                else if (fieldType.IsClass && fieldType != typeof(string))
+                {
+                    Walk(fieldType, fieldPath);
+                }
+            }
+        }
+    }
+
+    public static void ValidateDefaults(IEnumerable<Type> types)
+    {
+        var report = CheckDefaults(types);
+        if (report.Warnings.Count > 0)
+            Log.Logic.Warning("Default model ties:\n" + string.Join("\n", report.Warnings));
+        if (report.Errors.Count > 0)
+            throw new InvalidOperationException("Slots without a default model:\n" + string.Join("\n", report.Errors));
+    }
+
+    private static string Describe(Type modelInterfaceType, CategoryAttribute? category) =>
+        $"{modelInterfaceType.Name} ({category?.GetTagsDescription() ?? "any category"})";
 
     public static FieldInfo[] GetPublicFields(Type type)
     {
@@ -544,6 +609,7 @@ public static class Library
 
     public static void Initialize(string directory)
     {
+        CategoryRegistry.ValidateDefaults(CategoryRegistry.GetAllModels().Select(m => m.ModelType));
         PresetsDirectory = directory;
 
         _isLoading = true;
@@ -621,6 +687,7 @@ public static class Library
     public static T LoadRoot<T>() where T : class, new()
     {
         EnsureInitialized();
+        CategoryRegistry.ValidateDefaults([typeof(T)]);
         if (_models.TryGetValue(RootGuid, out var existing) && existing.Instance is T loaded)
             return loaded;
 

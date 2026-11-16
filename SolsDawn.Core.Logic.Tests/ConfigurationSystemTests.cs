@@ -24,7 +24,7 @@ public sealed class ConfigurationSystemTests : IDisposable
         results.Single(r => r.Guid == guid);
 
     private static IReadOnlyList<ModelSearchResult> SearchWeapons(string? query = null, string category = "one-handed") =>
-        Library.SearchModels(new TagCategory(category, typeof(Sword)), typeof(IWeapon), query);
+        Library.SearchModels(new TagCategory(category), typeof(IWeapon), query);
 
     private string FilePath(string guid) => Path.Combine(_directory, guid + ".json");
 
@@ -258,7 +258,7 @@ public sealed class ConfigurationSystemTests : IDisposable
         var other = Create<Node>("Other");
         Reference<Node>(parent, "Child", child);
 
-        var results = Library.SearchModels(new TagCategory("node", typeof(Node)), typeof(Node), null, child.Guid);
+        var results = Library.SearchModels(new TagCategory("node"), typeof(Node), null, child.Guid);
 
         Assert.DoesNotContain(results, r => r.Guid == parent.Guid);
         Assert.DoesNotContain(results, r => r.Guid == child.Guid);
@@ -482,5 +482,64 @@ public sealed class ConfigurationSystemTests : IDisposable
         Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
         using var document = JsonDocument.Parse(File.ReadAllText(FilePath(sword.Guid)));
         Assert.Equal("Blade", document.RootElement.GetProperty("Name").GetString());
+    }
+
+    private static PickHolder BoundPicks()
+    {
+        var holder = new PickHolder();
+        CategorySystem.Bind(holder);
+        return holder;
+    }
+
+    [Fact]
+    public void CFG25_NarrowerCandidateWins()
+    {
+        Assert.IsType<NarrowPick>(BoundPicks().Narrow.GetActiveInstance());
+    }
+
+    [Fact]
+    public void CFG25_MarkedCandidateBeatsNarrowerUnmarkedOne()
+    {
+        Assert.IsType<MarkedWidePick>(BoundPicks().Marked.GetActiveInstance());
+    }
+
+    [Fact]
+    public void CFG25_CFG26_TieIsDecidedByNameWithWarning()
+    {
+        Assert.IsType<TieA>(BoundPicks().Tie.GetActiveInstance());
+
+        var report = CategoryRegistry.CheckDefaults([typeof(PickHolder)]);
+
+        var warning = Assert.Single(report.Warnings);
+        Assert.StartsWith("PickHolder.Tie:", warning);
+        Assert.Contains("TieA", warning);
+        Assert.Contains("TieB", warning);
+    }
+
+    [Fact]
+    public void CFG26_CFG27_SlotWithoutCandidateIsAnErrorFoundInsideContainers()
+    {
+        var report = CategoryRegistry.CheckDefaults([typeof(PickHolder)]);
+
+        var error = Assert.Single(report.Errors);
+        Assert.StartsWith("PickHolder.Inner.Missing:", error);
+        Assert.Throws<InvalidOperationException>(() => CategoryRegistry.ValidateDefaults([typeof(PickHolder)]));
+    }
+
+    [Fact]
+    public void CFG27_LoadingRootChecksRootType()
+    {
+        Assert.Throws<InvalidOperationException>(() => Library.LoadRoot<PickHolder>());
+        Assert.False(File.Exists(FilePath(Library.RootGuid)));
+    }
+
+    [Fact]
+    public void CFG27_GameModelTypesAndRootHaveDefaults()
+    {
+        var types = CategoryRegistry.GetAllModels().Select(m => m.ModelType).Append(typeof(SolsDawn.Gameplay.GameConfig));
+        var report = CategoryRegistry.CheckDefaults(types);
+
+        Assert.Empty(report.Errors);
+        Assert.Empty(report.Warnings);
     }
 }

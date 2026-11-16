@@ -1,9 +1,13 @@
-using System;
 using System.Linq;
-using SolsDawn.Core.Logic;
-using SolsDawn.Gameplay.Combat;
+using System;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Combat;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
+using Collider = SolsDawn.Core.Logic.Gameplay.Collider;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
-namespace SolsDawn.Gameplay.Entities;
+namespace SolsDawn.Core.Logic.Entities;
 
 [Flags]
 public enum AllowedState
@@ -23,8 +27,7 @@ public class StateCategoryAttribute : CategoryAttribute
 {
     public AllowedState State { get; }
 
-    public StateCategoryAttribute(AllowedState state, Type fallbackType)
-        : base(fallbackType)
+    public StateCategoryAttribute(AllowedState state)
     {
         State = state;
     }
@@ -48,6 +51,8 @@ public class StateModelAttribute : ModelAttribute
 
         return (States & constraint.State) == constraint.State;
     }
+
+    public override int Breadth => System.Numerics.BitOperations.PopCount((uint)States);
 
     public override string GetTagsDescription() => $"States: {States}";
 }
@@ -75,7 +80,7 @@ public class IdleState : PlayerState
 [StateModel(AllowedState.Run)]
 public class RunState : PlayerState
 {
-    [MovementCategory(typeof(MotionSolver))]
+    [MovementCategory]
     public CategorySlot<IMovementModel> Movement = new();
 
     public override async Job Job(Player player)
@@ -107,6 +112,7 @@ public class RunState : PlayerState
 }
 
 [StateModel(AllowedState.Jump)]
+[Default]
 public class CelesteJumpState : JumpState
 {
     [Inspect(min: 0, max: PI / 2)] public float HorizontalDashAngle = PI / 6;
@@ -118,7 +124,7 @@ public class CelesteJumpState : JumpState
     [Inspect(min: 0)] public float VerticalDashFinalSpeed = 20;
     [Inspect(min: 0)] public float VerticalFriction = 15;
 
-    [MovementCategory(typeof(MotionSolver))]
+    [MovementCategory]
     public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)
@@ -185,7 +191,7 @@ public class PrimitiveJumpState : JumpState
     [Inspect(min: 0)] public float VerticalStartSpeed = 20;
     [Inspect(min: 0)] public float VerticalFriction = 15;
 
-    [MovementCategory(typeof(MotionSolver))]
+    [MovementCategory]
     public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)
@@ -223,7 +229,7 @@ public class FallState : PlayerState
     [Inspect(min: 0)] public float VerticalAcceleration = 15;
     [Inspect(min: 0)] public float VerticalMaxSpeed = 30;
 
-    [MovementCategory(typeof(MotionSolver))]
+    [MovementCategory]
     public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)
@@ -263,7 +269,7 @@ internal static class AttackMotion
 [StateModel(AllowedState.Blade)]
 public class SlideBlade : BladeState
 {
-    [EnvelopeCategory(EnvelopeShape.AR, typeof(AR))]
+    [EnvelopeCategory(EnvelopeShape.AR)]
     public CategorySlot<AR> Movement = new();
 
     [Inspect(0.01f, 0.01f, 10f)] public float Length = 0.6f;
@@ -320,7 +326,7 @@ public class SlideBlade : BladeState
 [StateModel(AllowedState.Fire)]
 public class SimpleFire : FireState
 {
-    [EnvelopeCategory(EnvelopeShape.AR, typeof(AR))]
+    [EnvelopeCategory(EnvelopeShape.AR)]
     public CategorySlot<AR> Movement = new();
 
     [Inspect(0.01f, 0f, 5f)] public float ControlBackTime = 0.2f;
@@ -407,10 +413,10 @@ public class SimpleFire : FireState
 [StateModel(AllowedState.DownAttack)]
 public class SimpleDownAttack : DownAttackState
 {
-    [EnvelopeCategory(EnvelopeShape.AS, typeof(AS))]
+    [EnvelopeCategory(EnvelopeShape.AS)]
     public CategorySlot<AS> Vertical = new();
 
-    [AdsrCategory(AllowedAdsrState.Release, typeof(LinearSlowdown))]
+    [AdsrCategory(AllowedAdsrState.Release)]
     public CategorySlot<IAdsrModel> Horizontal = new();
 
     [Inspect(0.01f, 0.01f, 10f)] public float Length = 0.6f;
@@ -454,7 +460,7 @@ public class BounceState : PlayerState
     [Inspect(min: 0)] public float VerticalStartSpeed = 15;
     [Inspect(min: 0)] public float VerticalFriction = 15;
 
-    [MovementCategory(typeof(MotionSolver))]
+    [MovementCategory]
     public CategorySlot<IMovementModel> HorizontalMovement = new();
 
     public override async Job Job(Player player)

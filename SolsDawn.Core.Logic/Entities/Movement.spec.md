@@ -2,7 +2,7 @@
 
 This spec is the source of truth. Where the code disagrees, the code is wrong unless the spec is changed first.
 
-Code: `Movement.cs`, `MotionSolver.cs`, `Adsr.cs`, `PlayerStates.cs`.
+Code: `Movement.cs`, `Adsr.cs`, `PlayerStates.cs`. Phase model types are designer content in `SolsDawn.Gameplay`; this spec covers only the contract they follow (MOV-37 to MOV-41).
 
 Requirements are `MOV-nn`.
 
@@ -10,23 +10,23 @@ Requirements are `MOV-nn`.
 
 | Term | Meaning |
 |---|---|
-| Movement model | A model that computes velocity along one axis, once per frame, for a `PlayerState`: `MotionSolver`, `Adsr`, `AR` or `AS`. |
-| Phase model | A model in a slot of a movement model. It computes velocity for one `MotionSolver` phase or one ADSR phase. |
+| Movement model | A model that computes velocity along one axis, once per frame, for a `PlayerState`: `Adsr`, `AR` or `AS`. |
+| Phase model | A model in a slot of a movement model. It computes velocity for one ADSR phase. |
 | Velocity | Signed speed along the movement axis: the platform tangent in `RunState`, X in the air, the attack axis in attack states. |
 | Speed, `s` | The absolute value of velocity. |
 | `Sign` | A value that is always -1, 0 or 1. Any number converts to its sign implicitly, and `Sign` converts to `int` implicitly. It is defined in `SolsDawn.Core.Logic` and has no spec. |
 | `inDir` | Input direction, a `Sign`. |
 | `prevInDir` | The `inDir` a phase model saw on the previous frame of the same phase (MOV-38). |
 | Held, released | `inDir != 0`, `inDir == 0`. |
-| `C` | The `ControlledSpeed` of `Adsr` or `MotionSolver`. |
+| `C` | The `ControlledSpeed` of `Adsr`. |
 | `P` | The `PeakSpeed` of `Adsr`, `AR` or `AS`. |
 | Memory | A `MovementMemory` value: the state of a movement model between frames of one Job. It holds a phase and the previous `inDir`. |
 | A / D / S / R | Attack, Decay, Sustain, Release. |
 
 ## Movement models
 
-- **MOV-01** `MotionSolver` and `Adsr` are model types with the `Movement` category. `AR` and `AS` have categories of their own (MOV-50). All four implement `IMovementModel`.
-- **MOV-02** Each `PlayerState` that moves under player control has one slot of category `Movement`. The slot accepts `MotionSolver` and `Adsr`, and its default model is `MotionSolver`. Attack states use `AR` and `AS` slots instead (CMB-30, CMB-40, CMB-50).
+- **MOV-01** `Adsr` is a model type with the `Movement` category. `AR` and `AS` have categories of their own (MOV-50). All three implement `IMovementModel`.
+- **MOV-02** Each `PlayerState` that moves under player control has one slot of category `Movement`. The slot accepts `Adsr`, which is also its default model. Attack states use `AR` and `AS` slots instead (CMB-30, CMB-40, CMB-50).
 
   | Model type | Slot |
   |---|---|
@@ -41,42 +41,6 @@ Requirements are `MOV-nn`.
 - **MOV-05** Movement models and phase models hold only configuration. All movement runtime state is in the memory, which is never saved and never shared between Jobs, so any number of slots and entities may reference the same model.
 - **MOV-06** A movement model accepts any memory value on any frame, including one written by another movement model type before a swap.
 - **MOV-07** States read input as `Input.Move`, which is a `Sign`: 1 for right, -1 for left, 0 for none or both.
-
-## MotionSolver
-
-- **MOV-10** `MotionSolver` has `ControlledSpeed` and six slots of `IMotionModel`, one for each combination of speed range (Normal, GreatSpeed) and phase (Drive, Brake, Turn). The current phase is kept in memory, and zero-valued memory means Drive.
-- **MOV-11** The speed range is GreatSpeed when `s > C`, otherwise Normal.
-- **MOV-12** The phase is chosen each frame. The first matching row wins.
-
-  | # | Condition | Phase |
-  |---|---|---|
-  | 1 | Released | Brake |
-  | 2 | `inDir == sign(velocity)` and `s >= C` | Drive |
-  | 3 | `inDir == -sign(velocity)`, or the current phase is Turn | Turn |
-  | 4 | Otherwise | Drive |
-
-- **MOV-13** The slot for the speed range and phase computes the new velocity with `IMotionModel.Calculate(velocity, inDir, dt, controlledSpeed)`, where `inDir` is a `Sign`.
-- **MOV-14** A slot accepts a phase model only if the model allows the slot's phase and speed range (CFG-10).
-
-  | Slot | Default model |
-  |---|---|
-  | `GreatSpeedDrive` | `FrictionGreatSpeedDrive` |
-  | `GreatSpeedBrake` | `FrictionGreatSpeedDecay` |
-  | `GreatSpeedTurn` | `FrictionGreatSpeedDecay` |
-  | `NormalDrive` | `LinearDriveModel` |
-  | `NormalBrake` | `LinearBrakeModel` |
-  | `NormalTurn` | `LinearTurnModel` |
-
-- **MOV-15** `MotionSolver` phase models:
-
-  | Model type | Allowed | Result |
-  |---|---|---|
-  | `FrictionGreatSpeedDrive` | GreatSpeed: Drive | `inDir * max(C, s - Friction * dt)` |
-  | `KeepGreatSpeedDrive` | GreatSpeed: Drive | `velocity` |
-  | `FrictionGreatSpeedDecay` | GreatSpeed: Brake, Turn | `sign(velocity) * max(C, s - Deceleration * dt)` |
-  | `LinearDriveModel` | Normal: Drive | `inDir * min(C, s + Acceleration * dt)` |
-  | `LinearBrakeModel` | Normal: Brake | `sign(velocity) * max(0, s - Friction * dt)` |
-  | `LinearTurnModel` | Normal: Turn | With `next = velocity + inDir * TurnAcceleration * dt`: `inDir * C` when `sign(next) == inDir` and `abs(next) >= C`, otherwise `next` |
 
 ## ADSR
 
@@ -116,22 +80,8 @@ Requirements are `MOV-nn`.
 - **MOV-37** A phase model implements `IAdsrModel`: `Calculate(velocity, prevInDir, inDir, dt, targetSpeed)` returns the new velocity. `prevInDir` and `inDir` are `Sign`s. The result depends only on the arguments.
 - **MOV-38** On the first frame of a phase, `prevInDir` equals `inDir`. On later frames of the same phase it is the `inDir` of the previous frame. A phase starts when the phase that runs differs from the phase that ran on the previous frame, and on the first frame of a Job.
 - **MOV-39** An Attack, Decay or Release model moves speed toward `targetSpeed`, never past it, and reaches it exactly. Callers call Attack only with `s < targetSpeed`.
-- **MOV-40** A slot accepts a phase model only if the model allows the slot's phase (CFG-10). This holds for the slots of `Adsr`, `AR`, `AS` and attack states.
-
-  | Slot | Default model |
-  |---|---|
-  | `Attack` | `SimpleAttack` |
-  | `Decay` | `LinearSlowdown` |
-  | `Sustain` | `KeepSpeed` |
-  | `Release` | `LinearSlowdown` |
-
-- **MOV-41** Phase models. `dir` is `inDir` when held, otherwise `sign(velocity)`, so a turn reverses direction at once and keeps speed. None of them reads `prevInDir`.
-
-  | Model type | Allowed phases | Fields | Result |
-  |---|---|---|---|
-  | `SimpleAttack` | Attack | `Acceleration` | `dir * min(targetSpeed, s + Acceleration * dt)` |
-  | `LinearSlowdown` | Decay, Release | `Deceleration` | `dir * max(targetSpeed, s - Deceleration * dt)` |
-  | `KeepSpeed` | Sustain | None | `dir * s` |
+- **MOV-40** A slot accepts a phase model only if the model allows the slot's phase (CFG-10). This holds for the slots of `Adsr`, `AR`, `AS` and attack states. A slot's default phase model follows CFG-25.
+- **MOV-41** Phase model types are defined in `SolsDawn.Gameplay`. Every phase required by a slot in this spec needs at least one phase model type that allows it, otherwise the Library fails to initialize (CFG-26).
 
 ### ADSR examples
 
@@ -171,8 +121,8 @@ An envelope is a fixed sequence of ADSR phases that runs once. It ignores whethe
 
 ## Verification
 
-- MOV-03, MOV-05, MOV-06, MOV-10 to MOV-13, MOV-15, MOV-30 to MOV-39, MOV-41 and MOV-51 to MOV-57: automated tests with xUnit v3 that call `Calculate` directly with a fixed `dt`.
-- MOV-01, MOV-02, MOV-04, MOV-07, MOV-14, MOV-40 and MOV-50: manual check in the running game.
+- MOV-03, MOV-05, MOV-06, MOV-30 to MOV-38 and MOV-51 to MOV-57: automated tests with xUnit v3 that call `Calculate` directly with a fixed `dt`, using phase models defined in the test project.
+- MOV-01, MOV-02, MOV-04, MOV-07, MOV-39, MOV-40, MOV-41 and MOV-50: manual check in the running game.
 
 ## Known gaps
 

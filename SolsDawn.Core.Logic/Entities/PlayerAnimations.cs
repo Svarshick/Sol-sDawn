@@ -1,4 +1,8 @@
-namespace SolsDawn.Gameplay.Entities;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
+
+namespace SolsDawn.Core.Logic.Entities;
 
 public class PlayerAnimations(PlayerBoard board) : AnimationSet
 {

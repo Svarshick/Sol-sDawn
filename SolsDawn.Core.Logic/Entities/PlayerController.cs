@@ -1,10 +1,14 @@
-using nkast.Aether.Physics2D;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Combat;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
 using nkast.Aether.Physics2D.Collision;
-using SolsDawn.Core.Logic;
-using SolsDawn.Gameplay.Combat;
-using SolsDawn.Gameplay.Utils;
+using nkast.Aether.Physics2D;
+using Collider = SolsDawn.Core.Logic.Gameplay.Collider;
+using Physics = SolsDawn.Core.Logic.Gameplay.Physics;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
-namespace SolsDawn.Gameplay.Entities;
+namespace SolsDawn.Core.Logic.Entities;
 
 public class PlayerController
 {

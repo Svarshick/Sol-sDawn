@@ -1,7 +1,9 @@
-using System;
-using SolsDawn.Core.Logic;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
-namespace SolsDawn.Gameplay.Entities;
+namespace SolsDawn.Core.Logic.Entities;
 
 public struct MovementMemory
 {
@@ -14,7 +16,7 @@ public interface IMovementModel
     float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory);
 }
 
-public class MovementCategoryAttribute(Type fallbackType) : CategoryAttribute(fallbackType)
+public class MovementCategoryAttribute : CategoryAttribute
 {
     public override string GetTagsDescription() => "Movement";
 }

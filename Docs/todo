@@ -39,3 +39,8 @@ frames, change input or config and run again. Requires the previous items
 Traces and fades are added to the animations pool without an owner job, while some animations are job
 resources. Give every visual an owner (the job that made it, or a game-loop job for effects that outlive it)
 and clean up the animation workarounds.
+
+7. Effects lifetime
+Effects is legacy: it runs work under one global owner job, independent from the jobs that start it.
+Effects outlive the job that started them, including a level switch. Give them a real owner and
+remove the global Effects job.

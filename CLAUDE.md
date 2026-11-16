@@ -4,11 +4,11 @@ MonoGame game on .NET 10.
 
 ## Projects
 
-- `SolsDawn.Core`: game objects, pool, time, transforms. Kept apart from `Core.Logic` to isolate protected methods of GameObject and the pool. The split may be changed if there is a good reason.
-- `SolsDawn.Core.Logic`: game initialization, graphics details, main systems.
-- `SolsDawn.Gameplay`: designer space for configs and mechanics.
+- `SolsDawn.Core`: game objects, pool, time, transforms. A separate assembly so the `internal` members of `GameObject`, `Component` and the pool stay unreachable from other code.
+- `SolsDawn.Core.Logic`: developer space. Game initialization, graphics, main systems, and the mechanics: player and its states, movement models, combat, the enemy body, the level runner and `Spawn`.
+- `SolsDawn.Gameplay`: designer space. Startup (`Main`), the root `GameConfig`, levels marked `[Level]`, enemy behaviours and phase model implementations.
 - `SolsDawn.Content`: MonoGame content (textures, sound, other game files).
-- `SolsDawn.DesktopGL`, `SolsDawn.DesktopVK`: platform entry points for OpenGL and Vulkan.
+- `SolsDawn.DesktopGL`: platform entry point for OpenGL.
 
 ## Build
 
@@ -21,8 +21,7 @@ MonoGame game on .NET 10.
 ## Rules
 
 - Do not write comments in code. If an existing comment could be important, ask before removing it.
-- Generated and third-party code keeps its comments: `SolsDawn.Content`, `SolsDawn.DesktopGL`, `SolsDawn.DesktopVK`, `DrawVertDeclaration.cs`, `ImGuiRenderer.cs`, `InputExtended.cs`.
-- `SolsDawn.Gameplay/Test.cs` holds manual scenarios that run in the game loop. They are not unit tests; do not convert them.
+- Generated and third-party code keeps its comments: `SolsDawn.Content`, `SolsDawn.DesktopGL`, `DrawVertDeclaration.cs`, `ImGuiRenderer.cs`, `InputExtended.cs`.
 - Do not commit `SolsDawn.Gameplay/_Data/`. Designers own what is committed there, and local working data must not overwrite it.
 - Everything code-specific is in English: code, specs, identifiers.
 - Tests use xUnit v3.
@@ -33,6 +32,7 @@ MonoGame game on .NET 10.
 - The spec is the source of truth. Where code disagrees, the code is wrong unless the spec is changed first.
 - Workflow: change the spec, implement it, check the result against the requirement IDs.
 - Each spec has a rule in `.claude/rules/` whose `paths` list the files it covers. When adding a spec or moving those files, update the rule.
+- Specs cover developer code only. Designer code in `SolsDawn.Gameplay` has no spec; specs state the contracts it must follow.
 
 ## Docs
 

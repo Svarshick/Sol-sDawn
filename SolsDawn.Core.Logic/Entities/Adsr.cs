@@ -1,7 +1,10 @@
 using System;
-using SolsDawn.Core.Logic;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
-namespace SolsDawn.Gameplay.Entities;
+namespace SolsDawn.Core.Logic.Entities;
 
 [Flags]
 public enum AllowedAdsrState
@@ -30,8 +33,7 @@ public class AdsrCategoryAttribute : CategoryAttribute
 {
     public AllowedAdsrState State { get; }
 
-    public AdsrCategoryAttribute(AllowedAdsrState state, Type fallbackType)
-        : base(fallbackType)
+    public AdsrCategoryAttribute(AllowedAdsrState state)
     {
         State = state;
     }
@@ -56,43 +58,9 @@ public class AdsrModelAttribute : ModelAttribute
         return (States & constraint.State) == constraint.State;
     }
 
+    public override int Breadth => System.Numerics.BitOperations.PopCount((uint)States);
+
     public override string GetTagsDescription() => $"ADSR: {States}";
-}
-
-[AdsrModel(AllowedAdsrState.Attack)]
-public class SimpleAttack : IAdsrModel
-{
-    [Inspect, Range(0f, 200f), Step(1f)]
-    public float Acceleration = 10f;
-
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
-    {
-        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
-        return dir * Math.Min(targetSpeed, Math.Abs(velocity) + Acceleration * dt);
-    }
-}
-
-[AdsrModel(AllowedAdsrState.Decay | AllowedAdsrState.Release)]
-public class LinearSlowdown : IAdsrModel
-{
-    [Inspect, Range(0f, 200f), Step(1f)]
-    public float Deceleration = 10f;
-
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
-    {
-        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
-        return dir * Math.Max(targetSpeed, Math.Abs(velocity) - Deceleration * dt);
-    }
-}
-
-[AdsrModel(AllowedAdsrState.Sustain)]
-public class KeepSpeed : IAdsrModel
-{
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
-    {
-        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
-        return dir * Math.Abs(velocity);
-    }
 }
 
 [MovementModel]
@@ -106,16 +74,16 @@ public class Adsr : IMovementModel
     [Inspect(0.5f, 0f, 200f)]
     public float PeakSpeed = 15f;
 
-    [AdsrCategory(AllowedAdsrState.Attack, typeof(SimpleAttack))]
+    [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Attack = new();
 
-    [AdsrCategory(AllowedAdsrState.Decay, typeof(LinearSlowdown))]
+    [AdsrCategory(AllowedAdsrState.Decay)]
     public CategorySlot<IAdsrModel> Decay = new();
 
-    [AdsrCategory(AllowedAdsrState.Sustain, typeof(KeepSpeed))]
+    [AdsrCategory(AllowedAdsrState.Sustain)]
     public CategorySlot<IAdsrModel> Sustain = new();
 
-    [AdsrCategory(AllowedAdsrState.Release, typeof(LinearSlowdown))]
+    [AdsrCategory(AllowedAdsrState.Release)]
     public CategorySlot<IAdsrModel> Release = new();
 
     public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)
@@ -174,8 +142,7 @@ public class EnvelopeCategoryAttribute : CategoryAttribute
 {
     public EnvelopeShape Shape { get; }
 
-    public EnvelopeCategoryAttribute(EnvelopeShape shape, Type fallbackType)
-        : base(fallbackType)
+    public EnvelopeCategoryAttribute(EnvelopeShape shape)
     {
         Shape = shape;
     }
@@ -212,10 +179,10 @@ public class AR : IMovementModel
     [Inspect(0.5f, 0f, 200f)]
     public float PeakSpeed = 15f;
 
-    [AdsrCategory(AllowedAdsrState.Attack, typeof(SimpleAttack))]
+    [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Attack = new();
 
-    [AdsrCategory(AllowedAdsrState.Release, typeof(LinearSlowdown))]
+    [AdsrCategory(AllowedAdsrState.Release)]
     public CategorySlot<IAdsrModel> Release = new();
 
     public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)
@@ -262,10 +229,10 @@ public class AS : IMovementModel
     [Inspect(0.5f, 0f, 200f)]
     public float PeakSpeed = 15f;
 
-    [AdsrCategory(AllowedAdsrState.Attack, typeof(SimpleAttack))]
+    [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Attack = new();
 
-    [AdsrCategory(AllowedAdsrState.Sustain, typeof(KeepSpeed))]
+    [AdsrCategory(AllowedAdsrState.Sustain)]
     public CategorySlot<IAdsrModel> Sustain = new();
 
     public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)

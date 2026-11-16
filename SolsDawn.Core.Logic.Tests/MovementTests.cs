@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using SolsDawn.Core.Logic;
-using SolsDawn.Gameplay.Entities;
+using SolsDawn.Core.Logic.Entities;
 using Xunit;
 
 namespace SolsDawn.Core.Logic.Tests;
@@ -8,15 +8,31 @@ namespace SolsDawn.Core.Logic.Tests;
 internal static class GameplayAssemblyLoader
 {
     [ModuleInitializer]
-    internal static void Load() => _ = typeof(Adsr).Assembly;
+    internal static void Load() => _ = typeof(SolsDawn.Gameplay.GameConfig).Assembly;
 }
 
-[MotionModel(AllowedPhase.All)]
-public class MarkerMotion : IMotionModel
+[AdsrModel(AllowedAdsrState.Attack)]
+public class TestAttack : IAdsrModel
 {
-    public float Value;
+    public float Acceleration = 10f;
 
-    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed) => Value;
+    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
+    {
+        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
+        return dir * Math.Min(targetSpeed, Math.Abs(velocity) + Acceleration * dt);
+    }
+}
+
+[AdsrModel(AllowedAdsrState.Decay | AllowedAdsrState.Release)]
+public class TestSlowdown : IAdsrModel
+{
+    public float Deceleration = 10f;
+
+    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
+    {
+        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
+        return dir * Math.Max(targetSpeed, Math.Abs(velocity) - Deceleration * dt);
+    }
 }
 
 [AdsrModel(AllowedAdsrState.Attack | AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
@@ -58,9 +74,9 @@ public sealed class MovementTests : IDisposable
     {
         var adsr = new Adsr { ControlledSpeed = C, PeakSpeed = peak };
         CategorySystem.Bind(adsr);
-        Put<SimpleAttack, IAdsrModel>(adsr.Attack, m => m.Acceleration = acceleration);
-        Put<LinearSlowdown, IAdsrModel>(adsr.Decay, m => m.Deceleration = deceleration);
-        Put<LinearSlowdown, IAdsrModel>(adsr.Release, m => m.Deceleration = deceleration);
+        Put<TestAttack, IAdsrModel>(adsr.Attack, m => m.Acceleration = acceleration);
+        Put<TestSlowdown, IAdsrModel>(adsr.Decay, m => m.Deceleration = deceleration);
+        Put<TestSlowdown, IAdsrModel>(adsr.Release, m => m.Deceleration = deceleration);
         return adsr;
     }
 
@@ -68,8 +84,8 @@ public sealed class MovementTests : IDisposable
     {
         var ar = new AR { PeakSpeed = peak };
         CategorySystem.Bind(ar);
-        Put<SimpleAttack, IAdsrModel>(ar.Attack, m => m.Acceleration = acceleration);
-        Put<LinearSlowdown, IAdsrModel>(ar.Release, m => m.Deceleration = deceleration);
+        Put<TestAttack, IAdsrModel>(ar.Attack, m => m.Acceleration = acceleration);
+        Put<TestSlowdown, IAdsrModel>(ar.Release, m => m.Deceleration = deceleration);
         return ar;
     }
 
@@ -77,21 +93,8 @@ public sealed class MovementTests : IDisposable
     {
         var envelope = new AS { PeakSpeed = peak };
         CategorySystem.Bind(envelope);
-        Put<SimpleAttack, IAdsrModel>(envelope.Attack, m => m.Acceleration = acceleration);
+        Put<TestAttack, IAdsrModel>(envelope.Attack, m => m.Acceleration = acceleration);
         return envelope;
-    }
-
-    private static MotionSolver NewSolver()
-    {
-        var solver = new MotionSolver { ControlledSpeed = C };
-        CategorySystem.Bind(solver);
-        Put<MarkerMotion, IMotionModel>(solver.GreatSpeedDrive, m => m.Value = 1);
-        Put<MarkerMotion, IMotionModel>(solver.GreatSpeedBrake, m => m.Value = 2);
-        Put<MarkerMotion, IMotionModel>(solver.GreatSpeedTurn, m => m.Value = 3);
-        Put<MarkerMotion, IMotionModel>(solver.NormalDrive, m => m.Value = 4);
-        Put<MarkerMotion, IMotionModel>(solver.NormalBrake, m => m.Value = 5);
-        Put<MarkerMotion, IMotionModel>(solver.NormalTurn, m => m.Value = 6);
-        return solver;
     }
 
     private static MovementMemory Memory(AdsrState state) => new() { Phase = (int)state };
@@ -127,7 +130,6 @@ public sealed class MovementTests : IDisposable
 
     [Theory]
     [InlineData(typeof(Adsr))]
-    [InlineData(typeof(MotionSolver))]
     [InlineData(typeof(AR))]
     [InlineData(typeof(AS))]
     public void MOV05_MovementModelsHaveNoRuntimeMembers(Type modelType)
@@ -147,7 +149,7 @@ public sealed class MovementTests : IDisposable
     [InlineData(99)]
     public void MOV06_AnyMemoryValueIsAccepted(int phase)
     {
-        foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewSolver(), NewAr(), NewAs() })
+        foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewAr(), NewAs() })
         {
             foreach (var inDir in new[] { -1, 0, 1 })
             {
@@ -158,46 +160,6 @@ public sealed class MovementTests : IDisposable
                 }
             }
         }
-    }
-
-    [Fact]
-    public void MOV10_ZeroMemoryMeansDrive()
-    {
-        var solver = NewSolver();
-        var memory = new MovementMemory();
-
-        Assert.Equal(4f, solver.Calculate(0f, 1, Dt, ref memory));
-        Assert.Equal(MovePhase.Drive, (MovePhase)memory.Phase);
-    }
-
-    [Theory]
-    [InlineData(5f, 0, MovePhase.Drive, 5f, MovePhase.Brake)]
-    [InlineData(15f, 0, MovePhase.Turn, 2f, MovePhase.Brake)]
-    [InlineData(10f, 1, MovePhase.Turn, 4f, MovePhase.Drive)]
-    [InlineData(15f, 1, MovePhase.Drive, 1f, MovePhase.Drive)]
-    [InlineData(5f, -1, MovePhase.Drive, 6f, MovePhase.Turn)]
-    [InlineData(15f, -1, MovePhase.Drive, 3f, MovePhase.Turn)]
-    [InlineData(5f, 1, MovePhase.Turn, 6f, MovePhase.Turn)]
-    [InlineData(5f, 1, MovePhase.Drive, 4f, MovePhase.Drive)]
-    public void MOV11_MOV12_MOV13_MotionSolverPicksSlot(float velocity, int inDir, MovePhase start, float expected, MovePhase expectedPhase)
-    {
-        var solver = NewSolver();
-        var memory = new MovementMemory { Phase = (int)start };
-
-        Assert.Equal(expected, solver.Calculate(velocity, inDir, Dt, ref memory));
-        Assert.Equal(expectedPhase, (MovePhase)memory.Phase);
-    }
-
-    [Fact]
-    public void MOV15_MotionSolverPhaseModels()
-    {
-        Assert.Equal(-14f, new FrictionGreatSpeedDrive { Friction = 10f }.Calculate(15f, -1, Dt, C), 3);
-        Assert.Equal(15f, new KeepGreatSpeedDrive().Calculate(15f, -1, Dt, C), 3);
-        Assert.Equal(14f, new FrictionGreatSpeedDecay { Deceleration = 10f }.Calculate(15f, -1, Dt, C), 3);
-        Assert.Equal(-6f, new LinearDriveModel { Acceleration = 10f }.Calculate(5f, -1, Dt, C), 3);
-        Assert.Equal(0f, new LinearBrakeModel { Friction = 100f }.Calculate(5f, 0, Dt, C), 3);
-        Assert.Equal(2f, new LinearTurnModel { TurnAcceleration = 30f }.Calculate(5f, -1, Dt, C), 3);
-        Assert.Equal(-C, new LinearTurnModel { TurnAcceleration = 30f }.Calculate(-9f, -1, Dt, C), 3);
     }
 
     [Theory]
@@ -334,7 +296,7 @@ public sealed class MovementTests : IDisposable
     [InlineData(AdsrState.Attack, 5f)]
     [InlineData(AdsrState.Decay, 12f)]
     [InlineData(AdsrState.Sustain, 10f)]
-    public void MOV36_MOV41_TurningKeepsStateAndSpeed(AdsrState state, float speed)
+    public void MOV36_TurningKeepsState(AdsrState state, float speed)
     {
         var adsr = NewAdsr(acceleration: 0f, peak: 100f, deceleration: 0f);
         var memory = Memory(state);
@@ -343,34 +305,6 @@ public sealed class MovementTests : IDisposable
 
         Assert.Equal(-speed, velocity);
         Assert.Equal(state, State(memory));
-    }
-
-    [Fact]
-    public void MOV39_MOV41_LinearSlowdownStopsExactlyAtTarget()
-    {
-        var model = new LinearSlowdown { Deceleration = 100f };
-
-        Assert.Equal(C, model.Calculate(12f, 1, 1, Dt, C));
-        Assert.Equal(0f, model.Calculate(5f, 0, 0, Dt, 0f));
-        Assert.Equal(-9f, new LinearSlowdown { Deceleration = 10f }.Calculate(-10f, 0, 0, Dt, 0f), 3);
-    }
-
-    [Fact]
-    public void MOV39_MOV41_SimpleAttackStopsExactlyAtTarget()
-    {
-        var model = new SimpleAttack { Acceleration = 100f };
-
-        Assert.Equal(C, model.Calculate(9f, 1, 1, Dt, C));
-        Assert.Equal(-1f, new SimpleAttack { Acceleration = 10f }.Calculate(0f, -1, -1, Dt, C), 3);
-    }
-
-    [Fact]
-    public void MOV41_KeepSpeedPreservesSpeedAndFollowsInput()
-    {
-        var model = new KeepSpeed();
-
-        Assert.Equal(-C, model.Calculate(C, -1, -1, Dt, C));
-        Assert.Equal(C, model.Calculate(C, 0, 0, Dt, C));
     }
 
     [Fact]

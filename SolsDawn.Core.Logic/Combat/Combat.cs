@@ -1,11 +1,15 @@
-using System;
 using System.Collections.Generic;
-using nkast.Aether.Physics2D.Collision;
-using nkast.Aether.Physics2D.Collision.Shapes;
+using System;
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
 using SolsDawn.Core.Logic.Gameplay.Pipeline;
+using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Collision;
+using Collider = SolsDawn.Core.Logic.Gameplay.Collider;
 using DebugCategory = SolsDawn.Core.Logic.Debug.Collider.Category;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
-namespace SolsDawn.Gameplay.Combat;
+namespace SolsDawn.Core.Logic.Combat;
 
 [Flags]
 public enum Side

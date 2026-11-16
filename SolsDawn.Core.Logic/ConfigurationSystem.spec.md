@@ -16,6 +16,9 @@ Requirements are `CFG-nn`.
 | Slot | A model-typed field, e.g. `Player.weapon`. |
 | Container | A group of fields inside a model, with no identity of its own, e.g. `Player.gear`. |
 | Category | A constraint on which model types fit a slot, e.g. "one-handed". |
+| Candidate | A model type that fits a slot (CFG-10). |
+| Breadth | How many categories a model type declares. A model attribute defines it; one that does not has breadth 1. |
+| `[Default]` | An attribute on a model type that makes it preferred as the default of the slots it fits (CFG-25). |
 | Default model | The one built-in model of a model type, like a default for a struct. |
 | Root model | The model that is the config itself. |
 | Orphan | A model that no model has a slot referencing. |
@@ -27,7 +30,7 @@ Requirements are `CFG-nn`.
 - **CFG-03** Models nest: a slot's model may have slots of its own.
 - **CFG-04** A container holds constants, slots and other containers. It has no GUID, is saved inside the model that owns it, and cannot be searched for or referenced on its own.
 - **CFG-05** A container may hold runtime state. Runtime state is not saved.
-- **CFG-06** A slot is never empty. A new slot references the default model of the type named by its category.
+- **CFG-06** A slot is never empty. A new slot references the default model of the type chosen by CFG-25.
 
 ## Categories
 
@@ -49,6 +52,14 @@ Requirements are `CFG-nn`.
 - **CFG-22** Selecting a default model in search references it. Shift has no effect on this, and there is no way to copy a default model explicitly.
 - **CFG-23** The first edit of a default model through a slot creates a copy, and the slot references that copy. Changing a slot inside a default model counts as an edit. When defaults are nested, every default between the edited one and its nearest non-default owner is copied. Focus does not move.
 - **CFG-24** A copy made by CFG-23 is named `<OwnerName>_<SlotName>`.
+- **CFG-25** A slot's default type is chosen among its candidates. Each rule applies to the candidates the previous rule left:
+  1. Candidates marked `[Default]`, if there are any.
+  2. The candidates with the smallest breadth.
+  3. The first by type name in ordinal order.
+
+  Example: `M1` is marked and fits "a" and "b", `M2` is marked and fits "b" and "c". A slot of "a" gets `M1`, a slot of "c" gets `M2`, and a slot of "b" gets `M1` by rule 3.
+- **CFG-26** When rule 3 of CFG-25 decides between more than one candidate, a warning names the slot and the tied types. A slot with no candidate is an error.
+- **CFG-27** Defaults are checked for every slot of every model type, including slots inside containers, when the Library is initialized, and for the root type when it is loaded. All warnings are logged in one message, and all errors are raised in one exception.
 
 ## Search
 

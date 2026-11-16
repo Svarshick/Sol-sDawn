@@ -9,13 +9,6 @@
             "preLaunchTask": "Build: SolsDawn.DesktopGL"
         },
         {
-            "name": "SolsDawn (DesktopVK)",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/SolsDawn.DesktopVK/SolsDawn.DesktopVK.csproj",
-            "preLaunchTask": "Build: SolsDawn.DesktopVK"
-        },
-        {
             "name": "SolsDawn (WindowsDX12)",
             "type": "dotnet",
             "request": "launch",

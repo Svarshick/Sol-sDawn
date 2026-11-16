@@ -72,6 +72,8 @@ public abstract class Entity : Component
     }
 
     public void UpdateState() => StateJob?.Update();
+
+    public override void OnDestroyImmediate() => StateJob?.Kill();
 }
 
 public abstract class Entity<TBoard, TAnimation> : Entity 

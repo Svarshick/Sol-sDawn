@@ -1,7 +1,11 @@
+using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.Animations;
+using SolsDawn.Core.Logic.Gameplay.Pipeline;
 using nkast.Aether.Physics2D.Collision.Shapes;
-using SolsDawn.Core.Logic;
+using Collider = SolsDawn.Core.Logic.Gameplay.Collider;
+using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
-namespace SolsDawn.Gameplay.Utils;
+namespace SolsDawn.Core.Logic.Entities;
 
 public class Platform : Component
 {

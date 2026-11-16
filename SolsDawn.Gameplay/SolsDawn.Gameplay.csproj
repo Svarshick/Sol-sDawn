@@ -28,6 +28,11 @@
     <Using Include="SolsDawn.Core.Logic.Gameplay.Input.TeleportState" Alias="InputTeleportState" />
     <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job" />
     <Using Include="SolsDawn.Core.Logic.Animations" />
+    <Using Include="SolsDawn.Core.Logic" />
+    <Using Include="SolsDawn.Core.Logic.Combat" />
+    <Using Include="SolsDawn.Core.Logic.Entities" />
+    <Using Include="SolsDawn.Core.Logic.Levels" />
+    <Using Include="SolsDawn.Gameplay.Main" Static="true" />
   </ItemGroup>
 
   <ItemGroup>

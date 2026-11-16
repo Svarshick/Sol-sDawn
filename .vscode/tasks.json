@@ -13,19 +13,6 @@
                 "/tl:off"
             ],
             "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "Build: SolsDawn.DesktopVK",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-                "${workspaceFolder}/SolsDawn.DesktopVK/SolsDawn.DesktopVK.csproj",
-                "/property:GenerateFullPaths=true",
-                "/consoleloggerparameters:NoSummary",
-                "/tl:off"
-            ],
-            "problemMatcher": "$msCompile"
         }
     ]
 }

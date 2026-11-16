@@ -2,7 +2,7 @@
 
 This spec is the source of truth. Where the code disagrees, the code is wrong unless the spec is changed first.
 
-Code: `SolsDawn.Gameplay/Combat/`, the attack states in `PlayerStates.cs`, `PlayerController.cs`, `Player.cs`, `PlayerAnimations.cs`, `Enemy.cs`, `EnemyAnimations.cs`, the combat part of `GameLoop.cs`, the debug category of `Collider` and the collider list in `Physics.cs`.
+Code: `SolsDawn.Core.Logic/Combat/`, and in `SolsDawn.Core.Logic/Entities/` the attack states in `PlayerStates.cs`, `PlayerController.cs`, `Player.cs`, `PlayerAnimations.cs`, `Enemy.cs`, `EnemyAnimations.cs`; the after phase of `LevelRunner.cs`, the debug category of `Collider` and the collider list in `Physics.cs`.
 
 Requirements are `CMB-nn`.
 
@@ -40,7 +40,7 @@ Requirements are `CMB-nn`.
 
 ## Resolve
 
-- **CMB-10** Resolve runs once per frame in a top-level `GameLoop` job, after the player and enemy updates and before the camera update.
+- **CMB-10** Resolve runs once per frame in the after phase of the level runner (LVL-04), after the player and the level, including enemy behaviours, and before the camera update.
 - **CMB-11** Two colliders overlap when `Collision.TestOverlap` on their shapes and current poses says so. Overlap is tested on every frame, not only on the first contact.
 - **CMB-12** Objects created during Resolve take part from the next Resolve. An object destroyed during Resolve is skipped from that moment on.
 - **CMB-13** Pass 1, parries. For each live attack with a parry kind other than `None` whose `Parried` has not fired, the parryboxes are every live parrybox whose `Parried` has not fired, whose side is in the attack's targets, whose `Accepts` equals the attack's parry kind, and which overlaps the attack. If there is at least one:
@@ -58,7 +58,7 @@ Requirements are `CMB-nn`.
 
 ## Player states
 
-- **CMB-20** `AllowedState` gains `Blade`, `Fire`, `DownAttack` and `Bounce`. `PlayerSpecs` gains a state slot for each:
+- **CMB-20** `AllowedState` gains `Blade`, `Fire`, `DownAttack` and `Bounce`. `PlayerSpecs` gains a state slot for each. Defaults follow CFG-25:
 
   | Slot | Default model |
   |---|---|
@@ -146,7 +146,7 @@ Requirements are `CMB-nn`.
 ## SimpleFire
 
 - **CMB-40** `SimpleFire` has a `Movement` slot of category `Envelope AR` (default `AR`), `ControlBackTime`, `Distance`, `Width`, `TraceDuration`, `TraceColor`, `ExplosionRadius`, `ExplosionDuration` and `ExplosionColor`.
-- **CMB-41** On entry the job creates an attack: a rectangle `Distance` long and `Width` wide, centred at `center + axis * Distance / 2` and rotated to the axis, targets `Enemy`, parry kind `Fire`. The attack takes part in exactly one Resolve, then it is destroyed. Its owner job lives as long as the game loop, not the fire state job, so leaving Fire early does not cancel the shot or its trace. In CMB-41 to CMB-44, `center` is the center at entry, and the shot does not follow the player.
+- **CMB-41** On entry the job creates an attack: a rectangle `Distance` long and `Width` wide, centred at `center + axis * Distance / 2` and rotated to the axis, targets `Enemy`, parry kind `Fire`. The attack takes part in exactly one Resolve, then it is destroyed. Its owner job is the `Effects` job of the level runner, not the fire state job, so leaving Fire early does not cancel the shot or its trace. In CMB-41 to CMB-44, `center` is the center at entry, and the shot does not follow the player.
 - **CMB-42** The player moves as in CMB-31 to CMB-33 and CMB-35, with the movement axis starting at `-axis`, with `ControlBackTime` as in CMB-32 step 5 and without the hitbox step. Only the movement axis is projected on ground; the shot keeps the axis. The job ends when `AR` is Done.
 - **CMB-43** When the attack's `Parried` fires:
   1. `t = clamp(min over ParriedBoxes of dot(box position - center, axis) / 2, 0, Distance)`. The parry point is `center + axis * t`, so it lies on the axis.
@@ -154,11 +154,11 @@ Requirements are `CMB-nn`.
   3. The attack becomes a rectangle `t` long and `Width` wide from the center to the parry point. It still hits in pass 2.
   4. An explosion starts at the parry point (CMB-45).
 - **CMB-44** A trace line of `Width` goes from the center to the far end of the attack and fades out over `TraceDuration`.
-- **CMB-45** The explosion is an attack: a circle of `ExplosionRadius`, targets `Player` and `Enemy`, parry kind `None`. Its owner job lives as long as the game loop, not the fire state job. It takes part in exactly one Resolve. A filled circle of `ExplosionColor` fades out over `ExplosionDuration`.
+- **CMB-45** The explosion is an attack: a circle of `ExplosionRadius`, targets `Player` and `Enemy`, parry kind `None`. Its owner job is the `Effects` job of the level runner, not the fire state job. It takes part in exactly one Resolve. A filled circle of `ExplosionColor` fades out over `ExplosionDuration`.
 
 ## SimpleDownAttack and BounceState
 
-- **CMB-50** `SimpleDownAttack` has a `Vertical` slot of category `Envelope AS` (default `AS`), a `Horizontal` slot that accepts Release phase models (default `LinearSlowdown`), `Length`, `HalfWidth` and `TipLength`.
+- **CMB-50** `SimpleDownAttack` has a `Vertical` slot of category `Envelope AS` (default `AS`), a `Horizontal` slot that accepts Release phase models (default by CFG-25), `Length`, `HalfWidth` and `TipLength`.
 - **CMB-51** On entry the job takes `vs = max(0, -V.y)`, `vx = V.x` and `hDir = sign(vx)`, and creates an attack for the whole state: a pentagon hitbox moving with the player, targets `Enemy`, parry kind `Blade`.
 - **CMB-52** Each update, in order:
   1. `vs = Vertical.Calculate(vs, 1, dt, ref memory)`.
@@ -179,8 +179,8 @@ Requirements are `CMB-nn`.
 
 ## Enemy
 
-- **CMB-70** The enemy stands at a fixed point of the scene and never moves. Nothing collides with it.
-- **CMB-71** `EnemySpecs` is a model in the `GameConfig.Enemy` slot. It replaces `BossSpecs`.
+- **CMB-70** The enemy body never moves by itself. Nothing collides with it.
+- **CMB-71** `EnemySpecs` is a model type in the `Enemy` category. A level passes an `EnemySpecs` slot to `Spawn.Enemy` (LVL-11).
 
   | Group | Fields |
   |---|---|
@@ -188,23 +188,15 @@ Requirements are `CMB-nn`.
   | Blade | `BladeTelegraphDuration`, `BladeTelegraphColor`, `BladeLength`, `BladeWidth`, `BladeAttackDuration`, `BladeAttackColor`, `BladeParriedDuration`, `BladeParriedColor` |
   | Fire | `FireTelegraphDuration`, `FireAimingDuration`, `FireTelegraphColor`, `FireDistance`, `FireWidth`, `FireTraceDuration`, `FireTraceColor`, `FireParriedDuration`, `FireParriedColor` |
 
-- **CMB-72** The enemy is drawn as a filled rectangle `Width × Height` in `Color`. Its hurtbox has the same rectangle, side `Enemy`.
-- **CMB-73** The enemy job loops: blade attack, `AttackGap`, fire attack, `AttackGap`.
-- **CMB-74** Blade attack. The aim is `normalize(player - enemy)` when the attack starts. The blade rectangle is `BladeLength × BladeWidth`, centred at `enemy + aim * BladeLength / 2` and rotated to the aim.
-  1. Telegraph: a parrybox with the blade rectangle, `Accepts` `Blade`, side `Enemy`, and the enemy coloured `BladeTelegraphColor`. It lasts `BladeTelegraphDuration` or until the parrybox is parried, whichever comes first. The parrybox is destroyed at the end.
-  2. Not parried: an attack with the blade rectangle, targets `Player`, parry kind `None`, for `BladeAttackDuration`, drawn in `BladeAttackColor`.
-  3. Parried: no attack. The enemy is coloured `BladeParriedColor` for `BladeParriedDuration`.
-- **CMB-75** Fire attack. During the first `FireAimingDuration` of the telegraph the aim follows `normalize(player - enemy)`; then it is fixed.
-  1. Telegraph: a parrybox with the hurtbox rectangle, `Accepts` `Fire`, side `Enemy`, and the enemy coloured `FireTelegraphColor`. It lasts `FireTelegraphDuration` or until the parrybox is parried. The parrybox is destroyed at the end.
-  2. Not parried: an attack, a rectangle `FireDistance × FireWidth` centred at `enemy + aim * FireDistance / 2`, rotated to the aim, targets `Player`, parry kind `None`. It takes part in exactly one Resolve. A trace of `FireTraceColor` fades out over `FireTraceDuration`.
-  3. Parried: a trace from the enemy to `ParriedBy.ParryPoint`, or to `(enemy + player) / 2` if it is empty, fades out over `FireTraceDuration`. The enemy is coloured `FireParriedColor` for `FireParriedDuration`.
-- **CMB-76** A hit blink (CMB-60) shows over the telegraph and parried colours.
+- **CMB-72** The enemy is drawn as a filled rectangle `Width × Height` in `EnemyBoard.Tint`, or in `Color` when there is no tint. Its hurtbox has the same rectangle, side `Enemy`. It follows a change of `Width` or `Height` while the game runs.
+- **CMB-73** What the enemy does is its behaviour, a job given to `Spawn.Enemy` (LVL-11). Behaviours are designer content in `SolsDawn.Gameplay` and use the combat objects of CMB-01 to CMB-03 and `EnemyBoard.Tint`. The Blade and Fire fields of `EnemySpecs` are for them.
+- **CMB-76** A hit blink (CMB-60) shows over the tint.
 
 ## Verification
 
 - CMB-43 step 1 and the tangent projection: automated tests with xUnit v3 on `CombatMath`.
-- CMB-11 to CMB-18: manual scenarios in `Test.CombatResolve` (`SolsDawn.Gameplay/Test.cs`) that build attacks, parryboxes and hurtboxes and log `ok` or `failed` for each rule.
-- CMB-01 to CMB-07, CMB-10, CMB-20 to CMB-27, CMB-30 to CMB-35, CMB-40 to CMB-42, CMB-43 steps 2 to 4, CMB-44, CMB-45, CMB-50 to CMB-54, CMB-60 to CMB-63 and CMB-70 to CMB-76: manual check in the running game.
+- CMB-11 to CMB-17: automated tests with xUnit v3 that build attacks, parryboxes and hurtboxes inside a job and call Resolve directly.
+- CMB-01 to CMB-07, CMB-10, CMB-18, CMB-20 to CMB-27, CMB-30 to CMB-35, CMB-40 to CMB-42, CMB-43 steps 2 to 4, CMB-44, CMB-45, CMB-50 to CMB-54, CMB-60 to CMB-63, CMB-70 to CMB-73 and CMB-76: manual check in the running game.
 
 ## Known gaps
 

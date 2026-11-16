@@ -1,4 +1,4 @@
-using SolsDawn.Gameplay.Combat;
+using SolsDawn.Core.Logic.Combat;
 using Xunit;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 

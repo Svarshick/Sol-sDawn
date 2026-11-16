@@ -127,7 +127,7 @@ public sealed class Collider : Component
         _animation = new ColliderAnimation(debugCategory, this, 1);
         _animation.Transform.Position = Transform.WorldPosition;
         _animation.Transform.Rotation = Transform.WorldRotation;
-        Game.AnimationsPool.Add(_animation);
+        Game.AnimationsPool?.Add(_animation);
         Physics.Add(this);
     }
 
