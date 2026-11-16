@@ -6,11 +6,12 @@ namespace SolsDawn.Gameplay.Entities;
 public struct MovementMemory
 {
     public int Phase;
+    public Sign PrevInDir;
 }
 
 public interface IMovementModel
 {
-    float Calculate(float velocity, int inDir, float dt, ref MovementMemory memory);
+    float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory);
 }
 
 public class MovementCategoryAttribute(Type fallbackType) : CategoryAttribute(fallbackType)

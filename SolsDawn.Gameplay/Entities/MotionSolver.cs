@@ -29,7 +29,7 @@ public enum MovePhase
 
 public interface IMotionModel
 {
-    float Calculate(float velocity, int inDir, float dt, float controlledSpeed);
+    float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed);
 }
 
 public class MotionCategoryAttribute : CategoryAttribute
@@ -77,7 +77,7 @@ public class FrictionGreatSpeedDrive : IMotionModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float Friction = 10f;
 
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Max(controlledSpeed, Math.Abs(velocity) - Friction * dt);
         return inDir * speed;
@@ -87,7 +87,7 @@ public class FrictionGreatSpeedDrive : IMotionModel
 [MotionModel(AllowedPhase.Drive, AllowedSpeed.GreatSpeed)]
 public class KeepGreatSpeedDrive : IMotionModel
 {
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed) => velocity;
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed) => velocity;
 }
 
 [MotionModel(AllowedPhase.Brake | AllowedPhase.Turn, AllowedSpeed.GreatSpeed)]
@@ -96,7 +96,7 @@ public class FrictionGreatSpeedDecay : IMotionModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float Deceleration = 10f;
 
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Max(controlledSpeed, Math.Abs(velocity) - Deceleration * dt);
         return Math.Sign(velocity) * speed;
@@ -109,7 +109,7 @@ public class LinearDriveModel : IMotionModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float Acceleration = 10f;
 
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Min(controlledSpeed, Math.Abs(velocity) + Acceleration * dt);
         return inDir * speed;
@@ -122,7 +122,7 @@ public class LinearBrakeModel : IMotionModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float Friction = 10f;
 
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed)
     {
         var speed = Math.Max(0f, Math.Abs(velocity) - Friction * dt);
         return Math.Sign(velocity) * speed;
@@ -135,7 +135,7 @@ public class LinearTurnModel : IMotionModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float TurnAcceleration = 30f;
 
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed)
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed)
     {
         var nextVelocity = velocity + inDir * TurnAcceleration * dt;
         if (Math.Sign(nextVelocity) == inDir && Math.Abs(nextVelocity) >= controlledSpeed)
@@ -169,13 +169,13 @@ public class MotionSolver : IMovementModel
     [MotionCategory(AllowedPhase.Turn, AllowedSpeed.Normal, typeof(LinearTurnModel))]
     public CategorySlot<IMotionModel> NormalTurn = new();
 
-    public float Calculate(float velocity, int inDir, float dt, ref MovementMemory memory)
+    public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)
     {
         var speed = Math.Abs(velocity);
         var velDir = Math.Sign(velocity);
         var isGreatSpeed = speed > ControlledSpeed;
 
-        var phase = inDir switch
+        var phase = (int)inDir switch
         {
             0 => MovePhase.Brake,
             _ when inDir == velDir && speed >= ControlledSpeed => MovePhase.Drive,

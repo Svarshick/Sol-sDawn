@@ -7,7 +7,7 @@ namespace SolsDawn.Core.Logic.Gameplay;
 
 public class Input : IUpdatable
 {
-    public Vector2 Move { get; private set; } 
+    public Sign Move { get; private set; } 
     public bool Jump { get; private set; }
     
     public enum TeleportState { None, Started, Updated, Released }
@@ -15,7 +15,7 @@ public class Input : IUpdatable
     public (Vector2 ScreenPosition, bool IsPressed) Fire { get; private set; }
     public (Vector2 ScreenPosition, bool IsPressed) Blade { get; private set; }
     
-    public event Action<Vector2>? OnMove;
+    public event Action<Sign>? OnMove;
     public event Action? OnJump;
     
     public event Action<Vector2>? OnTeleportStarted;
@@ -63,21 +63,21 @@ public class Input : IUpdatable
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState)
     {
-        var moveDirection = Vector2.Zero;
+        var move = 0;
         if (keyboardState.IsKeyDown(Keys.D) ||
             keyboardState.IsKeyDown(Keys.Right))
         {
-            moveDirection.X += 1;
+            move += 1;
         }
 
         if (keyboardState.IsKeyDown(Keys.A) ||
             keyboardState.IsKeyDown(Keys.Left))
         {
-            moveDirection.X -= 1;
+            move -= 1;
         }
 
-        Move = moveDirection;
-        OnMove?.Invoke(moveDirection);
+        Move = move;
+        OnMove?.Invoke(Move);
         
         if (keyboardState.WasKeyPressed(Keys.Space))
         {

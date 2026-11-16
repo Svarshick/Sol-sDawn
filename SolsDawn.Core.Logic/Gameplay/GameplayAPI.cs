@@ -74,8 +74,6 @@ public static class GameplayAPI
     
     public static float Abs(float f) => Math.Abs(f);
 
-    public static int Sign(float f) => Math.Sign(f);
-    
     public static float Max(float f1, float f2) => Math.Max(f1, f2);
     
     public static float Min(float f1, float f2) => Math.Min(f1, f2);

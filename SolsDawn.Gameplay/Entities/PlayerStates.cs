@@ -95,7 +95,7 @@ public class RunState : PlayerState
             var angle = currentPlatform.Transform.Rotation;
             var tangent = new Vector2(Cos(angle), Sin(angle));
 
-            var inDir = Sign(Input.Move.X);
+            var inDir = Input.Move;
             var vx = Vector2.Dot(board.Velocity, tangent);
 
             vx = Movement.GetActiveInstance().Calculate(vx, inDir, DeltaTime, ref memory);
@@ -127,7 +127,7 @@ public class CelesteJumpState : JumpState
         var memory = new MovementMemory();
 
         {
-            var initInDir = Sign(Input.Move.X);
+            var initInDir = Input.Move;
             if (initInDir == 0)
             {
                 var vy = VerticalDashDistance / (DashFrames * DeltaTime);
@@ -168,7 +168,7 @@ public class CelesteJumpState : JumpState
                 return;
             }
 
-            var inDir = Sign(Input.Move.X);
+            var inDir = Input.Move;
             var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
@@ -194,7 +194,7 @@ public class PrimitiveJumpState : JumpState
         var memory = new MovementMemory();
 
         {
-            var inDir = Sign(Input.Move.X);
+            var inDir = Input.Move;
             board.Velocity = new Vector2(inDir * HorizontalStartSpeed, VerticalStartSpeed);
             await NextFrame();
         }
@@ -207,7 +207,7 @@ public class PrimitiveJumpState : JumpState
                 return;
             }
 
-            var inDir = Sign(Input.Move.X);
+            var inDir = Input.Move;
             var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
@@ -239,7 +239,7 @@ public class FallState : PlayerState
                 return;
             }
 
-            var inDir = Sign(Input.Move.X);
+            var inDir = Input.Move;
             var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = Max(-VerticalMaxSpeed, board.Velocity.Y - VerticalAcceleration * DeltaTime);
 
@@ -248,87 +248,82 @@ public class FallState : PlayerState
         }
     }
 }
-public enum SlideBladePhase
+internal static class AttackMotion
 {
-    Attack,
-    Decay
+    public static void Step(PlayerBoard board, AR movement, ref Vector2 axis, ref float speed, ref MovementMemory memory)
+    {
+        if (board.CurrentPlatform is { } platform)
+            axis = CombatMath.TangentProjection(axis, platform.Transform.WorldRotation);
+
+        speed = movement.Calculate(speed, Sign.Positive, DeltaTime, ref memory);
+        board.Velocity = axis * speed;
+    }
 }
 
 [StateModel(AllowedState.Blade)]
 public class SlideBlade : BladeState
 {
-    [AdsrCategory(AllowedAdsrState.Attack, typeof(SimpleAttack))]
-    public CategorySlot<IAdsrAttackModel> Attack = new();
+    [EnvelopeCategory(EnvelopeShape.AR, typeof(AR))]
+    public CategorySlot<AR> Movement = new();
 
-    [AdsrCategory(AllowedAdsrState.Decay, typeof(LinearSlowdown))]
-    public CategorySlot<IAdsrModel> Decay = new();
-
-    [Inspect(0.5f, 0f, 200f)] public float AttackEndSpeed = 5f;
-    [Inspect(0.01f, 0.01f, 10f)] public float ColliderRadius = 0.8f;
-    [Inspect(0.01f, 0f, 5f)] public float ParryFreezeDuration = 0.3f;
-
-    public bool Step(ref float speed, ref SlideBladePhase phase, float dt)
-    {
-        if (phase == SlideBladePhase.Attack)
-        {
-            var attack = Attack.GetActiveInstance();
-            speed = attack.Calculate(speed, 1, dt, AttackEndSpeed);
-            if (attack.IsFinished(speed, AttackEndSpeed))
-                phase = SlideBladePhase.Decay;
-            return false;
-        }
-
-        speed = Decay.GetActiveInstance().Calculate(speed, 1, dt, AttackEndSpeed);
-        return speed <= AttackEndSpeed;
-    }
+    [Inspect(0.01f, 0.01f, 10f)] public float Length = 0.6f;
+    [Inspect(0.01f, 0.01f, 10f)] public float HalfWidth = 0.5f;
+    [Inspect(0.01f, 0f, 10f)] public float TipLength = 0.6f;
+    [Inspect(0.01f, 0f, 5f)] public float HitboxStart = 0f;
+    [Inspect(0.01f, 0f, 5f)] public float HitboxEnd = 0.3f;
+    [Inspect(0.01f, 0f, 5f)] public float ControlBackTime = 0.3f;
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
         var axis = CombatMath.Direction(player.Transform.Position, board.AttackPointer);
-        var speed = 0f;
-        var phase = SlideBladePhase.Attack;
+        var speed = board.Velocity.Length();
+        var memory = new MovementMemory();
+        var time = 0f;
+        Attack? attack = null;
 
-        var attackObject = CreateObject();
-        attackObject.Transform.Parent = player.Transform;
-        var attack = new Combat.Attack(attackObject, Shapes.Circle(ColliderRadius), Side.Enemy, ParryKind.Blade);
-        attack.Parried.OnFire(() =>
-        {
-            attack.Destroy();
-            board.Velocity = Vector2.Zero;
-        });
-
-        var firstFrame = true;
         while (true)
         {
-            if (attack.Parried.IsFired)
+            AttackMotion.Step(board, Movement.GetActiveInstance(), ref axis, ref speed, ref memory);
+
+            if (attack is null && time >= HitboxStart && time < HitboxEnd)
+                attack = CreateHitbox(player);
+            if (attack is { IsDestroyed: false })
             {
-                board.Velocity = Vector2.Zero;
-                await Timer(ParryFreezeDuration);
-                return;
+                if (time >= HitboxEnd)
+                    attack.Destroy();
+                else
+                    attack.Transform.Rotation = axis.Angle();
             }
 
-            if (!firstFrame && board.MovementCastHit && board.CurrentPlatform is { } platform)
-            {
-                var angle = platform.Transform.WorldRotation;
-                var tangent = new Vector2(Cos(angle), Sin(angle));
-                board.Velocity = tangent * Vector2.Dot(board.Velocity, tangent);
-                return;
-            }
-            firstFrame = false;
+            if (time >= ControlBackTime)
+                board.ControlBack = true;
 
-            var ended = Step(ref speed, ref phase, DeltaTime);
-            board.Velocity = axis * speed;
+            if (AR.IsDone(memory))
+                return;
+
             await NextFrame();
-            if (ended)
-                return;
+            time += DeltaTime;
         }
+    }
+
+    private Attack CreateHitbox(Player player)
+    {
+        var attackObject = CreateObject();
+        attackObject.Transform.Parent = player.Transform;
+        var attack = new Attack(attackObject, CombatMath.Pentagon(Length, HalfWidth, TipLength), Side.Enemy, ParryKind.Blade);
+        attack.Parried.OnFire(() => attack.Destroy());
+        return attack;
     }
 }
 
 [StateModel(AllowedState.Fire)]
 public class SimpleFire : FireState
 {
+    [EnvelopeCategory(EnvelopeShape.AR, typeof(AR))]
+    public CategorySlot<AR> Movement = new();
+
+    [Inspect(0.01f, 0f, 5f)] public float ControlBackTime = 0.2f;
     [Inspect(0.5f, 0f, 200f)] public float Distance = 20f;
     [Inspect(0.01f, 0.01f, 10f)] public float Width = 0.3f;
     [Inspect(0.01f, 0f, 5f)] public float TraceDuration = 0.4f;
@@ -339,8 +334,33 @@ public class SimpleFire : FireState
 
     public override async Job Job(Player player)
     {
+        var board = player.Board;
         var center = player.Transform.Position;
-        var axis = CombatMath.Direction(center, player.Board.AttackPointer);
+        var axis = CombatMath.Direction(center, board.AttackPointer);
+        Effects.Start(() => Shot(center, axis));
+
+        var moveAxis = -axis;
+        var speed = board.Velocity.Length();
+        var memory = new MovementMemory();
+        var time = 0f;
+
+        while (true)
+        {
+            AttackMotion.Step(board, Movement.GetActiveInstance(), ref moveAxis, ref speed, ref memory);
+
+            if (time >= ControlBackTime)
+                board.ControlBack = true;
+
+            if (AR.IsDone(memory))
+                return;
+
+            await NextFrame();
+            time += DeltaTime;
+        }
+    }
+
+    private async Job Shot(Vector2 center, Vector2 axis)
+    {
         var end = center + axis * Distance;
 
         var attackObject = CreateObject(center + axis * Distance / 2, axis.Angle());
@@ -387,33 +407,42 @@ public class SimpleFire : FireState
 [StateModel(AllowedState.DownAttack)]
 public class SimpleDownAttack : DownAttackState
 {
-    [Inspect(0.5f, 0f, 200f)] public float FallSpeed = 30f;
-    [Inspect(0.01f, 0.01f, 10f)] public float ColliderRadius = 0.6f;
+    [EnvelopeCategory(EnvelopeShape.AS, typeof(AS))]
+    public CategorySlot<AS> Vertical = new();
+
+    [AdsrCategory(AllowedAdsrState.Release, typeof(LinearSlowdown))]
+    public CategorySlot<IAdsrModel> Horizontal = new();
+
+    [Inspect(0.01f, 0.01f, 10f)] public float Length = 0.6f;
+    [Inspect(0.01f, 0.01f, 10f)] public float HalfWidth = 0.5f;
+    [Inspect(0.01f, 0f, 10f)] public float TipLength = 0.6f;
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
+        var verticalSpeed = Max(0, -board.Velocity.Y);
+        var vx = board.Velocity.X;
+        Sign hDir = vx;
+        var memory = new MovementMemory();
+
         var attackObject = CreateObject();
         attackObject.Transform.Parent = player.Transform;
-        var attack = new Attack(attackObject, Shapes.Circle(ColliderRadius), Side.Enemy, ParryKind.Blade);
+        var attack = new Attack(attackObject, CombatMath.Pentagon(Length, HalfWidth, TipLength), Side.Enemy, ParryKind.Blade);
         attack.Parried.OnFire(() =>
         {
             attack.Destroy();
-            board.Velocity = Vector2.Zero;
+            board.Parried = true;
         });
 
         while (true)
         {
-            if (attack.Parried.IsFired)
-            {
-                board.DownAttackParried = true;
-                return;
-            }
+            verticalSpeed = Vertical.GetActiveInstance().Calculate(verticalSpeed, Sign.Positive, DeltaTime, ref memory);
+            vx = Horizontal.GetActiveInstance().Calculate(vx, hDir, hDir, DeltaTime, 0f);
+            board.Velocity = new Vector2(vx, -verticalSpeed);
 
-            if (board.OnGround)
-                return;
+            if (!attack.IsDestroyed)
+                attackObject.Transform.Rotation = board.Velocity == Vector2.Zero ? -PI / 2 : board.Velocity.Angle();
 
-            board.Velocity = new Vector2(0, -FallSpeed);
             await NextFrame();
         }
     }
@@ -437,7 +466,7 @@ public class BounceState : PlayerState
 
         while (true)
         {
-            var inDir = Sign(Input.Move.X);
+            var inDir = Input.Move;
             var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 

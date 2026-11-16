@@ -33,78 +33,22 @@ public class PlayerController
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");
 
-        var state = _player.State;
-        var center = _player.Transform.Position;
-        var canAttack = state is IdleState or RunState or JumpState or FallState or BounceState;
-        var canDownAttack = state is JumpState or FallState or BounceState or BladeState;
-
-        if (canDownAttack && !board.OnGround && Input.Jump)
+        if (SelectState(board, specs) is { } next)
         {
-            board.DownAttackParried = false;
-            _player.Enter(specs.DownAttack.GetActiveInstance());
-        }
-        else if (canAttack && TryPointer(Input.Blade, center, out var bladePointer))
-        {
-            board.AttackPointer = bladePointer;
-            _player.Enter(specs.Blade.GetActiveInstance());
-        }
-        else if (canAttack && TryPointer(Input.Fire, center, out var firePointer))
-        {
-            board.AttackPointer = firePointer;
-            _player.Enter(specs.Fire.GetActiveInstance());
-        }
-        else if (state is BladeState or FireState or DownAttackState)
-        {
-            if (_player.StateJob is not { IsEnded: false })
-            {
-                if (state is DownAttackState && board.DownAttackParried)
-                    _player.Enter(specs.Bounce.GetActiveInstance());
-                else
-                    EnterGroundedOrFall();
-            }
-        }
-        else if (state is BounceState)
-        {
-            if (board.OnGround || board.Velocity.Y <= 0)
-                EnterGroundedOrFall();
-        }
-        else if (_player.State is IdleState or RunState)
-        {
-            if (!board.OnGround)
-            {
-                _player.Enter(specs.Fall.GetActiveInstance());
-            }
-            else if (Input.Jump)
-            {
-                _player.Enter(specs.Jump.GetActiveInstance());
-            }
-            else if (_player.State is IdleState && Input.Move != Vector2.Zero)
-            {
-                _player.Enter(specs.Run.GetActiveInstance());
-            }
-            else if (_player.State is RunState && board.Velocity == Vector2.Zero && Input.Move == Vector2.Zero)
-            {
-                _player.Enter(specs.Idle.GetActiveInstance());
-            }
-        }
-        else if (_player.State is FallState or JumpState)
-        {
-            if (board.OnGround)
-            {
-                if (board.Velocity == Vector2.Zero && Input.Move == Vector2.Zero)
-                    _player.Enter(specs.Idle.GetActiveInstance());
-                else
-                    _player.Enter(specs.Run.GetActiveInstance());
-            }
-            else if (_player.State is JumpState && board.Velocity.Y <= 0)
-            {
-                _player.Enter(specs.Fall.GetActiveInstance());
-            }
+            board.ControlBack = false;
+            board.Parried = false;
+            _player.Enter(next);
         }
 
         _player.UpdateState();
 
         var delta = board.Velocity * DeltaTime;
+	if (board.CurrentPlatform is { } ground)
+	{
+            var t = ground.Point2 - ground.Point1;
+            var n = Vector2.Normalize(new Vector2(-t.Y, t.X));
+	    delta -= n * Min(0, Vector2.Dot(delta, n));
+	}
         var result = Physics.CircleCast(
             _player.Transform.Position,
             _player.Transform.Position + delta,
@@ -112,7 +56,6 @@ public class PlayerController
             Layer.Wall,
             OneWayPlatformFilter);
 
-        board.MovementCastHit = result.Hit;
         if (result.Hit)
         {
             _player.Transform.Position += delta * result.Fraction;
@@ -130,16 +73,87 @@ public class PlayerController
         }
     }
 
-    private void EnterGroundedOrFall()
+    private PlayerState? SelectState(PlayerBoard board, PlayerSpecs specs)
     {
-        var board = _player.Board;
-        var specs = board.Specs.GetActiveInstance();
-        if (!board.OnGround)
-            _player.Enter(specs.Fall.GetActiveInstance());
-        else if (board.Velocity == Vector2.Zero && Input.Move == Vector2.Zero)
-            _player.Enter(specs.Idle.GetActiveInstance());
-        else
-            _player.Enter(specs.Run.GetActiveInstance());
+        var state = _player.State;
+        var center = _player.Transform.Position;
+        var ground = board.OnGround;
+        var air = !ground;
+        var run = Input.Move != 0;
+        var still = board.Velocity == Vector2.Zero;
+        var moving = !still;
+        var stateEnded = _player.StateJob is not { IsEnded: false };
+        var controlBack = board.ControlBack;
+        var jump = ground && Input.Jump;
+        var downA = air && Input.Jump;
+        var blade = TryPointer(Input.Blade, center, out var bladePointer);
+        var fire = TryPointer(Input.Fire, center, out var firePointer);
+
+        switch (state)
+        {
+            case IdleState:
+                if (blade) return Blade();
+                if (fire) return Fire();
+                if (jump) return specs.Jump.GetActiveInstance();
+                if (ground && run) return specs.Run.GetActiveInstance();
+                if (air) return specs.Fall.GetActiveInstance();
+                return null;
+
+            case RunState:
+                if (blade) return Blade();
+                if (fire) return Fire();
+                if (jump) return specs.Jump.GetActiveInstance();
+                if (ground && !run && still) return specs.Idle.GetActiveInstance();
+                if (air) return specs.Fall.GetActiveInstance();
+                return null;
+
+            case JumpState or FallState:
+                if (blade) return Blade();
+                if (fire) return Fire();
+                if (downA) return specs.DownAttack.GetActiveInstance();
+                if (ground && (run || moving)) return specs.Run.GetActiveInstance();
+                if (ground && still) return specs.Idle.GetActiveInstance();
+                if (state is JumpState && air && board.Velocity.Y <= 0) return specs.Fall.GetActiveInstance();
+                return null;
+
+            case BounceState:
+                if (blade) return Blade();
+                if (fire) return Fire();
+                if (ground && (run || moving)) return specs.Run.GetActiveInstance();
+                if (ground && still) return specs.Idle.GetActiveInstance();
+                if (air && board.Velocity.Y <= 0) return specs.Fall.GetActiveInstance();
+                return null;
+
+            case BladeState or FireState:
+                if (controlBack && state is BladeState && fire) return Fire();
+                if (controlBack && state is FireState && blade) return Blade();
+                if (controlBack && downA) return specs.DownAttack.GetActiveInstance();
+                if (ground && ((controlBack && run) || (stateEnded && moving))) return specs.Run.GetActiveInstance();
+                if (ground && stateEnded && still) return specs.Idle.GetActiveInstance();
+                if (air && stateEnded && board.Velocity.Y <= 0) return specs.Fall.GetActiveInstance();
+                return null;
+
+            case DownAttackState:
+                if (board.Parried) return specs.Bounce.GetActiveInstance();
+                if (ground && (run || moving)) return specs.Run.GetActiveInstance();
+                if (ground && still) return specs.Idle.GetActiveInstance();
+                return null;
+
+            default:
+                return null;
+        }
+
+        PlayerState Blade()
+        {
+            board.AttackPointer = bladePointer;
+            return specs.Blade.GetActiveInstance();
+        }
+
+        PlayerState Fire()
+        {
+            board.AttackPointer = firePointer;
+            return specs.Fire.GetActiveInstance();
+        }
     }
 
     private static bool TryPointer((Vector2 ScreenPosition, bool IsPressed) input, Vector2 center, out Vector2 pointer)

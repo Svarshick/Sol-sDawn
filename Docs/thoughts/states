@@ -1,0 +1,133 @@
+Idea was that all state changes are handled by PlayerController. State controlls velocity+rotation (how player moves), animation, unique behaviour, also listens input.
+On state transition new State could look at velocity from previous state and decide what should it do next
+
+[<category>], [+] - any category
+
+ M
+Idle	[ground]
+Run	[ground]
+Jump	[air]
+Fall	[air]
+Bounce	[air]
+ A
+Blade	[+]
+Fire	[+]
+DownA	[air]
+
+
+== Cases (priority from higher to lower) =================
+
+
+ A
+Idle -> Blade	I:blade	[+]
+Idle -> Fire	I:fire	[+]
+ M
+Idle -> Jump	I:jump	[ground]
+Idle -> Run	I:run	[ground]
+Idle -> Fall		[air]
+
+
+ A
+Run -> Blade	I:blade		[+]
+Run -> Fire	I:fire		[+]
+ M
+Run -> Jump	I:jump		[ground]
+Run -> Idle	!I:run V=0	[ground]
+Run -> Fall			[air]
+
+
+ A
+Jump -> Blade	I:blade		[+]
+Jump -> Fire	I:fire		[+]
+Jump -> DownA	I:downA		[air]
+ M
+Jump -> Run	I:run || V!=0	[ground]
+Jump -> Idle	V=0		[ground]
+Jump -> Fall	V.y<=0		[air] 
+
+
+ A
+Fall -> Blade	I:blade		[+]
+Fall -> Fire	I:fire		[+]
+Fall -> DownA	I:downA		[air]
+ M
+Fall -> Run	I:run || V!=0	[ground]
+Fall -> Idle	V=0		[ground]
+
+
+ A
+Bounce -> Blade	I:blade		[+]
+Bounce -> Fire	I:fire		[+]
+ M
+Bounce -> Run	I:run || V!=0	[ground]
+Bounce -> Idle	V=0		[ground]
+Bounce -> Fall	V.y<=0		[air]
+
+
+ A
+Blade -> Fire	E:ctrlB I:fire				[+]
+Blade -> DownA	E:ctrlB I:downA				[air]
+ M
+Blade -> Run	(E:ctrlB I:run) || (E:aEnd V!=0)	[ground]
+Blade -> Idle	E:aEnd V=0				[ground]
+Blade -> Fall	E:aEnd V.y<=0				[air]
+
+
+ A
+Fire -> Blade	E:ctrlB I:blade				[+]
+Fire -> DownA	E:ctrlB I:downA				[air]
+ M
+Fire -> Run	(E:ctrlB I:run) || (E:aEnd V!=0)	[ground]
+Fire -> Idle	E:aEnd V=0				[ground]
+Fire -> Fall	E:aEnd V.y<=0				[air]
+
+
+ A
+-
+ M
+DownA -> Bounce	E:parry
+DownA -> Run	I:run || V!=0	[ground]
+DownA -> Idle	V=0		[ground]
+
+
+
+== Details ===================
+
+Blade:
+[ground]
+ axis = (pointer-player) projection on platform tangent
+ Movement:
+	ADSR movement (AR, DS -> null). State transition isn't allowed until "controll back" (E:ctrlB) or A phase end (E:aEnd). Model configures when E:ctrlB (<= time of attack end)
+ Heartbox:
+ 	irregular pentagon (rectangle + triangle, like home + roof). For example (0,1) (1, 1) (3, 0) (1, -1) (0, -1). Center of this figure is "bottom" of rectangle
+	looks along axis. It doesn't appear immediate. Model configures time (it could be during A or R phases). Time of destoying hearbox also configured (<= time of attack end)
+ Edge cases:
+	platform -> [air]	continue the same it would on platform
+	platform -> platfrom2	continue the same it would on platofrm, but along platform2 (heartbox too)
+[air]
+ axis = (pointer-player)
+ Movement:
+	the same as [ground]
+ Heartbox:
+ 	the same as [ground]
+ Edge cases:
+	[air] -> platform	continue the same it would in air, but along platform (heartbox too)
+
+
+Fire:
+[+]
+ axis = (pointer-player)
+ Movement:
+	the same as Blade movement but along -axis 
+ Heartbox:
+ 	one frame rectangle along axis. Parry rule the same they was
+ Edge cases:
+ 	the same as Blade movement for [ground] and [air]
+
+
+DownA:
+ Movement:
+ 	Vertically ADSR movement (AS, DS -> null). At S phase moves on "max speed". Horizontally ADSR (R, ADS -> null)
+ Heartbox:
+ 	the same as Blade heartbox but looks along velocity (so when Horizontal speed would be 0, looks vertical down)
+

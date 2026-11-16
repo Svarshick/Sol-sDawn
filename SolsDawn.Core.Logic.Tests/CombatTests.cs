@@ -1,94 +1,39 @@
-using SolsDawn.Core.Logic;
 using SolsDawn.Gameplay.Combat;
-using SolsDawn.Gameplay.Entities;
 using Xunit;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace SolsDawn.Core.Logic.Tests;
 
-[Collection("Library")]
-public sealed class CombatTests : IDisposable
+public sealed class CombatTests
 {
-    private const float Dt = 0.1f;
-
-    private readonly string _directory = Path.Combine(Path.GetTempPath(), "solsdawn-" + Guid.NewGuid().ToString("N"));
-
-    public CombatTests() => Library.Initialize(_directory);
-
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
-    private static SlideBlade NewBlade(float acceleration, float peak, float deceleration, float endSpeed)
+    [Theory]
+    [InlineData(1f, 1f, 0f, 1f, 0f)]
+    [InlineData(-1f, 1f, 0f, -1f, 0f)]
+    [InlineData(0f, -1f, 0f, 1f, 0f)]
+    [InlineData(1f, 0.5f, MathF.PI / 2, 0f, 1f)]
+    [InlineData(1f, -0.5f, MathF.PI / 2, 0f, -1f)]
+    public void CMB32_TangentProjectionKeepsTheSideAndHasUnitLength(float dx, float dy, float rotation, float ex, float ey)
     {
-        var blade = new SlideBlade { AttackEndSpeed = endSpeed };
-        CategorySystem.Bind(blade);
+        var result = CombatMath.TangentProjection(new Vector2(dx, dy), rotation);
 
-        var attack = Library.CreateCopyFromDefault(typeof(SimpleAttack));
-        ((SimpleAttack)attack.Instance!).Acceleration = acceleration;
-        ((SimpleAttack)attack.Instance!).PeakSpeed = peak;
-        blade.Attack.ReferenceModel(attack.Guid);
-
-        var decay = Library.CreateCopyFromDefault(typeof(LinearSlowdown));
-        ((LinearSlowdown)decay.Instance!).Deceleration = deceleration;
-        blade.Decay.ReferenceModel(decay.Guid);
-
-        return blade;
+        Assert.Equal(ex, result.X, 4);
+        Assert.Equal(ey, result.Y, 4);
     }
 
-    private static List<(float Speed, SlideBladePhase Phase, bool Ended)> Run(SlideBlade blade, int maxFrames)
+    [Fact]
+    public void Terminology_PentagonPointsAreConvexAndCounterClockwise()
     {
-        var frames = new List<(float, SlideBladePhase, bool)>();
-        var speed = 0f;
-        var phase = SlideBladePhase.Attack;
-        for (var i = 0; i < maxFrames; i++)
+        var points = CombatMath.PentagonPoints(1f, 1f, 2f);
+
+        Assert.Equal([new Vector2(0, -1), new Vector2(1, -1), new Vector2(3, 0), new Vector2(1, 1), new Vector2(0, 1)], points);
+        for (var i = 0; i < points.Length; i++)
         {
-            var ended = blade.Step(ref speed, ref phase, Dt);
-            frames.Add((speed, phase, ended));
-            if (ended)
-                break;
+            var a = points[i];
+            var b = points[(i + 1) % points.Length];
+            var c = points[(i + 2) % points.Length];
+            var cross = (b.X - a.X) * (c.Y - b.Y) - (b.Y - a.Y) * (c.X - b.X);
+            Assert.True(cross > 0);
         }
-
-        return frames;
-    }
-
-    [Fact]
-    public void CMB32_AttackRisesToPeakThenDecayEndsAtEndSpeed()
-    {
-        var frames = Run(NewBlade(acceleration: 10f, peak: 15f, deceleration: 10f, endSpeed: 5f), 100);
-
-        Assert.Equal(25, frames.Count);
-        Assert.Equal(1f, frames[0].Speed, 4);
-        Assert.Equal(15f, frames[14].Speed, 4);
-        Assert.Equal(SlideBladePhase.Decay, frames[14].Phase);
-        Assert.All(frames.Take(24), f => Assert.False(f.Ended));
-        Assert.True(frames[^1].Ended);
-        Assert.Equal(5f, frames[^1].Speed, 4);
-    }
-
-    [Fact]
-    public void CMB32_PeakBelowEndSpeedEndsOnFirstDecayFrame()
-    {
-        var frames = Run(NewBlade(acceleration: 10f, peak: 3f, deceleration: 10f, endSpeed: 5f), 100);
-
-        Assert.Equal(6, frames.Count);
-        Assert.Equal(SlideBladePhase.Decay, frames[4].Phase);
-        Assert.True(frames[5].Ended);
-        Assert.Equal(5f, frames[5].Speed, 4);
-    }
-
-    [Fact]
-    public void CMB32_SwappedDecayModelTakesEffectAtOnce()
-    {
-        var blade = NewBlade(acceleration: 100f, peak: 10f, deceleration: 1f, endSpeed: 0f);
-        var speed = 0f;
-        var phase = SlideBladePhase.Attack;
-        blade.Step(ref speed, ref phase, Dt);
-
-        var faster = Library.CreateCopyFromDefault(typeof(LinearSlowdown));
-        ((LinearSlowdown)faster.Instance!).Deceleration = 50f;
-        blade.Decay.ReferenceModel(faster.Guid);
-        blade.Step(ref speed, ref phase, Dt);
-
-        Assert.Equal(5f, speed, 4);
     }
 
     [Theory]

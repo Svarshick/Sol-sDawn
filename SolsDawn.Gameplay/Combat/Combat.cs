@@ -250,6 +250,24 @@ public static class CombatMath
 
     public static bool IsValidPointer(Vector2 center, Vector2 pointer) => Vector2.Distance(center, pointer) > 0.001f;
 
+    public static Vector2 TangentProjection(Vector2 direction, float platformRotation)
+    {
+        var tangent = new Vector2(MathF.Cos(platformRotation), MathF.Sin(platformRotation));
+        return Vector2.Dot(direction, tangent) >= 0 ? tangent : -tangent;
+    }
+
+    public static Vector2[] PentagonPoints(float length, float halfWidth, float tipLength) =>
+    [
+        new(0, -halfWidth),
+        new(length, -halfWidth),
+        new(length + tipLength, 0),
+        new(length, halfWidth),
+        new(0, halfWidth)
+    ];
+
+    public static PolygonShape Pentagon(float length, float halfWidth, float tipLength) =>
+        Shapes.PolygonShape(PentagonPoints(length, halfWidth, tipLength));
+
     public static float FireParryDistance(Vector2 center, Vector2 axis, IEnumerable<Vector2> boxPositions, float distance)
     {
         var min = float.MaxValue;

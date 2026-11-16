@@ -16,29 +16,19 @@ public class MarkerMotion : IMotionModel
 {
     public float Value;
 
-    public float Calculate(float velocity, int inDir, float dt, float controlledSpeed) => Value;
+    public float Calculate(float velocity, Sign inDir, float dt, float controlledSpeed) => Value;
 }
 
-[AdsrModel(AllowedAdsrState.Attack)]
-public class TargetEchoAttack : IAdsrAttackModel
-{
-    public float Calculate(float velocity, int inDir, float dt, float targetSpeed) => targetSpeed;
-
-    public bool IsFinished(float speed, float targetSpeed) => false;
-}
-
-[AdsrModel(AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
+[AdsrModel(AllowedAdsrState.Attack | AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
 public class TargetEcho : IAdsrModel
 {
-    public float Calculate(float velocity, int inDir, float dt, float targetSpeed) => targetSpeed;
+    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed) => targetSpeed;
 }
 
-[AdsrModel(AllowedAdsrState.Attack)]
-public class AlwaysFinishedAttack : IAdsrAttackModel
+[AdsrModel(AllowedAdsrState.Attack | AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
+public class PrevInDirEcho : IAdsrModel
 {
-    public float Calculate(float velocity, int inDir, float dt, float targetSpeed) => velocity + inDir;
-
-    public bool IsFinished(float speed, float targetSpeed) => true;
+    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed) => prevInDir;
 }
 
 [Collection("Library")]
@@ -66,16 +56,29 @@ public sealed class MovementTests : IDisposable
 
     private static Adsr NewAdsr(float acceleration = 100f, float peak = 15f, float deceleration = 100f)
     {
-        var adsr = new Adsr { ControlledSpeed = C };
+        var adsr = new Adsr { ControlledSpeed = C, PeakSpeed = peak };
         CategorySystem.Bind(adsr);
-        Put<SimpleAttack, IAdsrAttackModel>(adsr.Attack, m =>
-        {
-            m.Acceleration = acceleration;
-            m.PeakSpeed = peak;
-        });
+        Put<SimpleAttack, IAdsrModel>(adsr.Attack, m => m.Acceleration = acceleration);
         Put<LinearSlowdown, IAdsrModel>(adsr.Decay, m => m.Deceleration = deceleration);
         Put<LinearSlowdown, IAdsrModel>(adsr.Release, m => m.Deceleration = deceleration);
         return adsr;
+    }
+
+    private static AR NewAr(float peak = 15f, float acceleration = 30f, float deceleration = 30f)
+    {
+        var ar = new AR { PeakSpeed = peak };
+        CategorySystem.Bind(ar);
+        Put<SimpleAttack, IAdsrModel>(ar.Attack, m => m.Acceleration = acceleration);
+        Put<LinearSlowdown, IAdsrModel>(ar.Release, m => m.Deceleration = deceleration);
+        return ar;
+    }
+
+    private static AS NewAs(float peak = 15f, float acceleration = 30f)
+    {
+        var envelope = new AS { PeakSpeed = peak };
+        CategorySystem.Bind(envelope);
+        Put<SimpleAttack, IAdsrModel>(envelope.Attack, m => m.Acceleration = acceleration);
+        return envelope;
     }
 
     private static MotionSolver NewSolver()
@@ -125,6 +128,8 @@ public sealed class MovementTests : IDisposable
     [Theory]
     [InlineData(typeof(Adsr))]
     [InlineData(typeof(MotionSolver))]
+    [InlineData(typeof(AR))]
+    [InlineData(typeof(AS))]
     public void MOV05_MovementModelsHaveNoRuntimeMembers(Type modelType)
     {
         var entry = Library.CreateCopyFromDefault(modelType);
@@ -142,7 +147,7 @@ public sealed class MovementTests : IDisposable
     [InlineData(99)]
     public void MOV06_AnyMemoryValueIsAccepted(int phase)
     {
-        foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewSolver() })
+        foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewSolver(), NewAr(), NewAs() })
         {
             foreach (var inDir in new[] { -1, 0, 1 })
             {
@@ -262,15 +267,16 @@ public sealed class MovementTests : IDisposable
     }
 
     [Theory]
-    [InlineData(AdsrState.Idle, 5f, 1, C)]
-    [InlineData(AdsrState.Idle, 12f, 1, C)]
-    [InlineData(AdsrState.Idle, 10f, 1, C)]
-    [InlineData(AdsrState.Idle, 5f, 0, 0f)]
-    public void MOV35_SlotsReceiveTargetSpeed(AdsrState start, float velocity, int inDir, float expected)
+    [InlineData(15f, AdsrState.Idle, 5f, 1, 15f)]
+    [InlineData(5f, AdsrState.Idle, 5f, 1, C)]
+    [InlineData(15f, AdsrState.Idle, 12f, 1, C)]
+    [InlineData(15f, AdsrState.Idle, 10f, 1, C)]
+    [InlineData(15f, AdsrState.Idle, 5f, 0, 0f)]
+    public void MOV35_SlotsReceiveTargetSpeed(float peak, AdsrState start, float velocity, int inDir, float expected)
     {
-        var adsr = new Adsr { ControlledSpeed = C };
+        var adsr = new Adsr { ControlledSpeed = C, PeakSpeed = peak };
         CategorySystem.Bind(adsr);
-        Put<TargetEchoAttack, IAdsrAttackModel>(adsr.Attack);
+        Put<TargetEcho, IAdsrModel>(adsr.Attack);
         Put<TargetEcho, IAdsrModel>(adsr.Decay);
         Put<TargetEcho, IAdsrModel>(adsr.Sustain);
         Put<TargetEcho, IAdsrModel>(adsr.Release);
@@ -280,35 +286,55 @@ public sealed class MovementTests : IDisposable
     }
 
     [Fact]
-    public void MOV36_AttackFinishesIntoDecayAtItsLimitWhileHeld()
+    public void MOV34_AttackRunsUntilLimitThenDecays()
     {
         var adsr = NewAdsr(acceleration: 100f, peak: 15f);
         var memory = Memory(AdsrState.Attack);
 
         var velocity = adsr.Calculate(10f, 1, Dt, ref memory);
-
         Assert.Equal(15f, velocity);
+        Assert.Equal(AdsrState.Attack, State(memory));
+
+        adsr.Calculate(velocity, 1, Dt, ref memory);
         Assert.Equal(AdsrState.Decay, State(memory));
     }
 
     [Fact]
-    public void MOV36_AttackNeverEndsBelowControlledSpeed()
+    public void MOV34_PeakBelowControlledSpeedStillReachesControlledSpeed()
+    {
+        var adsr = NewAdsr(acceleration: 100f, peak: 5f);
+        var memory = new MovementMemory();
+
+        var velocity = adsr.Calculate(4f, 1, Dt, ref memory);
+        Assert.Equal(C, velocity);
+
+        adsr.Calculate(velocity, 1, Dt, ref memory);
+        Assert.Equal(AdsrState.Sustain, State(memory));
+    }
+
+    [Theory]
+    [InlineData(AdsrState.Sustain, -1, C, 1, -1)]
+    [InlineData(AdsrState.Release, -1, C, 1, 1)]
+    [InlineData(AdsrState.Idle, 0, 5f, -1, -1)]
+    public void MOV38_PrevInDirIsInDirOnTheFirstFrameOfAPhase(AdsrState start, int storedPrev, float velocity, int inDir, int expected)
     {
         var adsr = new Adsr { ControlledSpeed = C };
         CategorySystem.Bind(adsr);
-        Put<AlwaysFinishedAttack, IAdsrAttackModel>(adsr.Attack);
-        var memory = new MovementMemory();
+        Put<PrevInDirEcho, IAdsrModel>(adsr.Attack);
+        Put<PrevInDirEcho, IAdsrModel>(adsr.Decay);
+        Put<PrevInDirEcho, IAdsrModel>(adsr.Sustain);
+        Put<PrevInDirEcho, IAdsrModel>(adsr.Release);
+        var memory = new MovementMemory { Phase = (int)start, PrevInDir = storedPrev };
 
-        adsr.Calculate(5f, 1, Dt, ref memory);
-
-        Assert.Equal(AdsrState.Attack, State(memory));
+        Assert.Equal(expected, adsr.Calculate(velocity, inDir, Dt, ref memory));
+        Assert.Equal(inDir, (int)memory.PrevInDir);
     }
 
     [Theory]
     [InlineData(AdsrState.Attack, 5f)]
     [InlineData(AdsrState.Decay, 12f)]
     [InlineData(AdsrState.Sustain, 10f)]
-    public void MOV37_MOV44_TurningKeepsStateAndSpeed(AdsrState state, float speed)
+    public void MOV36_MOV41_TurningKeepsStateAndSpeed(AdsrState state, float speed)
     {
         var adsr = NewAdsr(acceleration: 0f, peak: 100f, deceleration: 0f);
         var memory = Memory(state);
@@ -320,33 +346,107 @@ public sealed class MovementTests : IDisposable
     }
 
     [Fact]
-    public void MOV42_MOV44_LinearSlowdownStopsExactlyAtTarget()
+    public void MOV39_MOV41_LinearSlowdownStopsExactlyAtTarget()
     {
         var model = new LinearSlowdown { Deceleration = 100f };
 
-        Assert.Equal(C, model.Calculate(12f, 1, Dt, C));
-        Assert.Equal(0f, model.Calculate(5f, 0, Dt, 0f));
-        Assert.Equal(-9f, new LinearSlowdown { Deceleration = 10f }.Calculate(-10f, 0, Dt, 0f), 3);
+        Assert.Equal(C, model.Calculate(12f, 1, 1, Dt, C));
+        Assert.Equal(0f, model.Calculate(5f, 0, 0, Dt, 0f));
+        Assert.Equal(-9f, new LinearSlowdown { Deceleration = 10f }.Calculate(-10f, 0, 0, Dt, 0f), 3);
     }
 
     [Fact]
-    public void MOV41_MOV44_SimpleAttackLimitIsAtLeastTarget()
+    public void MOV39_MOV41_SimpleAttackStopsExactlyAtTarget()
     {
-        var model = new SimpleAttack { Acceleration = 100f, PeakSpeed = 5f };
+        var model = new SimpleAttack { Acceleration = 100f };
 
-        Assert.Equal(C, model.Calculate(9f, 1, Dt, C));
-        Assert.False(model.IsFinished(9f, C));
-        Assert.True(model.IsFinished(C, C));
-        Assert.Equal(-1f, new SimpleAttack { Acceleration = 10f, PeakSpeed = 15f }.Calculate(0f, -1, Dt, C), 3);
+        Assert.Equal(C, model.Calculate(9f, 1, 1, Dt, C));
+        Assert.Equal(-1f, new SimpleAttack { Acceleration = 10f }.Calculate(0f, -1, -1, Dt, C), 3);
     }
 
     [Fact]
-    public void MOV44_KeepSpeedPreservesSpeedAndFollowsInput()
+    public void MOV41_KeepSpeedPreservesSpeedAndFollowsInput()
     {
         var model = new KeepSpeed();
 
-        Assert.Equal(-C, model.Calculate(C, -1, Dt, C));
-        Assert.Equal(C, model.Calculate(C, 0, Dt, C));
+        Assert.Equal(-C, model.Calculate(C, -1, -1, Dt, C));
+        Assert.Equal(C, model.Calculate(C, 0, 0, Dt, C));
+    }
+
+    [Fact]
+    public void MOV52_MOV53_ArRisesToPeakThenReleasesToDone()
+    {
+        var ar = NewAr(peak: 15f, acceleration: 30f, deceleration: 30f);
+        var memory = new MovementMemory();
+        var speed = 0f;
+        var frames = new List<(float Speed, ArPhase Phase)>();
+
+        for (var i = 0; i < 20 && !AR.IsDone(memory); i++)
+        {
+            speed = ar.Calculate(speed, 1, Dt, ref memory);
+            frames.Add((speed, (ArPhase)memory.Phase));
+        }
+
+        Assert.Equal(10, frames.Count);
+        Assert.Equal((15f, ArPhase.Attack), (MathF.Round(frames[4].Speed, 3), frames[4].Phase));
+        Assert.Equal(ArPhase.Release, frames[5].Phase);
+        Assert.Equal((0f, ArPhase.Done), frames[^1]);
+    }
+
+    [Fact]
+    public void MOV52_ArDoneStaysDoneAtZero()
+    {
+        var ar = NewAr();
+        var memory = new MovementMemory { Phase = (int)ArPhase.Done };
+
+        Assert.Equal(0f, ar.Calculate(7f, 1, Dt, ref memory));
+        Assert.True(AR.IsDone(memory));
+    }
+
+    [Fact]
+    public void MOV57_ArEnteredAtPeakSkipsAttack()
+    {
+        var ar = NewAr(peak: 15f, deceleration: 10f);
+        var memory = new MovementMemory();
+
+        Assert.Equal(19f, ar.Calculate(20f, 1, Dt, ref memory), 3);
+        Assert.Equal(ArPhase.Release, (ArPhase)memory.Phase);
+    }
+
+    [Fact]
+    public void MOV55_AsRisesToPeakThenSustainsForever()
+    {
+        var envelope = NewAs(peak: 15f, acceleration: 30f);
+        var memory = new MovementMemory();
+        var speed = 0f;
+
+        for (var i = 0; i < 50; i++)
+            speed = envelope.Calculate(speed, 1, Dt, ref memory);
+
+        Assert.Equal(15f, speed, 3);
+        Assert.Equal(AsPhase.Sustain, (AsPhase)memory.Phase);
+    }
+
+    [Fact]
+    public void MOV57_AsEnteredAbovePeakKeepsSpeed()
+    {
+        var envelope = NewAs(peak: 15f);
+        var memory = new MovementMemory();
+
+        Assert.Equal(20f, envelope.Calculate(20f, 1, Dt, ref memory));
+        Assert.Equal(AsPhase.Sustain, (AsPhase)memory.Phase);
+    }
+
+    [Fact]
+    public void MOV56_EnvelopeFirstFrameGetsInDirAsPrevInDir()
+    {
+        var ar = new AR { PeakSpeed = 15f };
+        CategorySystem.Bind(ar);
+        Put<PrevInDirEcho, IAdsrModel>(ar.Attack);
+        var memory = new MovementMemory();
+
+        Assert.Equal(-1f, ar.Calculate(0f, -1, Dt, ref memory));
+        Assert.Equal(ArPhase.Attack, (ArPhase)memory.Phase);
     }
 
     [Fact]
