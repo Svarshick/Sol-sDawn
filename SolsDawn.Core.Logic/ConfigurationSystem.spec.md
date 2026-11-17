@@ -121,18 +121,22 @@ Requirements are `CFG-nn`.
 - **CFG-72** Clicking the right zone opens the slot's search.
 - **CFG-73** The search opens as an overlay on top of other elements, as in Chrome or Unity.
 - **CFG-74** Double-clicking the right zone edits the model's name.
-- **CFG-75** Clicking anywhere in the left zone folds or unfolds the nested model's fields. Slots are folded by default, and the fold state is kept when the slot's model changes.
+- **CFG-75** Clicking anywhere in the left zone folds or unfolds the nested model's fields. Slots are folded by default, and the fold state is kept when the slot's model changes. A slot whose model has no fields to show has no fold arrow, and clicking its left zone does nothing. A slot in the error state of CFG-52 always folds, so its error stays reachable.
 - **CFG-76** Default models are always at the bottom of the results, in muted gray, in the format `default: <ModelType>`.
 - **CFG-77** A row that will be copied is slightly highlighted. A row that will be referenced has the regular color, except default rows (CFG-76).
 - **CFG-78** Colors describe what the click will do, not whether the model is an orphan, so they change while Shift is held.
 - **CFG-79** The far right of each non-default row has a red X that deletes the model.
 - **CFG-80** Palette (not final): minimalist, calm colors. Base is blue-gray, deletion is burgundy or muted red, copy is muted green.
 - **CFG-81** The Library Browser is a debug tool. It is closed by default and opened manually.
+- **CFG-82** Double-clicking the left zone of a slot that folds focuses it: the inspector then shows only that slot's row, unfolded, with its fields below. Other slots, including the root's other slots, are hidden. Double-clicking a slot inside the focused one focuses that slot instead.
+- **CFG-83** The focused row's left zone shows the path of slot and container names from the inspected model, joined by `/`. A path of more than three names keeps the first and the last two, with `...` between them, e.g. `Player/.../Movement/Attack`. Hovering it shows the full path.
+- **CFG-84** Double-clicking the focused row's left zone shows the whole model again. Focus follows the path, not the models: it survives a slot on the path changing its model, and ends by itself when the path no longer exists.
+- **CFG-85** Focus is kept per place a model is inspected, so the main inspector and the Library Browser focus independently, even on the same model.
 
 ## Verification
 
 - CFG-01 to CFG-69 and CFG-90 to CFG-94: automated tests with xUnit v3, headless, against a temporary folder, in a new test project. Focus behaviour in CFG-23 and CFG-62 and the build-time copy in CFG-92 are checked manually.
-- CFG-70 to CFG-81: manual checklist in the running game.
+- CFG-70 to CFG-85: manual checklist in the running game.
 
 ## Known limits
 

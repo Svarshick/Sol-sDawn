@@ -59,6 +59,10 @@ public static class AutoInspector
         int LibraryVersion,
         IReadOnlyList<ModelSearchResult> Results);
 
+    private readonly record struct PathStep(string Id, string Label);
+
+    private sealed record SlotFocus(ModelEdit Owner, FieldInfo Field, PathStep[] Path);
+
     private static readonly NumVector4 ColorCurrentText        = new(1.00f, 1.00f, 1.00f, 1.00f);
     private static readonly NumVector4 ColorCurrentHoverBg     = new(0.16f, 0.29f, 0.48f, 0.85f);
 
@@ -81,6 +85,7 @@ public static class AutoInspector
     private static readonly Dictionary<uint, string> _slotSearchQueries = new();
     private static readonly Dictionary<uint, CachedSearchState> _slotSearchCache = new();
     private static readonly Dictionary<string, string> _modelNameDrafts = new();
+    private static readonly Dictionary<uint, SlotFocus> _focus = new();
     private static uint? _pendingSearchOpenSlotId;
     private static uint? _renamingSlotId;
     private static bool _renameFocusPending;
@@ -95,7 +100,17 @@ public static class AutoInspector
 
     public static bool Draw(ModelEntry entry)
     {
-        bool changed = DrawFields(entry.Instance!, ModelEdit.ForModel(entry));
+        uint focusKey = ImGui.GetID($"##Focus_{entry.Guid}");
+        bool changed;
+        if (_focus.TryGetValue(focusKey, out var focus) && TryGetFocusedSlot(focus, out var slot))
+        {
+            changed = DrawFocused(focusKey, focus, slot);
+        }
+        else
+        {
+            _focus.Remove(focusKey);
+            changed = DrawFields(entry.Instance!, ModelEdit.ForModel(entry), focusKey, []);
+        }
 
         if (!ImGui.IsAnyItemActive())
             Library.FlushDirty();
@@ -106,25 +121,64 @@ public static class AutoInspector
         return changed;
     }
 
-    private static bool DrawFields(object target, ModelEdit edit)
+    private static bool TryGetFocusedSlot(SlotFocus focus, out ICategorySlot slot)
     {
-        var type = target.GetType();
+        slot = null!;
+        if (!focus.Owner.TryCurrent(out var owner) || !focus.Field.DeclaringType!.IsInstanceOfType(owner))
+            return false;
+
+        if (focus.Field.GetValue(owner) is not ICategorySlot found)
+            return false;
+
+        slot = found;
+        return true;
+    }
+
+    private static bool DrawFocused(uint focusKey, SlotFocus focus, ICategorySlot slot)
+    {
+        var path = focus.Path;
+        for (int i = 0; i < path.Length - 1; i++)
+            ImGui.PushID(path[i].Id);
+
+        bool changed = DrawCategorySlot(slot, FormatPath(path), focus.Owner, focus.Field, focusKey, path, focused: true);
+
+        for (int i = 0; i < path.Length - 1; i++)
+            ImGui.PopID();
+
+        return changed;
+    }
+
+    private static string FormatPath(PathStep[] path)
+    {
+        return path.Length <= 3
+            ? string.Join("/", path.Select(s => s.Label))
+            : $"{path[0].Label}/.../{path[^2].Label}/{path[^1].Label}";
+    }
+
+    private static List<FieldMeta> GetMetaList(Type type)
+    {
         if (!_cache.TryGetValue(type, out var metaList))
         {
             metaList = BuildMetaList(type);
             _cache[type] = metaList;
         }
 
+        return metaList;
+    }
+
+    private static bool DrawFields(object target, ModelEdit edit, uint focusKey, PathStep[] path)
+    {
         bool anyChanged = false;
 
-        foreach (var meta in metaList)
+        foreach (var meta in GetMetaList(target.GetType()))
         {
             var field = meta.Field;
             var label = meta.Label;
 
             if (meta.IsCategorySlot)
             {
-                if (field.GetValue(target) is ICategorySlot slot && DrawCategorySlot(slot, label, edit, field))
+                if (field.GetValue(target) is ICategorySlot slot &&
+                    DrawCategorySlot(slot, label, edit, field, focusKey, [..path, new PathStep(field.Name, label)], focused: false))
                     anyChanged = true;
                 continue;
             }
@@ -144,7 +198,7 @@ public static class AutoInspector
                     ImGui.PushID(field.Name);
                     if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
                     {
-                        if (DrawFields(nestedObj, edit.Container(field)))
+                        if (DrawFields(nestedObj, edit.Container(field), focusKey, [..path, new PathStep(field.Name, label)]))
                             anyChanged = true;
                         ImGui.TreePop();
                     }
@@ -320,24 +374,69 @@ public static class AutoInspector
         return metaList;
     }
 
-    private static bool DrawCategorySlot(ICategorySlot slot, string slotName, ModelEdit edit, FieldInfo field)
+    private static bool DrawCategorySlot(
+        ICategorySlot slot,
+        string slotName,
+        ModelEdit edit,
+        FieldInfo field,
+        uint focusKey,
+        PathStep[] path,
+        bool focused)
     {
         bool changed = false;
         ImGui.PushID(slot.FieldName);
         uint slotId = ImGui.GetID("##slot");
 
+        bool foldable = slot.IsMissingModel || GetMetaList(slot.GetActiveInstanceObject().GetType()).Count > 0;
         _slotExpanded.TryGetValue(slotId, out bool isExpanded);
+        isExpanded &= foldable;
+
         float column = Math.Max(ImGui.GetWindowWidth() * 0.45f, ImGui.GetCursorPosX() + 80f);
         float foldWidth = column - ImGui.GetCursorPosX() - ImGui.GetStyle().ItemSpacing.X;
-        if (ImGui.Selectable($"   {slotName}###Fold", false, ImGuiSelectableFlags.None, new NumVector2(foldWidth, 0f)))
+
+        if (!foldable)
+        {
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, NumVector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, NumVector4.Zero);
+        }
+
+        bool foldClicked = ImGui.Selectable($"   {slotName}###Fold", false, ImGuiSelectableFlags.None, new NumVector2(foldWidth, 0f));
+
+        if (!foldable)
+            ImGui.PopStyleColor(2);
+
+        if (foldClicked && foldable)
         {
             isExpanded = !isExpanded;
             _slotExpanded[slotId] = isExpanded;
         }
 
+        if (ImGui.IsItemHovered())
+        {
+            if (focused)
+                ImGui.SetTooltip($"{string.Join("/", path.Select(s => s.Label))}\nDouble-Click: Show Whole Config");
+            else if (foldable)
+                ImGui.SetTooltip("Click: Fold\nDouble-Click: Focus");
+
+            if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+            {
+                if (focused)
+                {
+                    _focus.Remove(focusKey);
+                }
+                else if (foldable)
+                {
+                    _focus[focusKey] = new SlotFocus(edit, field, path);
+                    isExpanded = true;
+                    _slotExpanded[slotId] = true;
+                }
+            }
+        }
+
         var foldMin = ImGui.GetItemRectMin();
         float rowHeight = ImGui.GetItemRectSize().Y;
-        DrawArrow(foldMin + new NumVector2(rowHeight * 0.5f, rowHeight * 0.5f), rowHeight, isExpanded);
+        if (foldable)
+            DrawArrow(foldMin + new NumVector2(rowHeight * 0.5f, rowHeight * 0.5f), rowHeight, isExpanded);
 
         ImGui.SameLine(column);
 
@@ -397,7 +496,7 @@ public static class AutoInspector
                 ImGui.BeginDisabled(true);
             }
 
-            if (DrawFields(slot.GetActiveInstanceObject(), edit.Slot(field)))
+            if (DrawFields(slot.GetActiveInstanceObject(), edit.Slot(field), focusKey, path))
                 changed = true;
 
             if (isMissing)

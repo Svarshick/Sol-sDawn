@@ -466,6 +466,29 @@ public sealed class ModelEdit
 
     public (object Target, ModelEntry Entry) Writable() => Walk(materialize: true);
 
+    public bool TryCurrent(out object target)
+    {
+        target = null!;
+        if (_parent == null)
+        {
+            target = _entry!.Instance!;
+            return true;
+        }
+
+        if (!_parent.TryCurrent(out var owner) || !_field!.DeclaringType!.IsInstanceOfType(owner))
+            return false;
+
+        var value = _field.GetValue(owner);
+        if (_isSlot)
+            value = (value as ICategorySlot)?.GetActiveInstanceObject();
+
+        if (value == null)
+            return false;
+
+        target = value;
+        return true;
+    }
+
     public void SetField(FieldInfo field, object? value)
     {
         var (target, entry) = Writable();
