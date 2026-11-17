@@ -151,7 +151,7 @@ public class CategorySlot<T> : ICategorySlot where T : class
 
         ModelGuid = entry.Guid;
         RecordHistory(entry.Guid);
-        Library.TouchModel(entry.Guid);
+        Library.MarkDirty(entry.Guid);
         _missingLogged = false;
         Library.NotifyHistoryOrSlotChanged();
     }
@@ -507,7 +507,7 @@ public sealed class ModelEdit
         else
             slot.ReferenceModel(result.Guid);
 
-        Library.SaveModel(ownerEntry.Guid);
+        Library.MarkDirty(ownerEntry.Guid);
         return created;
     }
 
@@ -535,7 +535,7 @@ public sealed class ModelEdit
             $"{ownerEntry.Name}_{slot.FieldName}");
         slot.ModelGuid = copy.Guid;
         slot.RecordHistory(copy.Guid);
-        Library.SaveModel(ownerEntry.Guid);
+        Library.MarkDirty(ownerEntry.Guid);
         return (copy.Instance!, copy);
     }
 }
@@ -583,6 +583,7 @@ public static class Library
 {
     private static readonly Dictionary<string, ModelEntry> _models = new(StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> _dirty = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> _deleted = new(StringComparer.OrdinalIgnoreCase);
 
     private static bool _initialized;
     private static bool _isLoading;
@@ -638,6 +639,7 @@ public static class Library
         _isLoading = true;
         _models.Clear();
         _dirty.Clear();
+        _deleted.Clear();
 
         try
         {
@@ -785,7 +787,7 @@ public static class Library
         };
 
         _models[entry.Guid] = entry;
-        SaveModelToFile(entry);
+        _dirty.Add(entry.Guid);
         Version++;
         OnLibraryChanged?.Invoke();
         return entry;
@@ -828,7 +830,7 @@ public static class Library
         };
 
         _models[newEntry.Guid] = newEntry;
-        SaveModelToFile(newEntry);
+        _dirty.Add(newEntry.Guid);
         Version++;
         OnLibraryChanged?.Invoke();
         return newEntry;
@@ -854,37 +856,17 @@ public static class Library
         };
 
         _models[entry.Guid] = entry;
-        SaveModelToFile(entry);
+        _dirty.Add(entry.Guid);
         Version++;
         return entry;
     }
 
-    public static void TouchModel(string guid)
-    {
-        EnsureInitialized();
-        if (_models.TryGetValue(guid, out var entry))
-        {
-            entry.LastUpdatedTicks = DateTime.UtcNow.Ticks;
-            SaveModelToFile(entry);
-            Version++;
-        }
-    }
+    public static bool HasUnsavedChanges => _initialized && (_dirty.Count > 0 || _deleted.Count > 0);
 
-    public static void SaveModel(string? guid)
+    public static void MarkDirty(string? guid)
     {
         EnsureInitialized();
         if (!string.IsNullOrWhiteSpace(guid) && _models.TryGetValue(guid, out var entry))
-        {
-            entry.LastUpdatedTicks = DateTime.UtcNow.Ticks;
-            SaveModelToFile(entry);
-            Version++;
-        }
-    }
-
-    public static void MarkDirty(string guid)
-    {
-        EnsureInitialized();
-        if (_models.TryGetValue(guid, out var entry))
         {
             entry.LastUpdatedTicks = DateTime.UtcNow.Ticks;
             _dirty.Add(guid);
@@ -892,15 +874,44 @@ public static class Library
         }
     }
 
-    public static void FlushDirty()
+    public static bool Save()
     {
-        foreach (var guid in _dirty)
+        if (!_initialized)
+            return true;
+
+        var ok = true;
+        foreach (var guid in _dirty.ToList())
         {
-            if (_models.TryGetValue(guid, out var entry))
-                SaveModelToFile(entry);
+            try
+            {
+                if (_models.TryGetValue(guid, out var entry))
+                    SaveModelToFile(entry);
+                _dirty.Remove(guid);
+            }
+            catch (Exception ex)
+            {
+                ok = false;
+                Log.Logic.Error($"Failed to save model '{guid}': {ex.Message}");
+            }
         }
 
-        _dirty.Clear();
+        foreach (var guid in _deleted.ToList())
+        {
+            try
+            {
+                var path = GetModelFilePath(guid);
+                if (File.Exists(path))
+                    File.Delete(path);
+                _deleted.Remove(guid);
+            }
+            catch (Exception ex)
+            {
+                ok = false;
+                Log.Logic.Error($"Failed to delete model file '{guid}': {ex.Message}");
+            }
+        }
+
+        return ok;
     }
 
     public static void RenameModel(string? guid, string newName)
@@ -923,11 +934,8 @@ public static class Library
         EnsureInitialized();
         if (!string.Equals(guid, RootGuid, StringComparison.OrdinalIgnoreCase) && _models.Remove(guid))
         {
-            var path = GetModelFilePath(guid);
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
+            _dirty.Remove(guid);
+            _deleted.Add(guid);
             Version++;
             OnLibraryChanged?.Invoke();
         }
@@ -1199,18 +1207,11 @@ public static class Library
             return guids;
 
         var slots = CategorySystem.GetOwnedCategorySlots(parent.Instance);
-        bool anyPruned = false;
-
         foreach (var slot in slots)
         {
             if (includeHistory)
             {
-                int countBefore = slot.HistoryGuids.Count;
                 slot.PruneDeletedHistory();
-                if (slot.HistoryGuids.Count != countBefore)
-                {
-                    anyPruned = true;
-                }
 
                 foreach (var histGuid in slot.HistoryGuids)
                 {
@@ -1226,11 +1227,6 @@ public static class Library
                         guids.Add(slot.ModelGuid);
                 }
             }
-        }
-
-        if (anyPruned)
-        {
-            SaveModelToFile(parent);
         }
 
         return guids;

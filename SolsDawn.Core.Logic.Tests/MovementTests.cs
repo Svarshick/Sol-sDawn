@@ -135,7 +135,8 @@ public sealed class MovementTests : IDisposable
     public void MOV05_MovementModelsHaveNoRuntimeMembers(Type modelType)
     {
         var entry = Library.CreateCopyFromDefault(modelType);
-        Library.SaveModel(entry.Guid);
+        Library.MarkDirty(entry.Guid);
+        Library.Save();
 
         Assert.DoesNotContain("Phase", File.ReadAllText(Path.Combine(_directory, entry.Guid + ".json")));
         Assert.Null(modelType.GetProperty("Phase"));

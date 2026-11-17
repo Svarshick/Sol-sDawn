@@ -27,6 +27,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
     private Job _mainJob;
     private bool _firstUpdate = true;
     private Input _input;
+    private string _baseTitle = string.Empty;
     
     public Game(Func<Job> mainJobRunner)
     {
@@ -47,6 +48,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
             Camera = new CartesianCamera(GraphicsDevice);
             IsMouseVisible = true;
             Window.AllowUserResizing = true;
+            _baseTitle = Window.Title;
             Camera.Position = Vector2.Zero;
             var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
             _graphicsDeviceManager.PreferredBackBufferWidth = displayMode.Width;
@@ -74,6 +76,7 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         Time.Update(gameTime);
         
         _input.Update();
+        SaveSystem.Update();
         if (_firstUpdate)
         {
             _mainJob = _mainJobRunner();
@@ -89,6 +92,25 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         
         base.Update(gameTime);
         LateUpdate();
+        UpdateTitle();
+    }
+
+    private void UpdateTitle()
+    {
+        var title = SaveSystem.HasUnsavedChanges ? _baseTitle + " *" : _baseTitle;
+        if (Window.Title != title)
+            Window.Title = title;
+    }
+
+    protected override void OnExiting(object sender, ExitingEventArgs args)
+    {
+        if (SaveSystem.CancelExit())
+        {
+            args.Cancel = true;
+            return;
+        }
+
+        base.OnExiting(sender, args);
     }
 
     private void LateUpdate()
@@ -113,10 +135,11 @@ public sealed class Game : Microsoft.Xna.Framework.Game
         Painter.DoDraws();
         Painter.End();
 
-        if (ImGuiDrawer is not null)
+        if (ImGuiDrawer is not null || SaveSystem.ExitPromptOpen)
         {
             _imGuiRenderer.BeforeLayout(gameTime);
-            ImGuiDrawer();
+            ImGuiDrawer?.Invoke();
+            SaveSystem.DrawExitPrompt(Exit);
             _imGuiRenderer.AfterLayout();
         }
 

@@ -18,7 +18,7 @@ Requirements are `LVL-nn`.
 
 ## Startup
 
-- **LVL-01** `SolsDawn.Gameplay` owns startup. `Main.RootJob` initializes the Library with the `_Data` path (CFG-90), loads the root `GameConfig` (CFG-18) and returns `LevelRunner.Run(start)`, where `start` is the first level to run.
+- **LVL-01** `SolsDawn.Gameplay` owns startup. `Main.RootJob` initializes the Library with the `_Data` path (CFG-90), loads the root `GameConfig` (CFG-18), initializes the graph store with the `_Data/Graphs` path (SPG-20) and returns `LevelRunner.Run(start)`, where `start` is the first level to run.
 - **LVL-02** Levels are found by reflection in the loaded assemblies when the runner starts. A method marked `[Level]` with the wrong signature is logged as an error and not listed.
 
 ## Frame order
@@ -26,7 +26,7 @@ Requirements are `LVL-nn`.
 - **LVL-03** The engine updates input before the root job, every frame.
 - **LVL-04** The runner creates its phases in this order, and every frame they run in this order:
   1. Effects: the owner job of `Effects` (CMB-41, CMB-45).
-  2. Player: when `G.Player` is alive, its `PlayerController` updates (CMB-22).
+  2. Player: when `G.Player` is alive, its `PlayerController` updates (CMB-22). Then the speed recording takes its sample (SPG-01).
   3. Level host: the current level job and every subjob it started, such as enemy behaviours.
   4. After: `CombatSystem.Resolve` (CMB-10), then the camera moves to `G.Player` when it is alive.
 

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;
+using SolsDawn.Core.Logic.SpeedGraph;
 
 namespace SolsDawn.Gameplay;
 
@@ -12,6 +13,7 @@ public static class Main
     {
         Library.Initialize(DataDirectory());
         Config = Library.LoadRoot<GameConfig>();
+        SpeedGraphs.Initialize(Path.Combine(DataDirectory(), "Graphs"));
         return LevelRunner.Run(Levels.Sandbox);
     }
 

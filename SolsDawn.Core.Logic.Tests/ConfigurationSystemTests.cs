@@ -32,7 +32,7 @@ public sealed class ConfigurationSystemTests : IDisposable
     {
         var slot = (ICategorySlot)typeof(T).GetField(slotField)!.GetValue(owner.Instance)!;
         slot.ReferenceModel(target.Guid);
-        Library.SaveModel(owner.Guid);
+        Library.MarkDirty(owner.Guid);
     }
 
     [Fact]
@@ -51,7 +51,8 @@ public sealed class ConfigurationSystemTests : IDisposable
     {
         var hero = Create<Hero>("H");
         Instance<Hero>(hero).Gear.Weight = 7f;
-        Library.SaveModel(hero.Guid);
+        Library.MarkDirty(hero.Guid);
+        Library.Save();
         var filesBefore = Directory.GetFiles(_directory).Length;
 
         Library.Initialize(_directory);
@@ -65,7 +66,8 @@ public sealed class ConfigurationSystemTests : IDisposable
     {
         var hero = Create<Hero>("H");
         Instance<Hero>(hero).Gear.RuntimeCounter = 9;
-        Library.SaveModel(hero.Guid);
+        Library.MarkDirty(hero.Guid);
+        Library.Save();
 
         Assert.DoesNotContain("RuntimeCounter", File.ReadAllText(FilePath(hero.Guid)));
     }
@@ -101,7 +103,8 @@ public sealed class ConfigurationSystemTests : IDisposable
         var root = Library.LoadRoot<TestRoot>();
         var squad = Create<Squad>("Alpha");
         root.Team.ReferenceModel(squad.Guid);
-        Library.SaveModel(Library.RootGuid);
+        Library.MarkDirty(Library.RootGuid);
+        Library.Save();
 
         Library.Initialize(_directory);
 
@@ -154,6 +157,7 @@ public sealed class ConfigurationSystemTests : IDisposable
 
         Assert.Null(created);
         Assert.Equal(result.Guid, Instance<Hero>(hero).Weapon.ModelGuid);
+        Library.Save();
         Assert.Single(Directory.GetFiles(_directory));
     }
 
@@ -196,7 +200,7 @@ public sealed class ConfigurationSystemTests : IDisposable
             .Slot(Field<Hero>("Weapon"));
 
         edit.SetField(Field<Sword>("Damage"), 9f);
-        Library.FlushDirty();
+        Library.Save();
         Library.Initialize(_directory);
 
         var loaded = Library.LoadRoot<TestRoot>();
@@ -308,7 +312,7 @@ public sealed class ConfigurationSystemTests : IDisposable
     {
         var first = Create<Sword>("Twin");
         var second = Create<Sword>("Twin");
-        Library.SaveModel(first.Guid);
+        Library.MarkDirty(first.Guid);
 
         var results = SearchWeapons();
 
@@ -341,7 +345,8 @@ public sealed class ConfigurationSystemTests : IDisposable
         Library.DeleteModel(old.Guid);
         Assert.Contains(old.Guid, slot.HistoryGuids);
 
-        Library.SaveModel(hero.Guid);
+        Library.MarkDirty(hero.Guid);
+        Library.Save();
         Library.Initialize(_directory);
         var reloaded = Library.GetModel<Hero>(hero.Guid)!.Weapon;
         Assert.Contains(old.Guid, reloaded.HistoryGuids);
@@ -415,6 +420,7 @@ public sealed class ConfigurationSystemTests : IDisposable
     public void CFG68_MissingFieldTakesCodeDefault()
     {
         var hero = Create<Hero>("H");
+        Library.Save();
         var path = FilePath(hero.Guid);
         var json = File.ReadAllText(path).Replace("\"Speed\": 5,", "");
         Assert.DoesNotContain("Speed", json);
@@ -431,6 +437,7 @@ public sealed class ConfigurationSystemTests : IDisposable
         var hero = Create<Hero>("H");
         var sword = Create<Sword>("Blade");
         Reference<Hero>(hero, "Weapon", sword);
+        Library.Save();
         var path = FilePath(sword.Guid);
         var json = File.ReadAllText(path).Replace("Tests.Sword", "Tests.Removed");
         File.WriteAllText(path, json);
@@ -453,23 +460,105 @@ public sealed class ConfigurationSystemTests : IDisposable
     }
 
     [Fact]
-    public void CFG93_EditWritesFileOnlyOnFlushAndOnlyForEditedModel()
+    public void CFG93_EditWritesFileOnlyOnSaveAndOnlyForEditedModel()
     {
         var hero = Create<Hero>("H");
         var sword = Create<Sword>("Blade");
         Reference<Hero>(hero, "Weapon", sword);
+        Library.Save();
         var heroWrite = File.ReadAllText(FilePath(hero.Guid));
         var edit = ModelEdit.ForModel(hero).Slot(Field<Hero>("Weapon"));
 
         edit.SetField(Field<Sword>("Damage"), 11f);
 
         Assert.Equal(11f, Instance<Sword>(sword).Damage);
+        Assert.True(Library.HasUnsavedChanges);
         Assert.Contains("\"Damage\": 1", File.ReadAllText(FilePath(sword.Guid)));
 
-        Library.FlushDirty();
+        Library.Save();
 
+        Assert.False(Library.HasUnsavedChanges);
         Assert.Contains("\"Damage\": 11", File.ReadAllText(FilePath(sword.Guid)));
         Assert.Equal(heroWrite, File.ReadAllText(FilePath(hero.Guid)));
+    }
+
+    [Fact]
+    public void CFG95_ChangesStayInMemoryUntilSave()
+    {
+        var hero = Create<Hero>("H");
+        Assert.Empty(Directory.GetFiles(_directory));
+        Assert.True(Library.HasUnsavedChanges);
+
+        Library.Save();
+        Assert.True(File.Exists(FilePath(hero.Guid)));
+
+        Library.RenameModel(hero.Guid, "Renamed");
+        Assert.True(Library.HasUnsavedChanges);
+        Assert.DoesNotContain("Renamed", File.ReadAllText(FilePath(hero.Guid)));
+
+        Library.Save();
+        Assert.Contains("Renamed", File.ReadAllText(FilePath(hero.Guid)));
+    }
+
+    [Fact]
+    public void CFG95_DeleteRemovesFileOnSave()
+    {
+        var sword = Create<Sword>("Blade");
+        Library.Save();
+
+        Library.DeleteModel(sword.Guid);
+
+        Assert.True(File.Exists(FilePath(sword.Guid)));
+        Assert.True(Library.HasUnsavedChanges);
+        Library.Save();
+        Assert.False(File.Exists(FilePath(sword.Guid)));
+        Assert.False(Library.HasUnsavedChanges);
+    }
+
+    [Fact]
+    public void CFG95_DeletingUnsavedModelWritesNothing()
+    {
+        var sword = Create<Sword>("Blade");
+
+        Library.DeleteModel(sword.Guid);
+        Library.Save();
+
+        Assert.Empty(Directory.GetFiles(_directory));
+    }
+
+    [Fact]
+    public void CFG95_RootCreatedOnFirstLaunchIsWrittenAtOnce()
+    {
+        Library.LoadRoot<TestRoot>();
+
+        Assert.True(File.Exists(FilePath("root")));
+        Assert.False(Library.HasUnsavedChanges);
+    }
+
+    [Fact]
+    public void CFG95_PruningHistoryIsNotAnUnsavedChange()
+    {
+        var hero = Create<Hero>("Holder");
+        var old = Create<Sword>("Old");
+        Reference<Hero>(hero, "Weapon", old);
+        Library.DeleteModel(old.Guid);
+        Library.Save();
+
+        SearchWeapons("had:Holder");
+
+        Assert.False(Library.HasUnsavedChanges);
+    }
+
+    [Fact]
+    public void SAV06_UninitializedLibraryHasNoUnsavedChanges()
+    {
+        Create<Sword>("Blade");
+        var field = typeof(Library).GetField("_initialized", BindingFlags.NonPublic | BindingFlags.Static)!;
+        field.SetValue(null, false);
+
+        Assert.False(Library.HasUnsavedChanges);
+
+        field.SetValue(null, true);
     }
 
     [Fact]
@@ -477,7 +566,8 @@ public sealed class ConfigurationSystemTests : IDisposable
     {
         var sword = Create<Sword>("Blade");
 
-        Library.SaveModel(sword.Guid);
+        Library.MarkDirty(sword.Guid);
+        Library.Save();
 
         Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
         using var document = JsonDocument.Parse(File.ReadAllText(FilePath(sword.Guid)));

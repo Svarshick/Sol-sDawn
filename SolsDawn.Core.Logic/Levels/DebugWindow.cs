@@ -1,5 +1,6 @@
 using ImGuiNET;
 using Microsoft.Xna.Framework;
+using SolsDawn.Core.Logic.SpeedGraph;
 using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
 namespace SolsDawn.Core.Logic.Levels;
@@ -7,6 +8,7 @@ namespace SolsDawn.Core.Logic.Levels;
 public static class DebugWindow
 {
     private static bool _showLibraryBrowser;
+    private static bool _showSpeedGraph;
 
     public static void Draw()
     {
@@ -31,6 +33,8 @@ public static class DebugWindow
             Camera.Zoom = zoom;
 
         ImGui.Checkbox("Library Browser", ref _showLibraryBrowser);
+        ImGui.SameLine();
+        ImGui.Checkbox("Speed Graph", ref _showSpeedGraph);
         ImGui.Separator();
 
         AutoInspector.Draw(Library.GetModelEntry(Library.RootGuid)!);
@@ -38,6 +42,7 @@ public static class DebugWindow
         ImGui.End();
 
         AutoInspector.DrawLibraryBrowser(ref _showLibraryBrowser);
+        SpeedGraphWindow.Draw(ref _showSpeedGraph);
     }
 
     private static void DrawLevels()

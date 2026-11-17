@@ -112,9 +112,6 @@ public static class AutoInspector
             changed = DrawFields(entry.Instance!, ModelEdit.ForModel(entry), focusKey, []);
         }
 
-        if (!ImGui.IsAnyItemActive())
-            Library.FlushDirty();
-
         if (changed)
             OnAnyValueChanged?.Invoke();
 

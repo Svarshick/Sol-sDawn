@@ -111,8 +111,11 @@ Requirements are `CFG-nn`.
 - **CFG-90** `SolsDawn.Core.Logic` knows no path. `SolsDawn.Gameplay` passes one to `Library.Initialize(path)`.
 - **CFG-91** Model files live in `SolsDawn.Gameplay/_Data/`, shared by all platforms. The folder is not ignored by git, so designers can commit their data. Developers' working data there is not committed.
 - **CFG-92** Debug builds read and write that source folder directly. Release builds read a copy placed beside the executable at build time.
-- **CFG-93** The in-memory value changes every frame during an edit. The file is written once when the edit ends, and only for the edited model.
-- **CFG-94** Writes go to a temporary file that then replaces the real one, so a crash cannot corrupt a model.
+- **CFG-93** The Library is a store of the save system (SAV). The in-memory value changes every frame during an edit, and files are written only on save (SAV-01), only for models with unsaved changes.
+- **CFG-94** Writes go to a temporary file that then replaces the real one, so a crash cannot corrupt a model (SAV-04).
+- **CFG-95** Every change to a model is an unsaved change of that model: an edit, a rename, a new copy, a slot change, and the most recent use of CFG-43. Deleting a model removes its file on save. Two exceptions change files at once or not at all:
+  - The root model created on first launch (CFG-18) is written at once.
+  - Removing a missing GUID from history (CFG-51) changes memory only and is not an unsaved change.
 
 ## UI
 
@@ -135,7 +138,7 @@ Requirements are `CFG-nn`.
 
 ## Verification
 
-- CFG-01 to CFG-69 and CFG-90 to CFG-94: automated tests with xUnit v3, headless, against a temporary folder, in a new test project. Focus behaviour in CFG-23 and CFG-62 and the build-time copy in CFG-92 are checked manually.
+- CFG-01 to CFG-69 and CFG-90 to CFG-95: automated tests with xUnit v3, headless, against a temporary folder, in a new test project. Focus behaviour in CFG-23 and CFG-62 and the build-time copy in CFG-92 are checked manually.
 - CFG-70 to CFG-85: manual checklist in the running game.
 
 ## Known limits

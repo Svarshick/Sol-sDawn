@@ -5,6 +5,7 @@ using System.Reflection;
 using SolsDawn.Core.Logic.Combat;
 using SolsDawn.Core.Logic.Entities;
 using SolsDawn.Core.Logic.Gameplay.Pipeline;
+using SolsDawn.Core.Logic.SpeedGraph;
 using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
 namespace SolsDawn.Core.Logic.Levels;
@@ -57,6 +58,7 @@ public static class LevelRunner
         {
             if (G.Player is { IsDestroyed: false } player)
                 player.Controller.Update();
+            SpeedGraphs.Record(G.Player is { IsDestroyed: false } alive ? alive.Board.Velocity : null);
             await NextFrame();
         }
     }
