@@ -106,3 +106,6 @@ _*
 /native/**/*.mgfxo.h
 
 !SolsDawn.Gameplay/_Data/
+
+#ImGui window layout
+imgui.ini
