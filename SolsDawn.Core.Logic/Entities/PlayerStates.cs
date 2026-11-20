@@ -100,10 +100,10 @@ public class RunState : PlayerState
             var angle = currentPlatform.Transform.Rotation;
             var tangent = new Vector2(Cos(angle), Sin(angle));
 
-            var inDir = Input.Move;
+            var inputDir = Input.Move;
             var vx = Vector2.Dot(board.Velocity, tangent);
 
-            vx = Movement.GetActiveInstance().Calculate(vx, inDir, DeltaTime, ref memory);
+            vx = Movement.GetActiveInstance().Calculate(vx, inputDir, DeltaTime, ref memory);
 
             board.Velocity = new Vector2(vx, 0).Rotated(angle);
             await NextFrame();
@@ -133,8 +133,8 @@ public class CelesteJumpState : JumpState
         var memory = new MovementMemory();
 
         {
-            var initInDir = Input.Move;
-            if (initInDir == 0)
+            var initInputDir = Input.Move;
+            if (initInputDir == 0)
             {
                 var vy = VerticalDashDistance / (DashFrames * DeltaTime);
                 board.Velocity = new Vector2(0, vy);
@@ -142,7 +142,7 @@ public class CelesteJumpState : JumpState
             else
             {
                 var vxAbs = HorizontalDashDistance / (DashFrames * DeltaTime);
-                var vx = initInDir * vxAbs;
+                var vx = initInputDir * vxAbs;
                 var vy = vxAbs * Tan(HorizontalDashAngle);
                 board.Velocity = new Vector2(vx, vy);
             }
@@ -152,7 +152,7 @@ public class CelesteJumpState : JumpState
                 await NextFrame();
             }
 
-            if (initInDir == 0)
+            if (initInputDir == 0)
             {
                 var vy = VerticalDashFinalSpeed;
                 board.Velocity = new Vector2(0, vy);
@@ -160,7 +160,7 @@ public class CelesteJumpState : JumpState
             else
             {
                 var vxAbs = HorizontalDashFinalSpeed;
-                var vx = initInDir * vxAbs;
+                var vx = initInputDir * vxAbs;
                 var vy = vxAbs * Tan(HorizontalDashAngle);
                 board.Velocity = new Vector2(vx, vy);
             }
@@ -174,8 +174,8 @@ public class CelesteJumpState : JumpState
                 return;
             }
 
-            var inDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
+            var inputDir = Input.Move;
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);
@@ -200,8 +200,8 @@ public class PrimitiveJumpState : JumpState
         var memory = new MovementMemory();
 
         {
-            var inDir = Input.Move;
-            board.Velocity = new Vector2(inDir * HorizontalStartSpeed, VerticalStartSpeed);
+            var inputDir = Input.Move;
+            board.Velocity = new Vector2(inputDir * HorizontalStartSpeed, VerticalStartSpeed);
             await NextFrame();
         }
 
@@ -213,8 +213,8 @@ public class PrimitiveJumpState : JumpState
                 return;
             }
 
-            var inDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
+            var inputDir = Input.Move;
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);
@@ -245,8 +245,8 @@ public class FallState : PlayerState
                 return;
             }
 
-            var inDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
+            var inputDir = Input.Move;
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
             var vy = Max(-VerticalMaxSpeed, board.Velocity.Y - VerticalAcceleration * DeltaTime);
 
             board.Velocity = new Vector2(vx, vy);
@@ -256,13 +256,13 @@ public class FallState : PlayerState
 }
 internal static class AttackMotion
 {
-    public static bool Step(PlayerBoard board, IAdsrModel attack, float peakSpeed, ref Vector2 axis, ref float speed)
+    public static bool Step(PlayerBoard board, IAdsrModel attack, float peakSpeed, float entrySpeed, ref Vector2 axis, ref float speed)
     {
         if (board.CurrentPlatform is { } platform)
             axis = CombatMath.TangentProjection(axis, platform.Transform.WorldRotation);
 
         if (speed < peakSpeed)
-            speed = attack.Calculate(speed, Sign.Positive, Sign.Positive, DeltaTime, peakSpeed);
+            speed = attack.Calculate(DeltaTime, entrySpeed, speed, peakSpeed, Sign.Positive, Sign.Positive);
 
         board.Velocity = axis * speed;
         return speed >= peakSpeed;
@@ -289,12 +289,13 @@ public class SlideBlade : BladeState
         var board = player.Board;
         var axis = CombatMath.Direction(player.Transform.Position, board.AttackPointer);
         var speed = board.Velocity.Length();
+        var entrySpeed = speed;
         var time = 0f;
         Attack? attack = null;
 
         while (true)
         {
-            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, ref axis, ref speed);
+            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, entrySpeed, ref axis, ref speed);
 
             if (attack is null && time >= HitboxStart && time < HitboxEnd)
                 attack = CreateHitbox(player);
@@ -353,11 +354,12 @@ public class SimpleFire : FireState
 
         var moveAxis = -axis;
         var speed = board.Velocity.Length();
+        var entrySpeed = speed;
         var time = 0f;
 
         while (true)
         {
-            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, ref moveAxis, ref speed);
+            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, entrySpeed, ref moveAxis, ref speed);
 
             if (time >= ControlBackTime)
                 board.ControlBack = true;
@@ -433,6 +435,7 @@ public class SimpleDownAttack : DownAttackState
         var board = player.Board;
         var verticalSpeed = Max(0, -board.Velocity.Y);
         var vx = board.Velocity.X;
+        var entryVx = vx;
         Sign hDir = vx;
         var memory = new MovementMemory();
 
@@ -448,7 +451,7 @@ public class SimpleDownAttack : DownAttackState
         while (true)
         {
             verticalSpeed = Vertical.GetActiveInstance().Calculate(verticalSpeed, Sign.Positive, DeltaTime, ref memory);
-            vx = Horizontal.GetActiveInstance().Calculate(vx, hDir, hDir, DeltaTime, 0f);
+            vx = Horizontal.GetActiveInstance().Calculate(DeltaTime, entryVx, vx, 0f, hDir, hDir);
             board.Velocity = new Vector2(vx, -verticalSpeed);
 
             if (!attack.IsDestroyed)
@@ -477,8 +480,8 @@ public class BounceState : PlayerState
 
         while (true)
         {
-            var inDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inDir, DeltaTime, ref memory);
+            var inputDir = Input.Move;
+            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
             var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
 
             board.Velocity = new Vector2(vx, vy);

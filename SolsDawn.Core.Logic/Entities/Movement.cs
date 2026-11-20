@@ -8,12 +8,13 @@ namespace SolsDawn.Core.Logic.Entities;
 public struct MovementMemory
 {
     public int Phase;
-    public Sign PrevInDir;
+    public Sign PrevInputDir;
+    public float StartVelocity;
 }
 
 public interface IMovementModel
 {
-    float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory);
+    float Calculate(float velocity, Sign inputDir, float dt, ref MovementMemory memory);
 }
 
 public class MovementCategoryAttribute : CategoryAttribute

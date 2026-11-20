@@ -16,9 +16,9 @@ public class TestAttack : IAdsrModel
 {
     public float Acceleration = 10f;
 
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
+    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
     {
-        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
+        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
         return dir * Math.Min(targetSpeed, Math.Abs(velocity) + Acceleration * dt);
     }
 }
@@ -28,9 +28,9 @@ public class TestSlowdown : IAdsrModel
 {
     public float Deceleration = 10f;
 
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed)
+    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
     {
-        var dir = inDir != 0 ? (int)inDir : Math.Sign(velocity);
+        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
         return dir * Math.Max(targetSpeed, Math.Abs(velocity) - Deceleration * dt);
     }
 }
@@ -38,13 +38,25 @@ public class TestSlowdown : IAdsrModel
 [AdsrModel(AllowedAdsrState.Attack | AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
 public class TargetEcho : IAdsrModel
 {
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed) => targetSpeed;
+    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir) => targetSpeed;
 }
 
 [AdsrModel(AllowedAdsrState.Attack | AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
-public class PrevInDirEcho : IAdsrModel
+public class PrevInputDirEcho : IAdsrModel
 {
-    public float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed) => prevInDir;
+    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir) => prevInputDir;
+}
+
+[AdsrModel(AllowedAdsrState.Attack | AllowedAdsrState.Decay | AllowedAdsrState.Sustain | AllowedAdsrState.Release)]
+public class StartVelocityEcho : IAdsrModel
+{
+    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir) => startVelocity;
+}
+
+[AdsrModel(AllowedAdsrState.Attack)]
+public class StartVelocityPlusOne : IAdsrModel
+{
+    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir) => velocity + 1f;
 }
 
 [Collection("Library")]
@@ -92,12 +104,12 @@ public sealed class MovementTests : IDisposable
 
     private static AdsrState State(MovementMemory memory) => (AdsrState)memory.Phase;
 
-    private static List<AdsrState> Run(Adsr adsr, ref float velocity, ref MovementMemory memory, int inDir, int frames)
+    private static List<AdsrState> Run(Adsr adsr, ref float velocity, ref MovementMemory memory, int inputDir, int frames)
     {
         var states = new List<AdsrState>();
         for (var i = 0; i < frames; i++)
         {
-            velocity = adsr.Calculate(velocity, inDir, Dt, ref memory);
+            velocity = adsr.Calculate(velocity, inputDir, Dt, ref memory);
             if (states.Count == 0 || states[^1] != State(memory))
                 states.Add(State(memory));
         }
@@ -142,12 +154,12 @@ public sealed class MovementTests : IDisposable
     {
         foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewAs() })
         {
-            foreach (var inDir in new[] { -1, 0, 1 })
+            foreach (var inputDir in new[] { -1, 0, 1 })
             {
                 foreach (var velocity in new[] { -20f, 0f, 5f, C })
                 {
                     var memory = new MovementMemory { Phase = phase };
-                    model.Calculate(velocity, inDir, Dt, ref memory);
+                    model.Calculate(velocity, inputDir, Dt, ref memory);
                 }
             }
         }
@@ -170,14 +182,14 @@ public sealed class MovementTests : IDisposable
     [InlineData(AdsrState.Attack, 5f, 0, AdsrState.Release)]
     [InlineData(AdsrState.Sustain, 10f, 0, AdsrState.Release)]
     [InlineData(AdsrState.Decay, 10f, 0, AdsrState.Release)]
-    public void MOV34_StateSelection(AdsrState start, float speed, int inDir, AdsrState expected)
+    public void MOV34_StateSelection(AdsrState start, float speed, int inputDir, AdsrState expected)
     {
         var adsr = NewAdsr(acceleration: 1f, peak: 100f, deceleration: 1f);
         var right = Memory(start);
         var left = Memory(start);
 
-        adsr.Calculate(speed, inDir, Dt, ref right);
-        adsr.Calculate(-speed, -inDir, Dt, ref left);
+        adsr.Calculate(speed, inputDir, Dt, ref right);
+        adsr.Calculate(-speed, -inputDir, Dt, ref left);
 
         Assert.Equal(expected, State(right));
         Assert.Equal(expected, State(left));
@@ -188,12 +200,12 @@ public sealed class MovementTests : IDisposable
     [InlineData(10.0005f, 1, 10f, AdsrState.Sustain)]
     [InlineData(-9.9995f, -1, -10f, AdsrState.Sustain)]
     [InlineData(0.0005f, 0, 0f, AdsrState.Idle)]
-    public void MOV33_SpeedWithinToleranceIsSnapped(float velocity, int inDir, float expected, AdsrState expectedState)
+    public void MOV33_SpeedWithinToleranceIsSnapped(float velocity, int inputDir, float expected, AdsrState expectedState)
     {
         var adsr = NewAdsr();
         var memory = new MovementMemory();
 
-        Assert.Equal(expected, adsr.Calculate(velocity, inDir, Dt, ref memory));
+        Assert.Equal(expected, adsr.Calculate(velocity, inputDir, Dt, ref memory));
         Assert.Equal(expectedState, State(memory));
     }
 
@@ -225,7 +237,7 @@ public sealed class MovementTests : IDisposable
     [InlineData(15f, AdsrState.Idle, 12f, 1, C)]
     [InlineData(15f, AdsrState.Idle, 10f, 1, C)]
     [InlineData(15f, AdsrState.Idle, 5f, 0, 0f)]
-    public void MOV35_SlotsReceiveTargetSpeed(float peak, AdsrState start, float velocity, int inDir, float expected)
+    public void MOV35_SlotsReceiveTargetSpeed(float peak, AdsrState start, float velocity, int inputDir, float expected)
     {
         var adsr = new Adsr { ControlledSpeed = C, PeakSpeed = peak };
         CategorySystem.Bind(adsr);
@@ -235,7 +247,7 @@ public sealed class MovementTests : IDisposable
         Put<TargetEcho, IAdsrModel>(adsr.Release);
         var memory = Memory(start);
 
-        Assert.Equal(expected, adsr.Calculate(velocity, inDir, Dt, ref memory));
+        Assert.Equal(expected, adsr.Calculate(velocity, inputDir, Dt, ref memory));
     }
 
     [Fact]
@@ -269,18 +281,50 @@ public sealed class MovementTests : IDisposable
     [InlineData(AdsrState.Sustain, -1, C, 1, -1)]
     [InlineData(AdsrState.Release, -1, C, 1, 1)]
     [InlineData(AdsrState.Idle, 0, 5f, -1, -1)]
-    public void MOV38_PrevInDirIsInDirOnTheFirstFrameOfAPhase(AdsrState start, int storedPrev, float velocity, int inDir, int expected)
+    public void MOV38_PrevInputDirIsInputDirOnTheFirstFrameOfAPhase(AdsrState start, int storedPrev, float velocity, int inputDir, int expected)
     {
         var adsr = new Adsr { ControlledSpeed = C };
         CategorySystem.Bind(adsr);
-        Put<PrevInDirEcho, IAdsrModel>(adsr.Attack);
-        Put<PrevInDirEcho, IAdsrModel>(adsr.Decay);
-        Put<PrevInDirEcho, IAdsrModel>(adsr.Sustain);
-        Put<PrevInDirEcho, IAdsrModel>(adsr.Release);
-        var memory = new MovementMemory { Phase = (int)start, PrevInDir = storedPrev };
+        Put<PrevInputDirEcho, IAdsrModel>(adsr.Attack);
+        Put<PrevInputDirEcho, IAdsrModel>(adsr.Decay);
+        Put<PrevInputDirEcho, IAdsrModel>(adsr.Sustain);
+        Put<PrevInputDirEcho, IAdsrModel>(adsr.Release);
+        var memory = new MovementMemory { Phase = (int)start, PrevInputDir = storedPrev };
 
-        Assert.Equal(expected, adsr.Calculate(velocity, inDir, Dt, ref memory));
-        Assert.Equal(inDir, (int)memory.PrevInDir);
+        Assert.Equal(expected, adsr.Calculate(velocity, inputDir, Dt, ref memory));
+        Assert.Equal(inputDir, (int)memory.PrevInputDir);
+    }
+
+    [Theory]
+    [InlineData(AdsrState.Sustain, 3f, C, 0, C)]
+    [InlineData(AdsrState.Release, 3f, C, 1, C)]
+    [InlineData(AdsrState.Idle, 3f, 5f, 1, 5f)]
+    [InlineData(AdsrState.Idle, 3f, -5f, -1, -5f)]
+    [InlineData(AdsrState.Attack, 3f, 5f, 1, 3f)]
+    [InlineData(AdsrState.Release, 7f, 4f, 0, 7f)]
+    public void MOV38_StartVelocityIsVelocityOnTheFirstFrameOfAPhase(AdsrState start, float storedStart, float velocity, int inputDir, float expected)
+    {
+        var adsr = new Adsr { ControlledSpeed = C };
+        CategorySystem.Bind(adsr);
+        Put<StartVelocityEcho, IAdsrModel>(adsr.Attack);
+        Put<StartVelocityEcho, IAdsrModel>(adsr.Decay);
+        Put<StartVelocityEcho, IAdsrModel>(adsr.Sustain);
+        Put<StartVelocityEcho, IAdsrModel>(adsr.Release);
+        var memory = new MovementMemory { Phase = (int)start, StartVelocity = storedStart };
+
+        Assert.Equal(expected, adsr.Calculate(velocity, inputDir, Dt, ref memory));
+        Assert.Equal(expected, memory.StartVelocity);
+    }
+
+    [Fact]
+    public void MOV38_StartVelocityIsTheNormalizedVelocity()
+    {
+        var adsr = new Adsr { ControlledSpeed = C };
+        CategorySystem.Bind(adsr);
+        Put<StartVelocityEcho, IAdsrModel>(adsr.Sustain);
+        var memory = new MovementMemory();
+
+        Assert.Equal(C, adsr.Calculate(C - 0.0005f, 1, Dt, ref memory));
     }
 
     [Theory]
@@ -323,15 +367,35 @@ public sealed class MovementTests : IDisposable
     }
 
     [Fact]
-    public void MOV56_EnvelopeFirstFrameGetsInDirAsPrevInDir()
+    public void MOV56_EnvelopeFirstFrameGetsInputDirAsPrevInputDir()
     {
         var envelope = new AS { PeakSpeed = 15f };
         CategorySystem.Bind(envelope);
-        Put<PrevInDirEcho, IAdsrModel>(envelope.Attack);
+        Put<PrevInputDirEcho, IAdsrModel>(envelope.Attack);
         var memory = new MovementMemory();
 
         Assert.Equal(-1f, envelope.Calculate(0f, -1, Dt, ref memory));
         Assert.Equal(AsPhase.Attack, (AsPhase)memory.Phase);
+    }
+
+    [Fact]
+    public void MOV56_EnvelopeKeepsStartVelocityWithinAPhase()
+    {
+        var envelope = new AS { PeakSpeed = 15f };
+        CategorySystem.Bind(envelope);
+        Put<StartVelocityPlusOne, IAdsrModel>(envelope.Attack);
+        Put<StartVelocityEcho, IAdsrModel>(envelope.Sustain);
+        var memory = new MovementMemory();
+        var speed = 13f;
+
+        speed = envelope.Calculate(speed, 1, Dt, ref memory);
+        Assert.Equal(13f, memory.StartVelocity);
+        speed = envelope.Calculate(speed, 1, Dt, ref memory);
+        Assert.Equal(13f, memory.StartVelocity);
+        Assert.Equal(15f, speed);
+
+        Assert.Equal(15f, envelope.Calculate(speed, 1, Dt, ref memory));
+        Assert.Equal(AsPhase.Sustain, (AsPhase)memory.Phase);
     }
 
     [Fact]

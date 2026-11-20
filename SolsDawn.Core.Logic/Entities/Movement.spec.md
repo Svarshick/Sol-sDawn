@@ -15,12 +15,13 @@ Requirements are `MOV-nn`.
 | Velocity | Signed speed along the movement axis: the platform tangent in `RunState`, X in the air, the attack axis in attack states. |
 | Speed, `s` | The absolute value of velocity. |
 | `Sign` | A value that is always -1, 0 or 1. Any number converts to its sign implicitly, and `Sign` converts to `int` implicitly. It is defined in `SolsDawn.Core.Logic` and has no spec. |
-| `inDir` | Input direction, a `Sign`. |
-| `prevInDir` | The `inDir` a phase model saw on the previous frame of the same phase (MOV-38). |
-| Held, released | `inDir != 0`, `inDir == 0`. |
+| `inputDir` | Input direction, a `Sign`. |
+| `prevInputDir` | The `inputDir` a phase model saw on the previous frame of the same phase (MOV-38). |
+| `startVelocity` | The velocity a phase model saw on the first frame of the current phase (MOV-38). |
+| Held, released | `inputDir != 0`, `inputDir == 0`. |
 | `C` | The `ControlledSpeed` of `Adsr`. |
 | `P` | The `PeakSpeed` of `Adsr` or `AS`. |
-| Memory | A `MovementMemory` value: the state of a movement model between frames of one Job. It holds a phase and the previous `inDir`. |
+| Memory | A `MovementMemory` value: the state of a movement model between frames of one Job. It holds a phase, the previous `inputDir` and the `startVelocity` of the phase. |
 | A / D / S / R | Attack, Decay, Sustain, Release. |
 
 ## Movement models
@@ -36,7 +37,7 @@ Requirements are `MOV-nn`.
   | `FallState` | `HorizontalMovement` |
   | `BounceState` | `HorizontalMovement` |
 
-- **MOV-03** `IMovementModel` has one operation: `Calculate(velocity, inDir, dt, ref memory)` with `inDir` a `Sign` advances one frame, updates `memory` and returns the new velocity.
+- **MOV-03** `IMovementModel` has one operation: `Calculate(velocity, inputDir, dt, ref memory)` with `inputDir` a `Sign` advances one frame, updates `memory` and returns the new velocity.
 - **MOV-04** A `PlayerState` Job creates one zero-valued memory when it starts, keeps it as a local value and passes it to every `Calculate`. It reads the slot's active model on every frame, so a model swapped while the game runs takes effect at once (CFG-67).
 - **MOV-05** Movement models and phase models hold only configuration. All movement runtime state is in the memory, which is never saved and never shared between Jobs, so any number of slots and entities may reference the same model.
 - **MOV-06** A movement model accepts any memory value on any frame, including one written by another movement model type before a swap.
@@ -50,7 +51,7 @@ Requirements are `MOV-nn`.
   1. Normalize speed (MOV-33).
   2. Select the phase (MOV-34).
   3. Compute the new velocity (MOV-35).
-  4. Store the phase and `inDir` in memory.
+  4. Store the phase, `inputDir` and `startVelocity` in memory.
 - **MOV-33** A speed within `0.001` of `C` is treated as exactly `C`. Otherwise, a speed within `0.001` of 0 is treated as exactly 0. Velocity passes through a rotation between frames in `RunState`, so exact comparison would drop out of Sustain.
 - **MOV-34** Phase selection, with `L = max(P, C)`. The first matching row wins.
 
@@ -77,8 +78,8 @@ Requirements are `MOV-nn`.
 
 ### Phase models
 
-- **MOV-37** A phase model implements `IAdsrModel`: `Calculate(velocity, prevInDir, inDir, dt, targetSpeed)` returns the new velocity. `prevInDir` and `inDir` are `Sign`s. The result depends only on the arguments.
-- **MOV-38** On the first frame of a phase, `prevInDir` equals `inDir`. On later frames of the same phase it is the `inDir` of the previous frame. A phase starts when the phase that runs differs from the phase that ran on the previous frame, and on the first frame of a Job.
+- **MOV-37** A phase model implements `IAdsrModel`: `Calculate(dt, startVelocity, velocity, targetSpeed, prevInputDir, inputDir)` returns the new velocity. `prevInputDir` and `inputDir` are `Sign`s. The result depends only on the arguments.
+- **MOV-38** `startVelocity` is the `velocity` passed on the first frame of the phase, and it stays the same on every frame of that phase. In `Adsr` this is the normalized velocity (MOV-33). On the first frame of a phase, `prevInputDir` equals `inputDir`. On later frames of the same phase, it is the `inputDir` of the previous frame. A phase starts when the phase that runs differs from the phase that ran on the previous frame, and on the first frame of a Job.
 - **MOV-39** An Attack, Decay or Release model moves speed toward `targetSpeed`, never past it, and reaches it exactly. Callers call Attack only with `s < targetSpeed`.
 - **MOV-40** A slot accepts a phase model only if the model allows the slot's phase (CFG-10). This holds for the slots of `Adsr`, `AS` and attack states. A slot's default phase model follows CFG-25.
 - **MOV-41** Phase model types are defined in `SolsDawn.Gameplay`. Every phase required by a slot in this spec needs at least one phase model type that allows it, otherwise the Library fails to initialize (CFG-26).
@@ -100,12 +101,12 @@ With `P > C`:
 
 ## Envelopes
 
-An envelope is a fixed sequence of ADSR phases that runs once. It ignores whether input is held: the caller passes `inDir` only to give the phase models a direction.
+An envelope is a fixed sequence of ADSR phases that runs once. It ignores whether input is held: the caller passes `inputDir` only to give the phase models a direction.
 
 - **MOV-50** `AS` is a model type with the category `Envelope AS`, so a slot of that category accepts only `AS`.
 - **MOV-54** `AS` has `PeakSpeed` and two slots: `Attack` and `Sustain`. Its memory phase is Start, Attack or Sustain. Zero-valued memory means Start: the envelope has not run yet. Start is selected like Attack but is a different phase, so the first frame starts a phase (MOV-38).
 - **MOV-55** `AS` phase selection: Attack with target `P` while the previous phase is Start or Attack and `s < P`, otherwise Sustain with target `P`. `AS` never ends by itself.
-- **MOV-56** Envelopes follow MOV-37 to MOV-39: they pass `prevInDir` by MOV-38 and store the phase and `inDir` in memory.
+- **MOV-56** Envelopes follow MOV-37 to MOV-39: they pass `prevInputDir` and `startVelocity` by MOV-38 and store the phase, `inputDir` and `startVelocity` in memory.
 - **MOV-57** `AS` entered with `s >= P` skips Attack at once and starts in Sustain.
 
 ## Verification

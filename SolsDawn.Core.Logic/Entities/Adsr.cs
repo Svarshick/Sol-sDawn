@@ -26,7 +26,7 @@ public enum AdsrState
 
 public interface IAdsrModel
 {
-    float Calculate(float velocity, Sign prevInDir, Sign inDir, float dt, float targetSpeed);
+    float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir);
 }
 
 public class AdsrCategoryAttribute : CategoryAttribute
@@ -86,25 +86,28 @@ public class Adsr : IMovementModel
     [AdsrCategory(AllowedAdsrState.Release)]
     public CategorySlot<IAdsrModel> Release = new();
 
-    public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)
+    public float Calculate(float velocity, Sign inputDir, float dt, ref MovementMemory memory)
     {
         velocity = NormalizeVelocity(velocity);
         var limit = Math.Max(PeakSpeed, ControlledSpeed);
         var previous = (AdsrState)memory.Phase;
-        var state = SelectState(previous, Math.Abs(velocity), inDir, limit);
-        var prevInDir = state == previous ? memory.PrevInDir : inDir;
+        var state = SelectState(previous, Math.Abs(velocity), inputDir, limit);
+        var started = state != previous;
+        var prevInputDir = started ? inputDir : memory.PrevInputDir;
+        var startVelocity = started ? velocity : memory.StartVelocity;
 
         var result = state switch
         {
-            AdsrState.Attack => Attack.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, limit),
-            AdsrState.Decay => Decay.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, ControlledSpeed),
-            AdsrState.Sustain => Sustain.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, ControlledSpeed),
-            AdsrState.Release => Release.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, 0f),
+            AdsrState.Attack => Attack.GetActiveInstance().Calculate(dt, startVelocity, velocity, limit, prevInputDir, inputDir),
+            AdsrState.Decay => Decay.GetActiveInstance().Calculate(dt, startVelocity, velocity, ControlledSpeed, prevInputDir, inputDir),
+            AdsrState.Sustain => Sustain.GetActiveInstance().Calculate(dt, startVelocity, velocity, ControlledSpeed, prevInputDir, inputDir),
+            AdsrState.Release => Release.GetActiveInstance().Calculate(dt, startVelocity, velocity, 0f, prevInputDir, inputDir),
             _ => 0f
         };
 
         memory.Phase = (int)state;
-        memory.PrevInDir = inDir;
+        memory.PrevInputDir = inputDir;
+        memory.StartVelocity = startVelocity;
         return result;
     }
 
@@ -117,9 +120,9 @@ public class Adsr : IMovementModel
         return speed <= SpeedTolerance ? 0f : velocity;
     }
 
-    private AdsrState SelectState(AdsrState previous, float speed, Sign inDir, float limit)
+    private AdsrState SelectState(AdsrState previous, float speed, Sign inputDir, float limit)
     {
-        var held = inDir != 0;
+        var held = inputDir != 0;
 
         if (previous == AdsrState.Attack && held && speed < limit)
             return AdsrState.Attack;
@@ -183,20 +186,23 @@ public class AS : IMovementModel
     [AdsrCategory(AllowedAdsrState.Sustain)]
     public CategorySlot<IAdsrModel> Sustain = new();
 
-    public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)
+    public float Calculate(float velocity, Sign inputDir, float dt, ref MovementMemory memory)
     {
         var previous = (AsPhase)memory.Phase;
         var phase = previous is AsPhase.Start or AsPhase.Attack && Math.Abs(velocity) < PeakSpeed
             ? AsPhase.Attack
             : AsPhase.Sustain;
-        var prevInDir = phase == previous ? memory.PrevInDir : inDir;
+        var started = phase != previous;
+        var prevInputDir = started ? inputDir : memory.PrevInputDir;
+        var startVelocity = started ? velocity : memory.StartVelocity;
 
         var result = phase == AsPhase.Attack
-            ? Attack.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, PeakSpeed)
-            : Sustain.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, PeakSpeed);
+            ? Attack.GetActiveInstance().Calculate(dt, startVelocity, velocity, PeakSpeed, prevInputDir, inputDir)
+            : Sustain.GetActiveInstance().Calculate(dt, startVelocity, velocity, PeakSpeed, prevInputDir, inputDir);
 
         memory.Phase = (int)phase;
-        memory.PrevInDir = inDir;
+        memory.PrevInputDir = inputDir;
+        memory.StartVelocity = startVelocity;
         return result;
     }
 }

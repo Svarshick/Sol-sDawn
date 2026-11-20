@@ -134,7 +134,7 @@ Requirements are `CMB-nn`.
 - **CMB-31** On entry the movement axis is the axis, and the speed is the magnitude of the velocity at entry.
 - **CMB-32** Each update, in order:
   1. On ground, the movement axis becomes its tangent projection onto the current platform. In air it does not change. So leaving a platform keeps the direction, and moving onto another platform or landing turns it along that platform. Speed does not change.
-  2. If `speed < PeakSpeed`, `speed = Movement.Calculate(speed, 1, 1, dt, PeakSpeed)`. The direction is always 1, so `prevInDir` is always 1 (MOV-38). Otherwise speed does not change.
+  2. If `speed < PeakSpeed`, `speed = Movement.Calculate(dt, entrySpeed, speed, PeakSpeed, 1, 1)`, where `entrySpeed` is the speed at entry (CMB-31). The state is one phase: the first call gets the entry speed, so `startVelocity` is `entrySpeed`, and the direction is always 1, so `prevInputDir` is always 1 (MOV-38). Otherwise speed does not change.
   3. Velocity is `movement axis * speed`.
   4. While `HitboxStart <= t < HitboxEnd`, an attack exists: a pentagon hitbox along the movement axis of the current update, moving with the player, targets `Enemy`, parry kind `Blade`.
   5. In the first update with `t >= ControlBackTime`, `ControlBack` is raised.
@@ -162,7 +162,7 @@ Requirements are `CMB-nn`.
 - **CMB-51** On entry the job takes `vs = max(0, -V.y)`, `vx = V.x` and `hDir = sign(vx)`, and creates an attack for the whole state: a pentagon hitbox moving with the player, targets `Enemy`, parry kind `Blade`.
 - **CMB-52** Each update, in order:
   1. `vs = Vertical.Calculate(vs, 1, dt, ref memory)`.
-  2. `vx = Horizontal.Calculate(vx, hDir, hDir, dt, 0)`. `hDir` never changes, so `prevInDir` is always `hDir` (MOV-38).
+  2. `vx = Horizontal.Calculate(dt, entryVx, vx, 0, hDir, hDir)`, where `entryVx` is `vx` at entry (CMB-51). The state is one phase, so `startVelocity` is `entryVx`, and `hDir` never changes, so `prevInputDir` is always `hDir` (MOV-38).
   3. Velocity is `(vx, -vs)`.
   4. The hitbox points along the velocity, or straight down when the velocity is zero.
 
