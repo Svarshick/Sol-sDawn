@@ -88,8 +88,8 @@ public class PlayerController
         var moving = !still;
         var stateEnded = _player.StateJob is not { IsEnded: false };
         var controlBack = board.ControlBack;
-        var jump = ground && Input.Jump;
-        var downA = air && Input.Jump;
+        var jump = Input.Jump;
+        var downA = air && jump;
         var blade = TryPointer(Input.Blade, center, out var bladePointer);
         var fire = TryPointer(Input.Fire, center, out var firePointer);
 
@@ -98,7 +98,7 @@ public class PlayerController
             case IdleState:
                 if (blade) return Blade();
                 if (fire) return Fire();
-                if (jump) return specs.Jump.GetActiveInstance();
+                if (ground && jump) return specs.Jump.GetActiveInstance();
                 if (ground && run) return specs.Run.GetActiveInstance();
                 if (air) return specs.Fall.GetActiveInstance();
                 return null;
@@ -106,7 +106,7 @@ public class PlayerController
             case RunState:
                 if (blade) return Blade();
                 if (fire) return Fire();
-                if (jump) return specs.Jump.GetActiveInstance();
+                if (ground && jump) return specs.Jump.GetActiveInstance();
                 if (ground && !run && still) return specs.Idle.GetActiveInstance();
                 if (air) return specs.Fall.GetActiveInstance();
                 return null;
@@ -134,7 +134,7 @@ public class PlayerController
                 if (controlBack && downA) return specs.DownAttack.GetActiveInstance();
                 if (ground && ((controlBack && run) || (stateEnded && moving))) return specs.Run.GetActiveInstance();
                 if (ground && stateEnded && still) return specs.Idle.GetActiveInstance();
-                if (air && stateEnded && board.Velocity.Y <= 0) return specs.Fall.GetActiveInstance();
+                if (air && stateEnded) return specs.Fall.GetActiveInstance();
                 return null;
 
             case DownAttackState:

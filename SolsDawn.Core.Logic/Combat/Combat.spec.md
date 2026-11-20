@@ -74,7 +74,7 @@ Requirements are `CMB-nn`.
   |---|---|
   | Ground, air | On ground, not on ground |
   | `I:run` | `Input.Move != 0` |
-  | `I:jump` | `Input.Jump` on ground |
+  | `I:jump` | `Input.Jump` |
   | `I:downA` | `Input.Jump` in air |
   | `I:blade`, `I:fire` | `Input.Blade`, `Input.Fire` with a valid pointer: farther than `0.001` from the center |
   | `V` | `PlayerBoard.Velocity`. `V = 0` means the zero vector. |
@@ -84,12 +84,12 @@ Requirements are `CMB-nn`.
   |---|---|---|---|
   | Idle | 1 | `I:blade` | Blade |
   | | 2 | `I:fire` | Fire |
-  | | 3 | `I:jump` | Jump |
+  | | 3 | Ground, `I:jump` | Jump |
   | | 4 | Ground, `I:run` | Run |
   | | 5 | Air | Fall |
   | Run | 1 | `I:blade` | Blade |
   | | 2 | `I:fire` | Fire |
-  | | 3 | `I:jump` | Jump |
+  | | 3 | Ground, `I:jump` | Jump |
   | | 4 | Ground, not `I:run`, `V = 0` | Idle |
   | | 5 | Air | Fall |
   | Jump | 1 | `I:blade` | Blade |
@@ -112,12 +112,12 @@ Requirements are `CMB-nn`.
   | | 2 | `controlBack`, `I:downA` | DownAttack |
   | | 3 | Ground, (`controlBack` and `I:run`) or (`stateEnded` and `V != 0`) | Run |
   | | 4 | Ground, `stateEnded`, `V = 0` | Idle |
-  | | 5 | Air, `stateEnded`, `V.y <= 0` | Fall |
+  | | 5 | Air, `stateEnded` | Fall |
   | Fire | 1 | `controlBack`, `I:blade` | Blade |
   | | 2 | `controlBack`, `I:downA` | DownAttack |
   | | 3 | Ground, (`controlBack` and `I:run`) or (`stateEnded` and `V != 0`) | Run |
   | | 4 | Ground, `stateEnded`, `V = 0` | Idle |
-  | | 5 | Air, `stateEnded`, `V.y <= 0` | Fall |
+  | | 5 | Air, `stateEnded` | Fall |
   | DownAttack | 1 | `parried` | Bounce |
   | | 2 | Ground, `I:run` or `V != 0` | Run |
   | | 3 | Ground, `V = 0` | Idle |
@@ -125,29 +125,29 @@ Requirements are `CMB-nn`.
 - **CMB-23** A press that causes no transition is dropped. There is no input buffer and no cooldown.
 - **CMB-24** The pointer of `I:blade` and `I:fire` is stored in `PlayerBoard` when the state is entered.
 - **CMB-25** `PlayerBoard` has the signals `ControlBack` and `Parried`. `PlayerController` clears both in one place, whenever it enters a state. A state raises a signal in the same update, or the same Resolve handler, in which its condition happens, never one frame later.
-- **CMB-26** Only `PlayerController` changes state because of ground, velocity or input. A state's job never ends itself on these conditions. A job ends itself only by its own timeline, such as an `AR` reaching Done (MOV-53).
+- **CMB-26** Only `PlayerController` changes state because of ground, velocity or input. A state's job never ends itself on these conditions. A job ends itself only by its own timeline, such as an attack state reaching its `PeakSpeed` (CMB-32).
 - **CMB-27** A state's job runs its first update in the frame in which the state is entered. A signal raised, or a job ended, in frame `n` changes the state at the start of frame `n + 1`.
 
 ## SlideBlade
 
-- **CMB-30** `SlideBlade` has a `Movement` slot of category `Envelope AR` (default `AR`), `Length`, `HalfWidth`, `TipLength`, `HitboxStart`, `HitboxEnd` and `ControlBackTime`.
+- **CMB-30** `SlideBlade` has `PeakSpeed`, a `Movement` slot that accepts Attack phase models (default by CFG-25), `Length`, `HalfWidth`, `TipLength`, `HitboxStart`, `HitboxEnd` and `ControlBackTime`.
 - **CMB-31** On entry the movement axis is the axis, and the speed is the magnitude of the velocity at entry.
 - **CMB-32** Each update, in order:
   1. On ground, the movement axis becomes its tangent projection onto the current platform. In air it does not change. So leaving a platform keeps the direction, and moving onto another platform or landing turns it along that platform. Speed does not change.
-  2. `speed = Movement.Calculate(speed, 1, dt, ref memory)`.
+  2. If `speed < PeakSpeed`, `speed = Movement.Calculate(speed, 1, 1, dt, PeakSpeed)`. The direction is always 1, so `prevInDir` is always 1 (MOV-38). Otherwise speed does not change.
   3. Velocity is `movement axis * speed`.
   4. While `HitboxStart <= t < HitboxEnd`, an attack exists: a pentagon hitbox along the movement axis of the current update, moving with the player, targets `Enemy`, parry kind `Blade`.
   5. In the first update with `t >= ControlBackTime`, `ControlBack` is raised.
-  6. When `AR` is Done, the job ends in this update.
+  6. When `speed >= PeakSpeed`, the job ends in this update. The velocity stays as step 3 set it.
 - **CMB-33** Gravity does not act during the state.
 - **CMB-34** When the attack's `Parried` fires, the attack is destroyed at once. Movement does not change.
 - **CMB-35** The slot is read on every update, so a model swapped while the game runs takes effect at once (CFG-67).
 
 ## SimpleFire
 
-- **CMB-40** `SimpleFire` has a `Movement` slot of category `Envelope AR` (default `AR`), `ControlBackTime`, `Distance`, `Width`, `TraceDuration`, `TraceColor`, `ExplosionRadius`, `ExplosionDuration` and `ExplosionColor`.
+- **CMB-40** `SimpleFire` has `PeakSpeed`, a `Movement` slot that accepts Attack phase models (default by CFG-25), `ControlBackTime`, `Distance`, `Width`, `TraceDuration`, `TraceColor`, `ExplosionRadius`, `ExplosionDuration` and `ExplosionColor`.
 - **CMB-41** On entry the job creates an attack: a rectangle `Distance` long and `Width` wide, centred at `center + axis * Distance / 2` and rotated to the axis, targets `Enemy`, parry kind `Fire`. The attack takes part in exactly one Resolve, then it is destroyed. Its owner job is the `Effects` job of the level runner, not the fire state job, so leaving Fire early does not cancel the shot or its trace. In CMB-41 to CMB-44, `center` is the center at entry, and the shot does not follow the player.
-- **CMB-42** The player moves as in CMB-31 to CMB-33 and CMB-35, with the movement axis starting at `-axis`, with `ControlBackTime` as in CMB-32 step 5 and without the hitbox step. Only the movement axis is projected on ground; the shot keeps the axis. The job ends when `AR` is Done.
+- **CMB-42** The player moves as in CMB-31 to CMB-33 and CMB-35, with the movement axis starting at `-axis`, with `ControlBackTime` as in CMB-32 step 5 and without the hitbox step. Only the movement axis is projected on ground; the shot keeps the axis. The job ends as in CMB-32 step 6.
 - **CMB-43** When the attack's `Parried` fires:
   1. `t = clamp(min over ParriedBoxes of dot(box position - center, axis) / 2, 0, Distance)`. The parry point is `center + axis * t`, so it lies on the axis.
   2. The attack's `ParryPoint` is set to it.

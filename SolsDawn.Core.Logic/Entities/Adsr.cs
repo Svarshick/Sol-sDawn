@@ -134,7 +134,6 @@ public class Adsr : IMovementModel
 
 public enum EnvelopeShape
 {
-    AR,
     AS
 }
 
@@ -163,57 +162,6 @@ public class EnvelopeModelAttribute : ModelAttribute
         baseConstraint is EnvelopeCategoryAttribute constraint && constraint.Shape == Shape;
 
     public override string GetTagsDescription() => $"Envelope {Shape}";
-}
-
-public enum ArPhase
-{
-    Start,
-    Attack,
-    Release,
-    Done
-}
-
-[EnvelopeModel(EnvelopeShape.AR)]
-public class AR : IMovementModel
-{
-    [Inspect(0.5f, 0f, 200f)]
-    public float PeakSpeed = 15f;
-
-    [AdsrCategory(AllowedAdsrState.Attack)]
-    public CategorySlot<IAdsrModel> Attack = new();
-
-    [AdsrCategory(AllowedAdsrState.Release)]
-    public CategorySlot<IAdsrModel> Release = new();
-
-    public float Calculate(float velocity, Sign inDir, float dt, ref MovementMemory memory)
-    {
-        var previous = (ArPhase)memory.Phase;
-        var phase = previous switch
-        {
-            ArPhase.Start or ArPhase.Attack when Math.Abs(velocity) < PeakSpeed => ArPhase.Attack,
-            ArPhase.Start or ArPhase.Attack or ArPhase.Release => ArPhase.Release,
-            _ => ArPhase.Done
-        };
-        var prevInDir = phase == previous ? memory.PrevInDir : inDir;
-
-        var result = 0f;
-        if (phase == ArPhase.Attack)
-        {
-            result = Attack.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, PeakSpeed);
-        }
-        else if (phase == ArPhase.Release)
-        {
-            result = Release.GetActiveInstance().Calculate(velocity, prevInDir, inDir, dt, 0f);
-            if (result == 0f)
-                phase = ArPhase.Done;
-        }
-
-        memory.Phase = (int)phase;
-        memory.PrevInDir = inDir;
-        return result;
-    }
-
-    public static bool IsDone(in MovementMemory memory) => (ArPhase)memory.Phase == ArPhase.Done;
 }
 
 public enum AsPhase

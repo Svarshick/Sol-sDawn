@@ -256,21 +256,26 @@ public class FallState : PlayerState
 }
 internal static class AttackMotion
 {
-    public static void Step(PlayerBoard board, AR movement, ref Vector2 axis, ref float speed, ref MovementMemory memory)
+    public static bool Step(PlayerBoard board, IAdsrModel attack, float peakSpeed, ref Vector2 axis, ref float speed)
     {
         if (board.CurrentPlatform is { } platform)
             axis = CombatMath.TangentProjection(axis, platform.Transform.WorldRotation);
 
-        speed = movement.Calculate(speed, Sign.Positive, DeltaTime, ref memory);
+        if (speed < peakSpeed)
+            speed = attack.Calculate(speed, Sign.Positive, Sign.Positive, DeltaTime, peakSpeed);
+
         board.Velocity = axis * speed;
+        return speed >= peakSpeed;
     }
 }
 
 [StateModel(AllowedState.Blade)]
 public class SlideBlade : BladeState
 {
-    [EnvelopeCategory(EnvelopeShape.AR)]
-    public CategorySlot<AR> Movement = new();
+    [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
+
+    [AdsrCategory(AllowedAdsrState.Attack)]
+    public CategorySlot<IAdsrModel> Movement = new();
 
     [Inspect(0.01f, 0.01f, 10f)] public float Length = 0.6f;
     [Inspect(0.01f, 0.01f, 10f)] public float HalfWidth = 0.5f;
@@ -284,13 +289,12 @@ public class SlideBlade : BladeState
         var board = player.Board;
         var axis = CombatMath.Direction(player.Transform.Position, board.AttackPointer);
         var speed = board.Velocity.Length();
-        var memory = new MovementMemory();
         var time = 0f;
         Attack? attack = null;
 
         while (true)
         {
-            AttackMotion.Step(board, Movement.GetActiveInstance(), ref axis, ref speed, ref memory);
+            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, ref axis, ref speed);
 
             if (attack is null && time >= HitboxStart && time < HitboxEnd)
                 attack = CreateHitbox(player);
@@ -305,7 +309,7 @@ public class SlideBlade : BladeState
             if (time >= ControlBackTime)
                 board.ControlBack = true;
 
-            if (AR.IsDone(memory))
+            if (done)
                 return;
 
             await NextFrame();
@@ -326,8 +330,10 @@ public class SlideBlade : BladeState
 [StateModel(AllowedState.Fire)]
 public class SimpleFire : FireState
 {
-    [EnvelopeCategory(EnvelopeShape.AR)]
-    public CategorySlot<AR> Movement = new();
+    [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
+
+    [AdsrCategory(AllowedAdsrState.Attack)]
+    public CategorySlot<IAdsrModel> Movement = new();
 
     [Inspect(0.01f, 0f, 5f)] public float ControlBackTime = 0.2f;
     [Inspect(0.5f, 0f, 200f)] public float Distance = 20f;
@@ -347,17 +353,16 @@ public class SimpleFire : FireState
 
         var moveAxis = -axis;
         var speed = board.Velocity.Length();
-        var memory = new MovementMemory();
         var time = 0f;
 
         while (true)
         {
-            AttackMotion.Step(board, Movement.GetActiveInstance(), ref moveAxis, ref speed, ref memory);
+            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, ref moveAxis, ref speed);
 
             if (time >= ControlBackTime)
                 board.ControlBack = true;
 
-            if (AR.IsDone(memory))
+            if (done)
                 return;
 
             await NextFrame();

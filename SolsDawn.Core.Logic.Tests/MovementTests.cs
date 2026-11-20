@@ -80,15 +80,6 @@ public sealed class MovementTests : IDisposable
         return adsr;
     }
 
-    private static AR NewAr(float peak = 15f, float acceleration = 30f, float deceleration = 30f)
-    {
-        var ar = new AR { PeakSpeed = peak };
-        CategorySystem.Bind(ar);
-        Put<TestAttack, IAdsrModel>(ar.Attack, m => m.Acceleration = acceleration);
-        Put<TestSlowdown, IAdsrModel>(ar.Release, m => m.Deceleration = deceleration);
-        return ar;
-    }
-
     private static AS NewAs(float peak = 15f, float acceleration = 30f)
     {
         var envelope = new AS { PeakSpeed = peak };
@@ -130,7 +121,6 @@ public sealed class MovementTests : IDisposable
 
     [Theory]
     [InlineData(typeof(Adsr))]
-    [InlineData(typeof(AR))]
     [InlineData(typeof(AS))]
     public void MOV05_MovementModelsHaveNoRuntimeMembers(Type modelType)
     {
@@ -150,7 +140,7 @@ public sealed class MovementTests : IDisposable
     [InlineData(99)]
     public void MOV06_AnyMemoryValueIsAccepted(int phase)
     {
-        foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewAr(), NewAs() })
+        foreach (IMovementModel model in new IMovementModel[] { NewAdsr(), NewAs() })
         {
             foreach (var inDir in new[] { -1, 0, 1 })
             {
@@ -309,46 +299,6 @@ public sealed class MovementTests : IDisposable
     }
 
     [Fact]
-    public void MOV52_MOV53_ArRisesToPeakThenReleasesToDone()
-    {
-        var ar = NewAr(peak: 15f, acceleration: 30f, deceleration: 30f);
-        var memory = new MovementMemory();
-        var speed = 0f;
-        var frames = new List<(float Speed, ArPhase Phase)>();
-
-        for (var i = 0; i < 20 && !AR.IsDone(memory); i++)
-        {
-            speed = ar.Calculate(speed, 1, Dt, ref memory);
-            frames.Add((speed, (ArPhase)memory.Phase));
-        }
-
-        Assert.Equal(10, frames.Count);
-        Assert.Equal((15f, ArPhase.Attack), (MathF.Round(frames[4].Speed, 3), frames[4].Phase));
-        Assert.Equal(ArPhase.Release, frames[5].Phase);
-        Assert.Equal((0f, ArPhase.Done), frames[^1]);
-    }
-
-    [Fact]
-    public void MOV52_ArDoneStaysDoneAtZero()
-    {
-        var ar = NewAr();
-        var memory = new MovementMemory { Phase = (int)ArPhase.Done };
-
-        Assert.Equal(0f, ar.Calculate(7f, 1, Dt, ref memory));
-        Assert.True(AR.IsDone(memory));
-    }
-
-    [Fact]
-    public void MOV57_ArEnteredAtPeakSkipsAttack()
-    {
-        var ar = NewAr(peak: 15f, deceleration: 10f);
-        var memory = new MovementMemory();
-
-        Assert.Equal(19f, ar.Calculate(20f, 1, Dt, ref memory), 3);
-        Assert.Equal(ArPhase.Release, (ArPhase)memory.Phase);
-    }
-
-    [Fact]
     public void MOV55_AsRisesToPeakThenSustainsForever()
     {
         var envelope = NewAs(peak: 15f, acceleration: 30f);
@@ -375,13 +325,13 @@ public sealed class MovementTests : IDisposable
     [Fact]
     public void MOV56_EnvelopeFirstFrameGetsInDirAsPrevInDir()
     {
-        var ar = new AR { PeakSpeed = 15f };
-        CategorySystem.Bind(ar);
-        Put<PrevInDirEcho, IAdsrModel>(ar.Attack);
+        var envelope = new AS { PeakSpeed = 15f };
+        CategorySystem.Bind(envelope);
+        Put<PrevInDirEcho, IAdsrModel>(envelope.Attack);
         var memory = new MovementMemory();
 
-        Assert.Equal(-1f, ar.Calculate(0f, -1, Dt, ref memory));
-        Assert.Equal(ArPhase.Attack, (ArPhase)memory.Phase);
+        Assert.Equal(-1f, envelope.Calculate(0f, -1, Dt, ref memory));
+        Assert.Equal(AsPhase.Attack, (AsPhase)memory.Phase);
     }
 
     [Fact]
