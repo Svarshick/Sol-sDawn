@@ -138,7 +138,7 @@ Requirements are `MOV-nn`.
 - **MOV-70** A projection model has the `Projection` category and implements `IProjectionModel`: `Calculate(velocity, tangent)` with `velocity` a vector and `tangent` a platform tangent returns the signed velocity along `tangent`.
 - **MOV-71** An aim axis model has the `Aim axis` category with the states it allows, `Blade`, `Fire` or both, and implements `IAimAxisModel`: `Calculate(velocity, aim, tangent)` returns `(Axis, Speed)`. `aim` is a unit vector, `tangent` is the platform tangent or the zero vector in the air. `Axis` is a unit vector and `Speed` is at least 0.
 - **MOV-72** A slot of category `Aim axis` with a state accepts only aim axis models that allow that state (CFG-10).
-- **MOV-73** A bounce axis model has the `Bounce axis` category and implements `IBounceAxisModel`: `Calculate(velocity)` returns `(Axis, Speed)`, with the same ranges as MOV-71.
+- **MOV-73** An axis model has the `Axis` category and implements `IAxisModel`: `Calculate(velocity)` returns `(Axis, Speed)`, with the same ranges as MOV-71.
 - **MOV-74** These models hold only configuration, and their results depend only on the arguments.
 - **MOV-75** Their types are defined in `SolsDawn.Gameplay`. Every slot of these categories needs at least one candidate (CFG-26).
 

@@ -176,7 +176,7 @@ Blade, Fire and Bounce move the same way: a model sets the movement axis and a s
 
   The job never ends by itself. `PlayerController` leaves the state on ground or on a parry (CMB-22).
 - **CMB-53** When the attack's `Parried` fires, the attack is destroyed at once and `Parried` is raised. Movement does not change.
-- **CMB-54** `BounceState` has `PeakSpeed`, an `Axis` slot of category `Bounce axis` (default by CFG-25) and a `Movement` slot that accepts A phase models (default by CFG-25). It moves by CMB-28 and CMB-29, with the movement axis and speed from `Axis.Calculate(velocity)` on entry only.
+- **CMB-54** `BounceState` has `PeakSpeed`, an `Axis` slot of category `Axis` (default by CFG-25) and a `Movement` slot that accepts A phase models (default by CFG-25). It moves by CMB-28 and CMB-29, with the movement axis and speed from `Axis.Calculate(velocity)` on entry only.
 
 ## Hits and visuals
 

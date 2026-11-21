@@ -107,19 +107,19 @@ public class AimAxisModelAttribute : ModelAttribute
     public override string GetTagsDescription() => $"Aim axis: {States}";
 }
 
-public interface IBounceAxisModel
+public interface IAxisModel
 {
     (Vector2 Axis, float Speed) Calculate(Vector2 velocity);
 }
 
-public class BounceAxisCategoryAttribute : CategoryAttribute
+public class AxisCategoryAttribute : CategoryAttribute
 {
-    public override string GetTagsDescription() => "Bounce axis";
+    public override string GetTagsDescription() => "Axis";
 }
 
-public class BounceAxisModelAttribute : ModelAttribute
+public class AxisModelAttribute : ModelAttribute
 {
-    public override bool Satisfies(CategoryAttribute slot) => slot is BounceAxisCategoryAttribute;
+    public override bool Satisfies(CategoryAttribute slot) => slot is AxisCategoryAttribute;
 
-    public override string GetTagsDescription() => "Bounce axis";
+    public override string GetTagsDescription() => "Axis";
 }

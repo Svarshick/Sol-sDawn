@@ -422,8 +422,8 @@ public class BounceState : PlayerState
 {
     [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
 
-    [BounceAxisCategory]
-    public CategorySlot<IBounceAxisModel> Axis = new();
+    [AxisCategory]
+    public CategorySlot<IAxisModel> Axis = new();
 
     [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Movement = new();
