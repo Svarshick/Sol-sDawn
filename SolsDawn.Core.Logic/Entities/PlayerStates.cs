@@ -59,13 +59,44 @@ public class StateModelAttribute : ModelAttribute
 
 public abstract class PlayerState : Core.Logic.Gameplay.State<Player>;
 
-public abstract class JumpState : PlayerState;
+internal struct PlatformWatch
+{
+    private Platform? _last;
 
-public abstract class BladeState : PlayerState;
+    public bool Changed(Platform? current)
+    {
+        var changed = current is not null && current != _last;
+        _last = current;
+        return changed;
+    }
 
-public abstract class FireState : PlayerState;
+    public static Vector2 Tangent(Platform platform)
+    {
+        var angle = platform.Transform.WorldRotation;
+        return new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+    }
+}
 
-public abstract class DownAttackState : PlayerState;
+internal struct AttackMotion
+{
+    public Vector2 Axis;
+    public float Speed;
+
+    public bool Step(PlayerBoard board, IAdsrModel movement, float peakSpeed)
+    {
+        if (Speed < peakSpeed)
+            Speed = movement.Calculate(DeltaTime, Speed, 0f, peakSpeed);
+
+        board.Velocity = Axis * Speed;
+        return Speed >= peakSpeed;
+    }
+
+    public void SetAim(PlayerBoard board, IAimAxisModel model, Vector2 aim)
+    {
+        var tangent = board.CurrentPlatform is { } platform ? PlatformWatch.Tangent(platform) : Vector2.Zero;
+        (Axis, Speed) = model.Calculate(board.Velocity, aim, tangent);
+    }
+}
 
 [StateModel(AllowedState.Idle)]
 public class IdleState : PlayerState
@@ -80,6 +111,9 @@ public class IdleState : PlayerState
 [StateModel(AllowedState.Run)]
 public class RunState : PlayerState
 {
+    [ProjectionCategory]
+    public CategorySlot<IProjectionModel> Projection = new();
+
     [MovementCategory]
     public CategorySlot<IMovementModel> Movement = new();
 
@@ -87,138 +121,59 @@ public class RunState : PlayerState
     {
         var board = player.Board;
         var memory = new MovementMemory();
+        var platforms = new PlatformWatch();
+        var v = 0f;
 
         while (true)
         {
-            var currentPlatform = board.CurrentPlatform;
-            if (currentPlatform is null)
+            var platform = board.CurrentPlatform;
+            if (platform is null)
             {
                 Log.Logic.Error("Platform can't be null while run");
                 return;
             }
 
-            var angle = currentPlatform.Transform.Rotation;
-            var tangent = new Vector2(Cos(angle), Sin(angle));
+            var tangent = PlatformWatch.Tangent(platform);
+            if (platforms.Changed(platform))
+                v = Projection.GetActiveInstance().Calculate(board.Velocity, tangent);
 
-            var inputDir = Input.Move;
-            var vx = Vector2.Dot(board.Velocity, tangent);
-
-            vx = Movement.GetActiveInstance().Calculate(vx, inputDir, DeltaTime, ref memory);
-
-            board.Velocity = new Vector2(vx, 0).Rotated(angle);
+            v = Movement.GetActiveInstance().Calculate(v, Input.Move, DeltaTime, ref memory);
+            board.Velocity = v * tangent;
             await NextFrame();
         }
     }
 }
 
 [StateModel(AllowedState.Jump)]
-[Default]
-public class CelesteJumpState : JumpState
+public class JumpState : PlayerState
 {
-    [Inspect(min: 0, max: PI / 2)] public float HorizontalDashAngle = PI / 6;
-    [Inspect(min: 0)] public float HorizontalDashDistance = 5;
-    [Inspect(min: 0)] public float VerticalDashDistance = 5;
-    [Inspect(min: 1)] public int DashFrames = 3;
-
-    [Inspect(min: 0)] public float HorizontalDashFinalSpeed = 20;
-    [Inspect(min: 0)] public float VerticalDashFinalSpeed = 20;
-    [Inspect(min: 0)] public float VerticalFriction = 15;
+    [Inspect(0.01f, 0f)] public float Duration = 0.3f;
 
     [MovementCategory]
-    public CategorySlot<IMovementModel> HorizontalMovement = new();
+    public CategorySlot<IMovementModel> Horizontal = new();
+
+    [EnvelopeCategory]
+    public CategorySlot<IMovementModel> Vertical = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        var memory = new MovementMemory();
-
-        {
-            var initInputDir = Input.Move;
-            if (initInputDir == 0)
-            {
-                var vy = VerticalDashDistance / (DashFrames * DeltaTime);
-                board.Velocity = new Vector2(0, vy);
-            }
-            else
-            {
-                var vxAbs = HorizontalDashDistance / (DashFrames * DeltaTime);
-                var vx = initInputDir * vxAbs;
-                var vy = vxAbs * Tan(HorizontalDashAngle);
-                board.Velocity = new Vector2(vx, vy);
-            }
-
-            for (int i = 0; i < DashFrames; i++)
-            {
-                await NextFrame();
-            }
-
-            if (initInputDir == 0)
-            {
-                var vy = VerticalDashFinalSpeed;
-                board.Velocity = new Vector2(0, vy);
-            }
-            else
-            {
-                var vxAbs = HorizontalDashFinalSpeed;
-                var vx = initInputDir * vxAbs;
-                var vy = vxAbs * Tan(HorizontalDashAngle);
-                board.Velocity = new Vector2(vx, vy);
-            }
-        }
+        var horizontalMemory = new MovementMemory();
+        var verticalMemory = new MovementMemory();
+        var time = 0f;
+        board.Velocity = new Vector2(board.Velocity.X, 0f);
 
         while (true)
         {
-            if (board.CurrentPlatform is not null)
-            {
-                Log.Logic.Error("Can't be on platform while jump");
-                return;
-            }
-
-            var inputDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
-            var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
-
+            var vx = Horizontal.GetActiveInstance().Calculate(board.Velocity.X, Input.Move, DeltaTime, ref horizontalMemory);
+            var vy = Vertical.GetActiveInstance().Calculate(board.Velocity.Y, Sign.Positive, DeltaTime, ref verticalMemory);
             board.Velocity = new Vector2(vx, vy);
-            await NextFrame();
-        }
-    }
-}
 
-[StateModel(AllowedState.Jump)]
-public class PrimitiveJumpState : JumpState
-{
-    [Inspect(min: 0)] public float HorizontalStartSpeed = 30;
-    [Inspect(min: 0)] public float VerticalStartSpeed = 20;
-    [Inspect(min: 0)] public float VerticalFriction = 15;
-
-    [MovementCategory]
-    public CategorySlot<IMovementModel> HorizontalMovement = new();
-
-    public override async Job Job(Player player)
-    {
-        var board = player.Board;
-        var memory = new MovementMemory();
-
-        {
-            var inputDir = Input.Move;
-            board.Velocity = new Vector2(inputDir * HorizontalStartSpeed, VerticalStartSpeed);
-            await NextFrame();
-        }
-
-        while (true)
-        {
-            if (board.CurrentPlatform is not null)
-            {
-                Log.Logic.Error("Can't be on platform while jump");
+            if (time >= Duration)
                 return;
-            }
 
-            var inputDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
-            var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
-
-            board.Velocity = new Vector2(vx, vy);
             await NextFrame();
+            time += DeltaTime;
         }
     }
 }
@@ -226,16 +181,17 @@ public class PrimitiveJumpState : JumpState
 [StateModel(AllowedState.Fall)]
 public class FallState : PlayerState
 {
-    [Inspect(min: 0)] public float VerticalAcceleration = 15;
-    [Inspect(min: 0)] public float VerticalMaxSpeed = 30;
-
     [MovementCategory]
-    public CategorySlot<IMovementModel> HorizontalMovement = new();
+    public CategorySlot<IMovementModel> Horizontal = new();
+
+    [EnvelopeCategory]
+    public CategorySlot<IMovementModel> Vertical = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        var memory = new MovementMemory();
+        var horizontalMemory = new MovementMemory();
+        var verticalMemory = new MovementMemory();
 
         while (true)
         {
@@ -245,34 +201,21 @@ public class FallState : PlayerState
                 return;
             }
 
-            var inputDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
-            var vy = Max(-VerticalMaxSpeed, board.Velocity.Y - VerticalAcceleration * DeltaTime);
-
-            board.Velocity = new Vector2(vx, vy);
+            var vx = Horizontal.GetActiveInstance().Calculate(board.Velocity.X, Input.Move, DeltaTime, ref horizontalMemory);
+            var vd = Vertical.GetActiveInstance().Calculate(-board.Velocity.Y, Sign.Positive, DeltaTime, ref verticalMemory);
+            board.Velocity = new Vector2(vx, -vd);
             await NextFrame();
         }
     }
 }
-internal static class AttackMotion
-{
-    public static bool Step(PlayerBoard board, IAdsrModel attack, float peakSpeed, float entrySpeed, ref Vector2 axis, ref float speed)
-    {
-        if (board.CurrentPlatform is { } platform)
-            axis = CombatMath.TangentProjection(axis, platform.Transform.WorldRotation);
-
-        if (speed < peakSpeed)
-            speed = attack.Calculate(DeltaTime, entrySpeed, speed, peakSpeed, Sign.Positive, Sign.Positive);
-
-        board.Velocity = axis * speed;
-        return speed >= peakSpeed;
-    }
-}
 
 [StateModel(AllowedState.Blade)]
-public class SlideBlade : BladeState
+public class BladeState : PlayerState
 {
     [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
+
+    [AimAxisCategory(AllowedAimAxis.Blade)]
+    public CategorySlot<IAimAxisModel> Axis = new();
 
     [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Movement = new();
@@ -287,15 +230,20 @@ public class SlideBlade : BladeState
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        var axis = CombatMath.Direction(player.Transform.Position, board.AttackPointer);
-        var speed = board.Velocity.Length();
-        var entrySpeed = speed;
+        var aim = CombatMath.Direction(player.Transform.Position, board.AttackPointer);
+        var motion = new AttackMotion();
+        var platforms = new PlatformWatch();
+        motion.SetAim(board, Axis.GetActiveInstance(), aim);
+        platforms.Changed(board.CurrentPlatform);
         var time = 0f;
         Attack? attack = null;
 
         while (true)
         {
-            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, entrySpeed, ref axis, ref speed);
+            if (platforms.Changed(board.CurrentPlatform))
+                motion.SetAim(board, Axis.GetActiveInstance(), aim);
+
+            var done = motion.Step(board, Movement.GetActiveInstance(), PeakSpeed);
 
             if (attack is null && time >= HitboxStart && time < HitboxEnd)
                 attack = CreateHitbox(player);
@@ -304,7 +252,7 @@ public class SlideBlade : BladeState
                 if (time >= HitboxEnd)
                     attack.Destroy();
                 else
-                    attack.Transform.Rotation = axis.Angle();
+                    attack.Transform.Rotation = motion.Axis.Angle();
             }
 
             if (time >= ControlBackTime)
@@ -329,9 +277,12 @@ public class SlideBlade : BladeState
 }
 
 [StateModel(AllowedState.Fire)]
-public class SimpleFire : FireState
+public class FireState : PlayerState
 {
     [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
+
+    [AimAxisCategory(AllowedAimAxis.Fire)]
+    public CategorySlot<IAimAxisModel> Axis = new();
 
     [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Movement = new();
@@ -349,17 +300,21 @@ public class SimpleFire : FireState
     {
         var board = player.Board;
         var center = player.Transform.Position;
-        var axis = CombatMath.Direction(center, board.AttackPointer);
-        Effects.Start(() => Shot(center, axis));
+        var aim = CombatMath.Direction(center, board.AttackPointer);
+        Effects.Start(() => Shot(center, aim));
 
-        var moveAxis = -axis;
-        var speed = board.Velocity.Length();
-        var entrySpeed = speed;
+        var motion = new AttackMotion();
+        var platforms = new PlatformWatch();
+        motion.SetAim(board, Axis.GetActiveInstance(), aim);
+        platforms.Changed(board.CurrentPlatform);
         var time = 0f;
 
         while (true)
         {
-            var done = AttackMotion.Step(board, Movement.GetActiveInstance(), PeakSpeed, entrySpeed, ref moveAxis, ref speed);
+            if (platforms.Changed(board.CurrentPlatform))
+                motion.SetAim(board, Axis.GetActiveInstance(), aim);
+
+            var done = motion.Step(board, Movement.GetActiveInstance(), PeakSpeed);
 
             if (time >= ControlBackTime)
                 board.ControlBack = true;
@@ -372,26 +327,26 @@ public class SimpleFire : FireState
         }
     }
 
-    private async Job Shot(Vector2 center, Vector2 axis)
+    private async Job Shot(Vector2 center, Vector2 aim)
     {
-        var end = center + axis * Distance;
+        var end = center + aim * Distance;
 
-        var attackObject = CreateObject(center + axis * Distance / 2, axis.Angle());
+        var attackObject = CreateObject(center + aim * Distance / 2, aim.Angle());
         var attack = new Attack(attackObject, Shapes.Rectangle(Distance, Width), Side.Enemy, ParryKind.Fire);
         attack.Parried.OnFire(() =>
         {
             var t = CombatMath.FireParryDistance(
                 center,
-                axis,
+                aim,
                 attack.ParriedBoxes.Select(b => b.Transform.WorldPosition),
                 Distance);
-            var parryPoint = center + axis * t;
+            var parryPoint = center + aim * t;
             attack.ParryPoint = parryPoint;
             end = parryPoint;
 
             if (t > 0.001f)
             {
-                attackObject.Transform.Position = center + axis * t / 2;
+                attackObject.Transform.Position = center + aim * t / 2;
                 attack.Collider.Shape = Shapes.Rectangle(t, Width);
             }
             else
@@ -418,10 +373,10 @@ public class SimpleFire : FireState
 }
 
 [StateModel(AllowedState.DownAttack)]
-public class SimpleDownAttack : DownAttackState
+public class DownAttackState : PlayerState
 {
-    [EnvelopeCategory(EnvelopeShape.AS)]
-    public CategorySlot<AS> Vertical = new();
+    [EnvelopeCategory]
+    public CategorySlot<IMovementModel> Vertical = new();
 
     [AdsrCategory(AllowedAdsrState.Release)]
     public CategorySlot<IAdsrModel> Horizontal = new();
@@ -433,10 +388,9 @@ public class SimpleDownAttack : DownAttackState
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        var verticalSpeed = Max(0, -board.Velocity.Y);
-        var vx = board.Velocity.X;
-        var entryVx = vx;
-        Sign hDir = vx;
+        var h = Abs(board.Velocity.X);
+        var h0 = h;
+        Sign hDir = board.Velocity.X;
         var memory = new MovementMemory();
 
         var attackObject = CreateObject();
@@ -450,9 +404,10 @@ public class SimpleDownAttack : DownAttackState
 
         while (true)
         {
-            verticalSpeed = Vertical.GetActiveInstance().Calculate(verticalSpeed, Sign.Positive, DeltaTime, ref memory);
-            vx = Horizontal.GetActiveInstance().Calculate(DeltaTime, entryVx, vx, 0f, hDir, hDir);
-            board.Velocity = new Vector2(vx, -verticalSpeed);
+            var vd = Vertical.GetActiveInstance().Calculate(-board.Velocity.Y, Sign.Positive, DeltaTime, ref memory);
+            if (h > 0f)
+                h = Horizontal.GetActiveInstance().Calculate(DeltaTime, h, h0, 0f);
+            board.Velocity = new Vector2(hDir * h, -vd);
 
             if (!attack.IsDestroyed)
                 attackObject.Transform.Rotation = board.Velocity == Vector2.Zero ? -PI / 2 : board.Velocity.Angle();
@@ -465,26 +420,25 @@ public class SimpleDownAttack : DownAttackState
 [StateModel(AllowedState.Bounce)]
 public class BounceState : PlayerState
 {
-    [Inspect(min: 0)] public float VerticalStartSpeed = 15;
-    [Inspect(min: 0)] public float VerticalFriction = 15;
+    [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
 
-    [MovementCategory]
-    public CategorySlot<IMovementModel> HorizontalMovement = new();
+    [BounceAxisCategory]
+    public CategorySlot<IBounceAxisModel> Axis = new();
+
+    [AdsrCategory(AllowedAdsrState.Attack)]
+    public CategorySlot<IAdsrModel> Movement = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        var memory = new MovementMemory();
-        board.Velocity = new Vector2(0, VerticalStartSpeed);
-        await NextFrame();
+        var motion = new AttackMotion();
+        (motion.Axis, motion.Speed) = Axis.GetActiveInstance().Calculate(board.Velocity);
 
         while (true)
         {
-            var inputDir = Input.Move;
-            var vx = HorizontalMovement.GetActiveInstance().Calculate(board.Velocity.X, inputDir, DeltaTime, ref memory);
-            var vy = board.Velocity.Y - VerticalFriction * DeltaTime;
+            if (motion.Step(board, Movement.GetActiveInstance(), PeakSpeed))
+                return;
 
-            board.Velocity = new Vector2(vx, vy);
             await NextFrame();
         }
     }

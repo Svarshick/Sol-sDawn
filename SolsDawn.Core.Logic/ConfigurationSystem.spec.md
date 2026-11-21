@@ -102,6 +102,7 @@ Requirements are `CFG-nn`.
 
 ## Runtime and file format
 
+- **CFG-66** A model type may implement `IConstrainedModel` to keep its fields consistent. `Constrain(editedField)` runs after an inspector edit of a field of that model, with the field's name, and after the model is loaded from a file, with `null`. It may change any field of the same model. A change it makes on load is not an unsaved change.
 - **CFG-67** Edits apply immediately while the game runs. Values read once at creation, such as the player's collider radius, are rebuilt when their model changes.
 - **CFG-68** A field missing from a model file takes the code's default value.
 - **CFG-69** A model file whose model type no longer exists is left untouched on disk and logged.

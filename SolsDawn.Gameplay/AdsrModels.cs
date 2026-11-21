@@ -9,11 +9,8 @@ public class SimpleAttack : IAdsrModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float Acceleration = 10f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
-    {
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Min(targetSpeed, Math.Abs(velocity) + Acceleration * dt);
-    }
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed) =>
+        Math.Min(toSpeed, speed + Acceleration * dt);
 }
 
 [AdsrModel(AllowedAdsrState.Decay | AllowedAdsrState.Release)]
@@ -23,22 +20,8 @@ public class LinearSlowdown : IAdsrModel
     [Inspect, Range(0f, 200f), Step(1f)]
     public float Deceleration = 10f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
-    {
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Max(targetSpeed, Math.Abs(velocity) - Deceleration * dt);
-    }
-}
-
-[AdsrModel(AllowedAdsrState.Sustain)]
-[Default]
-public class KeepSpeed : IAdsrModel
-{
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
-    {
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Abs(velocity);
-    }
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed) =>
+        Math.Max(toSpeed, speed - Deceleration * dt);
 }
 
 [AdsrModel(AllowedAdsrState.Attack)]
@@ -47,15 +30,13 @@ public class SimpleExpectedAttack : IAdsrModel
     [Inspect, Range(0f, 3f), Step(0.05f)]
     public float ExpectedTime = 1f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var currentSpeed = Math.Abs(velocity);
-        var normalizedTime = dt / ExpectedTime;
+        var range = toSpeed - fromSpeed;
+        if (range <= 0f || ExpectedTime <= 0f)
+            return toSpeed;
 
-        var speed = currentSpeed + targetSpeed * normalizedTime;
-
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Min(targetSpeed, speed);
+        return Math.Min(toSpeed, speed + range * dt / ExpectedTime);
     }
 }
 
@@ -65,15 +46,17 @@ public class SquareRootExpectedAttack : IAdsrModel
     [Inspect, Range(0f, 3f), Step(0.05f)]
     public float ExpectedTime = 1f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var normalizedSpeed = Math.Abs(velocity) / targetSpeed;
+        var range = toSpeed - fromSpeed;
+        if (range <= 0f || ExpectedTime <= 0f)
+            return toSpeed;
+
+        var normalizedSpeed = Math.Max(0f, speed - fromSpeed) / range;
         var normalizedTime = dt / ExpectedTime;
+        var next = MathF.Sqrt(normalizedSpeed * normalizedSpeed + normalizedTime * normalizedTime);
 
-        var speed = MathF.Sqrt(normalizedSpeed * normalizedSpeed + normalizedTime * normalizedTime) * targetSpeed;
-
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Min(targetSpeed, speed);
+        return Math.Min(toSpeed, fromSpeed + next * range);
     }
 }
 
@@ -83,16 +66,16 @@ public class SquareExpectedAttack : IAdsrModel
     [Inspect, Range(0f, 3f), Step(0.05f)]
     public float ExpectedTime = 1f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var normalizedSpeed = Math.Abs(velocity) / targetSpeed;
-        var normalizedTime = dt / ExpectedTime;
+        var range = toSpeed - fromSpeed;
+        if (range <= 0f || ExpectedTime <= 0f)
+            return toSpeed;
 
-        var root = MathF.Sqrt(normalizedSpeed) + normalizedTime;
-        var speed = root * root * targetSpeed;
+        var normalizedSpeed = Math.Max(0f, speed - fromSpeed) / range;
+        var root = MathF.Sqrt(normalizedSpeed) + dt / ExpectedTime;
 
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Min(targetSpeed, speed);
+        return Math.Min(toSpeed, fromSpeed + root * root * range);
     }
 }
 
@@ -102,19 +85,13 @@ public class LinearExpectedSlowdown : IAdsrModel
     [Inspect, Range(0f, 3f), Step(0.05f)]
     public float ExpectedTime = 1f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var startSpeed = Math.Abs(startVelocity);
-        if (startSpeed == 0f)
-            return 0f;
+        var range = Math.Max(fromSpeed, speed) - toSpeed;
+        if (range <= 0f || ExpectedTime <= 0f)
+            return toSpeed;
 
-        var normalizedSpeed = Math.Abs(velocity) / startSpeed;
-        var normalizedTime = dt / ExpectedTime;
-
-        var speed = startSpeed * (normalizedSpeed - normalizedTime);
-
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Max(targetSpeed, speed);
+        return Math.Max(toSpeed, speed - range * dt / ExpectedTime);
     }
 }
 
@@ -124,23 +101,18 @@ public class SquareRootExpectedSlowdown : IAdsrModel
     [Inspect, Range(0f, 3f), Step(0.05f)]
     public float ExpectedTime = 1f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var startSpeed = Math.Abs(startVelocity);
-        if (startSpeed == 0f)
-            return 0f;
+        var range = Math.Max(fromSpeed, speed) - toSpeed;
+        if (range <= 0f || ExpectedTime <= 0f)
+            return toSpeed;
 
-        var normalizedSpeed = Math.Abs(velocity) / startSpeed;
-        var normalizedTime = dt / ExpectedTime;
+        var normalizedSpeed = (speed - toSpeed) / range;
+        var coef = normalizedSpeed * normalizedSpeed - dt / ExpectedTime;
+        if (coef < 0.001f)
+            return toSpeed;
 
-        var coef = normalizedSpeed * normalizedSpeed - normalizedTime;
-
-        var speed = 0f;
-        if (coef >= 0.001f)
-            speed = startSpeed * MathF.Sqrt(coef);
-
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Max(targetSpeed, speed);
+        return Math.Max(toSpeed, toSpeed + range * MathF.Sqrt(coef));
     }
 }
 
@@ -150,19 +122,17 @@ public class SquareExpectedSlowdown : IAdsrModel
     [Inspect, Range(0f, 3f), Step(0.05f)]
     public float ExpectedTime = 1f;
 
-    public float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir)
+    public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var startSpeed = Math.Abs(startVelocity);
-        if (startSpeed == 0f)
-            return 0f;
+        var range = Math.Max(fromSpeed, speed) - toSpeed;
+        if (range <= 0f || ExpectedTime <= 0f)
+            return toSpeed;
 
-        var normalizedSpeed = Math.Abs(velocity) / startSpeed;
-        var normalizedTime = dt / ExpectedTime;
+        var normalizedSpeed = (speed - toSpeed) / range;
+        var root = MathF.Sqrt(normalizedSpeed) - dt / ExpectedTime;
+        if (root <= 0f)
+            return toSpeed;
 
-        var root = MathF.Sqrt(normalizedSpeed) - normalizedTime;
-        var speed = startSpeed * root * root;
-
-        var dir = inputDir != 0 ? (int)inputDir : Math.Sign(velocity);
-        return dir * Math.Max(targetSpeed, speed);
+        return Math.Max(toSpeed, toSpeed + root * root * range);
     }
 }

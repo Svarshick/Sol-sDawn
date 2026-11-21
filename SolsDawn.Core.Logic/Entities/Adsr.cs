@@ -1,8 +1,4 @@
 using System;
-using Microsoft.Xna.Framework;
-using SolsDawn.Core.Logic.Animations;
-using SolsDawn.Core.Logic.Gameplay.Pipeline;
-using static SolsDawn.Core.Logic.Gameplay.GameplayAPI;
 
 namespace SolsDawn.Core.Logic.Entities;
 
@@ -11,22 +7,24 @@ public enum AllowedAdsrState
 {
     Attack  = 1 << 0,
     Decay   = 1 << 1,
-    Sustain = 1 << 2,
-    Release = 1 << 3
+    Release = 1 << 2
 }
 
-public enum AdsrState
+public enum AdsrPhase
 {
     Idle,
     Attack,
     Decay,
     Sustain,
-    Release
+    Release,
+    TurnDecay,
+    TurnRelease,
+    TurnAttack
 }
 
 public interface IAdsrModel
 {
-    float Calculate(float dt, float startVelocity, float velocity, float targetSpeed, Sign prevInputDir, Sign inputDir);
+    float Calculate(float dt, float speed, float fromSpeed, float toSpeed);
 }
 
 public class AdsrCategoryAttribute : CategoryAttribute
@@ -63,11 +61,66 @@ public class AdsrModelAttribute : ModelAttribute
     public override string GetTagsDescription() => $"ADSR: {States}";
 }
 
-[MovementModel]
-public class Adsr : IMovementModel
+internal static class AdsrMath
 {
     private const float SpeedTolerance = 0.001f;
 
+    public static float Normalize(float speed, float controlledSpeed)
+    {
+        if (Math.Abs(speed - controlledSpeed) <= SpeedTolerance)
+            return controlledSpeed;
+
+        return speed <= SpeedTolerance ? 0f : speed;
+    }
+
+    public static AdsrPhase Select(AdsrPhase previous, float speed, Sign motion, Sign inputDir, float controlledSpeed, float peakSpeed)
+    {
+        var none = inputDir == 0;
+        var against = !none && speed > 0f && inputDir == -motion;
+        var along = !none && !against;
+
+        if (previous == AdsrPhase.TurnAttack && along && speed < peakSpeed)
+            return AdsrPhase.TurnAttack;
+        if (against)
+            return speed > controlledSpeed ? AdsrPhase.TurnDecay : AdsrPhase.TurnRelease;
+        if (previous is AdsrPhase.TurnDecay or AdsrPhase.TurnRelease && along && speed == 0f)
+            return AdsrPhase.TurnAttack;
+        if (previous == AdsrPhase.Attack && along && speed < peakSpeed)
+            return AdsrPhase.Attack;
+        if (speed > controlledSpeed)
+            return AdsrPhase.Decay;
+        if (along)
+            return speed == controlledSpeed ? AdsrPhase.Sustain : AdsrPhase.Attack;
+
+        return speed == 0f ? AdsrPhase.Idle : AdsrPhase.Release;
+    }
+
+    public static float Turn(Dra turn, AdsrPhase phase, float dt, float speed, float controlledSpeed, float peakSpeed) => phase switch
+    {
+        AdsrPhase.TurnDecay => turn.Decay.GetActiveInstance().Calculate(dt, speed, peakSpeed, controlledSpeed),
+        AdsrPhase.TurnRelease => turn.Release.GetActiveInstance().Calculate(dt, speed, controlledSpeed, 0f),
+        _ => turn.Attack.GetActiveInstance().Calculate(dt, speed, 0f, peakSpeed)
+    };
+
+    public static float Direction(float speed, Sign motion, Sign inputDir) => speed > 0f ? motion : inputDir;
+}
+
+[TurnModel]
+public class Dra
+{
+    [AdsrCategory(AllowedAdsrState.Decay)]
+    public CategorySlot<IAdsrModel> Decay = new();
+
+    [AdsrCategory(AllowedAdsrState.Release)]
+    public CategorySlot<IAdsrModel> Release = new();
+
+    [AdsrCategory(AllowedAdsrState.Attack)]
+    public CategorySlot<IAdsrModel> Attack = new();
+}
+
+[MovementModel]
+public class Adsr : IMovementModel, IConstrainedModel
+{
     [Inspect(0.5f, 0f, 100f)]
     public float ControlledSpeed = 10f;
 
@@ -80,102 +133,49 @@ public class Adsr : IMovementModel
     [AdsrCategory(AllowedAdsrState.Decay)]
     public CategorySlot<IAdsrModel> Decay = new();
 
-    [AdsrCategory(AllowedAdsrState.Sustain)]
-    public CategorySlot<IAdsrModel> Sustain = new();
-
     [AdsrCategory(AllowedAdsrState.Release)]
     public CategorySlot<IAdsrModel> Release = new();
 
+    [TurnCategory]
+    public CategorySlot<Dra> Turn = new();
+
     public float Calculate(float velocity, Sign inputDir, float dt, ref MovementMemory memory)
     {
-        velocity = NormalizeVelocity(velocity);
-        var limit = Math.Max(PeakSpeed, ControlledSpeed);
-        var previous = (AdsrState)memory.Phase;
-        var state = SelectState(previous, Math.Abs(velocity), inputDir, limit);
-        var started = state != previous;
-        var prevInputDir = started ? inputDir : memory.PrevInputDir;
-        var startVelocity = started ? velocity : memory.StartVelocity;
+        var c = ControlledSpeed;
+        var p = PeakSpeed;
+        var speed = AdsrMath.Normalize(Math.Abs(velocity), c);
+        Sign motion = velocity;
+        var phase = AdsrMath.Select((AdsrPhase)memory.Phase, speed, motion, inputDir, c, p);
 
-        var result = state switch
+        var result = phase switch
         {
-            AdsrState.Attack => Attack.GetActiveInstance().Calculate(dt, startVelocity, velocity, limit, prevInputDir, inputDir),
-            AdsrState.Decay => Decay.GetActiveInstance().Calculate(dt, startVelocity, velocity, ControlledSpeed, prevInputDir, inputDir),
-            AdsrState.Sustain => Sustain.GetActiveInstance().Calculate(dt, startVelocity, velocity, ControlledSpeed, prevInputDir, inputDir),
-            AdsrState.Release => Release.GetActiveInstance().Calculate(dt, startVelocity, velocity, 0f, prevInputDir, inputDir),
+            AdsrPhase.Attack => Attack.GetActiveInstance().Calculate(dt, speed, 0f, p),
+            AdsrPhase.Decay => Decay.GetActiveInstance().Calculate(dt, speed, p, c),
+            AdsrPhase.Sustain => speed,
+            AdsrPhase.Release => Release.GetActiveInstance().Calculate(dt, speed, c, 0f),
+            AdsrPhase.TurnDecay or AdsrPhase.TurnRelease or AdsrPhase.TurnAttack =>
+                AdsrMath.Turn(Turn.GetActiveInstance(), phase, dt, speed, c, p),
             _ => 0f
         };
 
-        memory.Phase = (int)state;
-        memory.PrevInputDir = inputDir;
-        memory.StartVelocity = startVelocity;
-        return result;
+        memory.Phase = (int)phase;
+        return AdsrMath.Direction(speed, motion, inputDir) * result;
     }
 
-    private float NormalizeVelocity(float velocity)
+    public void Constrain(string? editedField)
     {
-        var speed = Math.Abs(velocity);
-        if (Math.Abs(speed - ControlledSpeed) <= SpeedTolerance)
-            return Math.Sign(velocity) * ControlledSpeed;
+        if (PeakSpeed >= ControlledSpeed)
+            return;
 
-        return speed <= SpeedTolerance ? 0f : velocity;
-    }
-
-    private AdsrState SelectState(AdsrState previous, float speed, Sign inputDir, float limit)
-    {
-        var held = inputDir != 0;
-
-        if (previous == AdsrState.Attack && held && speed < limit)
-            return AdsrState.Attack;
-        if (speed > ControlledSpeed)
-            return AdsrState.Decay;
-        if (held)
-            return speed == ControlledSpeed ? AdsrState.Sustain : AdsrState.Attack;
-
-        return speed == 0f ? AdsrState.Idle : AdsrState.Release;
+        if (editedField == nameof(PeakSpeed))
+            ControlledSpeed = PeakSpeed;
+        else
+            PeakSpeed = ControlledSpeed;
     }
 }
 
-public enum EnvelopeShape
-{
-    AS
-}
-
-public class EnvelopeCategoryAttribute : CategoryAttribute
-{
-    public EnvelopeShape Shape { get; }
-
-    public EnvelopeCategoryAttribute(EnvelopeShape shape)
-    {
-        Shape = shape;
-    }
-
-    public override string GetTagsDescription() => $"Envelope {Shape}";
-}
-
-public class EnvelopeModelAttribute : ModelAttribute
-{
-    public EnvelopeShape Shape { get; }
-
-    public EnvelopeModelAttribute(EnvelopeShape shape)
-    {
-        Shape = shape;
-    }
-
-    public override bool Satisfies(CategoryAttribute baseConstraint) =>
-        baseConstraint is EnvelopeCategoryAttribute constraint && constraint.Shape == Shape;
-
-    public override string GetTagsDescription() => $"Envelope {Shape}";
-}
-
-public enum AsPhase
-{
-    Start,
-    Attack,
-    Sustain
-}
-
-[EnvelopeModel(EnvelopeShape.AS)]
-public class AS : IMovementModel
+[EnvelopeModel]
+public class Ads : IMovementModel
 {
     [Inspect(0.5f, 0f, 200f)]
     public float PeakSpeed = 15f;
@@ -183,26 +183,32 @@ public class AS : IMovementModel
     [AdsrCategory(AllowedAdsrState.Attack)]
     public CategorySlot<IAdsrModel> Attack = new();
 
-    [AdsrCategory(AllowedAdsrState.Sustain)]
-    public CategorySlot<IAdsrModel> Sustain = new();
+    [AdsrCategory(AllowedAdsrState.Decay)]
+    public CategorySlot<IAdsrModel> Decay = new();
+
+    [TurnCategory]
+    public CategorySlot<Dra> Turn = new();
 
     public float Calculate(float velocity, Sign inputDir, float dt, ref MovementMemory memory)
     {
-        var previous = (AsPhase)memory.Phase;
-        var phase = previous is AsPhase.Start or AsPhase.Attack && Math.Abs(velocity) < PeakSpeed
-            ? AsPhase.Attack
-            : AsPhase.Sustain;
-        var started = phase != previous;
-        var prevInputDir = started ? inputDir : memory.PrevInputDir;
-        var startVelocity = started ? velocity : memory.StartVelocity;
+        var p = PeakSpeed;
+        var speed = AdsrMath.Normalize(Math.Abs(velocity), p);
+        Sign motion = velocity;
+        if (inputDir == 0)
+            inputDir = motion;
+        var phase = AdsrMath.Select((AdsrPhase)memory.Phase, speed, motion, inputDir, p, p);
 
-        var result = phase == AsPhase.Attack
-            ? Attack.GetActiveInstance().Calculate(dt, startVelocity, velocity, PeakSpeed, prevInputDir, inputDir)
-            : Sustain.GetActiveInstance().Calculate(dt, startVelocity, velocity, PeakSpeed, prevInputDir, inputDir);
+        var result = phase switch
+        {
+            AdsrPhase.Attack => Attack.GetActiveInstance().Calculate(dt, speed, 0f, p),
+            AdsrPhase.Decay => Decay.GetActiveInstance().Calculate(dt, speed, p, p),
+            AdsrPhase.Sustain => speed,
+            AdsrPhase.TurnDecay or AdsrPhase.TurnRelease or AdsrPhase.TurnAttack =>
+                AdsrMath.Turn(Turn.GetActiveInstance(), phase, dt, speed, p, p),
+            _ => 0f
+        };
 
         memory.Phase = (int)phase;
-        memory.PrevInputDir = inputDir;
-        memory.StartVelocity = startVelocity;
-        return result;
+        return AdsrMath.Direction(speed, motion, inputDir) * result;
     }
 }

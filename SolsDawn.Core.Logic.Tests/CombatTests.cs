@@ -12,9 +12,9 @@ public sealed class CombatTests
     [InlineData(0f, -1f, 0f, 1f, 0f)]
     [InlineData(1f, 0.5f, MathF.PI / 2, 0f, 1f)]
     [InlineData(1f, -0.5f, MathF.PI / 2, 0f, -1f)]
-    public void CMB32_TangentProjectionKeepsTheSideAndHasUnitLength(float dx, float dy, float rotation, float ex, float ey)
+    public void Terminology_TangentProjectionKeepsTheSideAndHasUnitLength(float dx, float dy, float rotation, float ex, float ey)
     {
-        var result = CombatMath.TangentProjection(new Vector2(dx, dy), rotation);
+        var result = CombatMath.TangentProjection(new Vector2(dx, dy), new Vector2(MathF.Cos(rotation), MathF.Sin(rotation)));
 
         Assert.Equal(ex, result.X, 4);
         Assert.Equal(ey, result.Y, 4);

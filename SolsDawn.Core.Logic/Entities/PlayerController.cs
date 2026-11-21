@@ -117,7 +117,7 @@ public class PlayerController
                 if (downA) return specs.DownAttack.GetActiveInstance();
                 if (ground && (run || moving)) return specs.Run.GetActiveInstance();
                 if (ground && still) return specs.Idle.GetActiveInstance();
-                if (state is JumpState && air && board.Velocity.Y <= 0) return specs.Fall.GetActiveInstance();
+                if (state is JumpState && air && stateEnded) return specs.Fall.GetActiveInstance();
                 return null;
 
             case BounceState:
@@ -125,7 +125,7 @@ public class PlayerController
                 if (fire) return Fire();
                 if (ground && (run || moving)) return specs.Run.GetActiveInstance();
                 if (ground && still) return specs.Idle.GetActiveInstance();
-                if (air && board.Velocity.Y <= 0) return specs.Fall.GetActiveInstance();
+                if (air && stateEnded) return specs.Fall.GetActiveInstance();
                 return null;
 
             case BladeState or FireState:

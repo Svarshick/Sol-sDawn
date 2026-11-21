@@ -254,11 +254,8 @@ public static class CombatMath
 
     public static bool IsValidPointer(Vector2 center, Vector2 pointer) => Vector2.Distance(center, pointer) > 0.001f;
 
-    public static Vector2 TangentProjection(Vector2 direction, float platformRotation)
-    {
-        var tangent = new Vector2(MathF.Cos(platformRotation), MathF.Sin(platformRotation));
-        return Vector2.Dot(direction, tangent) >= 0 ? tangent : -tangent;
-    }
+    public static Vector2 TangentProjection(Vector2 direction, Vector2 tangent) =>
+        Vector2.Dot(direction, tangent) >= 0 ? tangent : -tangent;
 
     public static Vector2[] PentagonPoints(float length, float halfWidth, float tipLength) =>
     [

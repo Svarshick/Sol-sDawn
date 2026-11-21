@@ -28,6 +28,11 @@ public abstract class ModelAttribute : Attribute
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class DefaultAttribute : Attribute;
 
+public interface IConstrainedModel
+{
+    void Constrain(string? editedField);
+}
+
 public sealed record DefaultsReport(IReadOnlyList<string> Warnings, IReadOnlyList<string> Errors);
 
 public interface ICategorySlot
@@ -493,6 +498,8 @@ public sealed class ModelEdit
     {
         var (target, entry) = Writable();
         field.SetValue(target, value);
+        if (target is IConstrainedModel constrained)
+            constrained.Constrain(field.Name);
         Library.MarkDirty(entry.Guid);
     }
 
@@ -677,6 +684,8 @@ public static class Library
 
                     entry.Instance ??= Activator.CreateInstance(modelType)!;
                     CategorySystem.Bind(entry.Instance);
+                    if (entry.Instance is IConstrainedModel constrained)
+                        constrained.Constrain(null);
 
                     if (string.IsNullOrWhiteSpace(entry.CategoryTags))
                     {
