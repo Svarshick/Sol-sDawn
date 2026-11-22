@@ -1,5 +1,3 @@
-using System;
-
 namespace SolsDawn.Gameplay;
 
 [ProjectionModel]
@@ -13,7 +11,7 @@ public class DotProjection : IProjectionModel
 public class LengthProjection : IProjectionModel
 {
     public float Calculate(Vector2 velocity, Vector2 tangent) =>
-        MathF.Sign(Vector2.Dot(velocity, tangent)) * velocity.Length();
+        Sign(Vector2.Dot(velocity, tangent)) * velocity.Length();
 }
 
 [AimAxisModel(AllowedAimAxis.Blade)]
@@ -21,7 +19,7 @@ public class AimAxis : IAimAxisModel
 {
     public (Vector2 Axis, float Speed) Calculate(Vector2 velocity, Vector2 aim, Vector2 tangent)
     {
-        var axis = tangent == Vector2.Zero ? aim : CombatMath.TangentProjection(aim, tangent);
+        var axis = tangent == Vector2.Zero ? aim : (Vector2.Dot(aim, tangent) >= 0 ? tangent : -tangent);
         return (axis, velocity.Length());
     }
 }
@@ -31,7 +29,7 @@ public class ReverseAimAxis : IAimAxisModel
 {
     public (Vector2 Axis, float Speed) Calculate(Vector2 velocity, Vector2 aim, Vector2 tangent)
     {
-        var axis = tangent == Vector2.Zero ? -aim : CombatMath.TangentProjection(-aim, tangent);
+        var axis = tangent == Vector2.Zero ? -aim : (Vector2.Dot(aim, tangent) <= 0 ? tangent : -tangent);
         return (axis, velocity.Length());
     }
 }

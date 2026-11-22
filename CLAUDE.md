@@ -4,9 +4,19 @@ MonoGame game on .NET 10.
 
 ## Projects
 
-- `SolsDawn.Core`: game objects, pool, time, transforms. A separate assembly so the `internal` members of `GameObject`, `Component` and the pool stay unreachable from other code.
-- `SolsDawn.Core.Logic`: developer space. Game initialization, graphics, main systems, and the mechanics: player and its states, movement models, combat, the enemy body, the level runner and `Spawn`.
+- `SolsDawn.Kernel`: game objects, pool, time, transforms. A separate assembly so the `internal` members of `GameObject`, `Component` and the pool stay unreachable from other code.
+- `SolsDawn.Engine`: developer space. One namespace, `SolsDawn.Engine`; folders only group files:
+  - `Host/`: the MonoGame `Game`, rendering, camera.
+  - `Api/`: `GameplayAPI`, the single file of designer entry points.
+  - `Entities/`: `Entity` and `State` base classes, the player and the enemy body.
+  - `Physics/`, `Input/`, `Pipeline/` (Job and Event coroutines), `Animations/`.
+  - `Movement/`: movement and phase model contracts. `Combat/`: attacks, hurtboxes, parries and their resolve.
+  - `World/`: level geometry such as platforms. `Levels/`: the level runner and `Spawn`.
+  - `Config/`: configuration and save systems. `Tools/`: inspector, logging, debug windows, Speed Graph.
 - `SolsDawn.Gameplay`: designer space. Startup (`Main`), the root `GameConfig`, levels marked `[Level]`, enemy behaviours and phase model implementations.
+  Designer code sees only Engine's public surface, with every entry point in `Api/GameplayAPI.cs`. The analyzer in `SolsDawn.Analyzers` makes any `using` directive, and any name outside the `<Using>` items of its csproj, a compile error (`SolsDawn.Engine/Api/GameplayAPI.spec.md`).
+- `SolsDawn.Analyzers`: the Roslyn analyzer that enforces the designer boundary.
+- `SolsDawn.Tests`: xUnit v3 tests of Engine and of the designer models in Gameplay.
 - `SolsDawn.Content`: MonoGame content (textures, sound, other game files).
 - `SolsDawn.DesktopGL`: platform entry point for OpenGL.
 
@@ -15,7 +25,7 @@ MonoGame game on .NET 10.
 `dotnet` is installed through mise, so prefix commands with `mise exec --`.
 
 - Compile check of all game code: `mise exec -- dotnet build SolsDawn.Gameplay/SolsDawn.Gameplay.csproj`
-- Tests: `mise exec -- dotnet run --project SolsDawn.Core.Logic.Tests/SolsDawn.Core.Logic.Tests.csproj`. `dotnet test` does not work with this xUnit v3 setup.
+- Tests: `mise exec -- dotnet run --project SolsDawn.Tests/SolsDawn.Tests.csproj`. `dotnet test` does not work with this xUnit v3 setup.
 - Full platform build: `mise exec -- dotnet build SolsDawn.DesktopGL/SolsDawn.DesktopGL.csproj`. Its content step compiles shaders and needs Wine.
 
 ## Rules

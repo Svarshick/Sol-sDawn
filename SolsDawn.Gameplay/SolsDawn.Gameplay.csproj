@@ -9,29 +9,21 @@
     <PackageReference Include="MonoGame.Framework.Native" Version="3.8.6.1">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
-    <ProjectReference Include="../SolsDawn.Core.Logic/SolsDawn.Core.Logic.csproj" />
+    <ProjectReference Include="../SolsDawn.Engine/SolsDawn.Engine.csproj" />
+    <ProjectReference Include="../SolsDawn.Analyzers/SolsDawn.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     
     <Using Include="Microsoft.Xna.Framework.Color" Alias="Color" />
     <Using Include="Microsoft.Xna.Framework.Vector2" Alias="Vector2" />
     <Using Include="Microsoft.Xna.Framework.MathHelper" Alias="MathHelper" />
     
-    <Using Include="SolsDawn.Core.Component" Alias="Component" />
-    <Using Include="SolsDawn.Core.GameObject" Alias="GameObject" />
-           
-    <Using Include="SolsDawn.Core.Logic.Gameplay.GameplayAPI" Static="true" />
-    <Using Include="SolsDawn.Core.Logic.Game" Alias="Game" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.Entity" Alias="Entity" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.State" Alias="State" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.Collider" Alias="Collider" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.Physics" Alias="Physics" />
-    
-    <Using Include="SolsDawn.Core.Logic.Gameplay.Input.TeleportState" Alias="InputTeleportState" />
-    <Using Include="SolsDawn.Core.Logic.Gameplay.Pipeline.Job" Alias="Job" />
-    <Using Include="SolsDawn.Core.Logic.Animations" />
-    <Using Include="SolsDawn.Core.Logic" />
-    <Using Include="SolsDawn.Core.Logic.Combat" />
-    <Using Include="SolsDawn.Core.Logic.Entities" />
-    <Using Include="SolsDawn.Core.Logic.Levels" />
+    <Using Include="nkast.Aether.Physics2D.Collision.Shapes.Shape" Alias="Shape" />
+
+    <Using Include="SolsDawn.Kernel.Component" Alias="Component" />
+    <Using Include="SolsDawn.Kernel.GameObject" Alias="GameObject" />
+    <Using Include="SolsDawn.Kernel.Transform2" Alias="Transform2" />
+
+    <Using Include="SolsDawn.Engine" />
+    <Using Include="SolsDawn.Engine.GameplayAPI" Static="true" />
     <Using Include="SolsDawn.Gameplay.Main" Static="true" />
   </ItemGroup>
 

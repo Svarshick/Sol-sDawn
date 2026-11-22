@@ -1,6 +1,6 @@
 ---
 paths:
-  - "SolsDawn.Core.Logic/SaveSystem.cs"
-  - "SolsDawn.Core.Logic/Game.cs"
+  - "SolsDawn.Engine/Config/SaveSystem.cs"
+  - "SolsDawn.Engine/Host/Game.cs"
 ---
-Before changing these files, read `SolsDawn.Core.Logic/SaveSystem.spec.md`. Update the spec in the same change.
+Before changing these files, read `SolsDawn.Engine/Config/SaveSystem.spec.md`. Update the spec in the same change.

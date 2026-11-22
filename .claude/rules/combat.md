@@ -1,13 +1,13 @@
 ---
 paths:
-  - "SolsDawn.Core.Logic/Combat/**"
-  - "SolsDawn.Core.Logic/Entities/PlayerStates.cs"
-  - "SolsDawn.Core.Logic/Entities/PlayerController.cs"
-  - "SolsDawn.Core.Logic/Entities/Player.cs"
-  - "SolsDawn.Core.Logic/Entities/PlayerAnimations.cs"
-  - "SolsDawn.Core.Logic/Entities/Enemy.cs"
-  - "SolsDawn.Core.Logic/Entities/EnemyAnimations.cs"
-  - "SolsDawn.Core.Logic/Levels/LevelRunner.cs"
-  - "SolsDawn.Core.Logic/Gameplay/Physics.cs"
+  - "SolsDawn.Engine/Combat/**"
+  - "SolsDawn.Engine/Entities/Player/PlayerStates.cs"
+  - "SolsDawn.Engine/Entities/Player/PlayerController.cs"
+  - "SolsDawn.Engine/Entities/Player/Player.cs"
+  - "SolsDawn.Engine/Entities/Player/PlayerAnimations.cs"
+  - "SolsDawn.Engine/Entities/Enemy/Enemy.cs"
+  - "SolsDawn.Engine/Entities/Enemy/EnemyAnimations.cs"
+  - "SolsDawn.Engine/Levels/LevelRunner.cs"
+  - "SolsDawn.Engine/Physics/Physics.cs"
 ---
-Before changing these files, read `SolsDawn.Core.Logic/Combat/Combat.spec.md`. Update the spec in the same change.
+Before changing these files, read `SolsDawn.Engine/Combat/Combat.spec.md`. Update the spec in the same change.

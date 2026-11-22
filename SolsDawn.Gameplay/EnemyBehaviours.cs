@@ -13,7 +13,7 @@ public static class EnemyBehaviours
         }
     }
 
-    private static Vector2 AimAtPlayer(Enemy enemy) => CombatMath.Direction(enemy.Transform.Position, G.Player?.Transform.Position ?? enemy.Transform.Position);
+    private static Vector2 AimAtPlayer(Enemy enemy) => Direction(enemy.Transform.Position, G.Player?.Transform.Position ?? enemy.Transform.Position);
 
     private static async Job BladeAttack(Enemy enemy)
     {
@@ -23,7 +23,7 @@ public static class EnemyBehaviours
         var bladeCenter = position + aim * s.BladeLength / 2;
         var bladeShape = Shapes.Rectangle(s.BladeLength, s.BladeWidth);
 
-        var parrybox = new Parrybox(CreateObject(bladeCenter, aim.Angle()), bladeShape, Side.Enemy, ParryKind.Blade);
+        var parrybox = CreateParrybox(CreateObject(bladeCenter, aim.Angle()), bladeShape, Side.Enemy, ParryKind.Blade);
         enemy.Board.Tint = s.BladeTelegraphColor;
         await Race(Timer(s.BladeTelegraphDuration), parrybox.Parried).Finished;
         var parried = parrybox.Parried.IsFired;
@@ -38,8 +38,8 @@ public static class EnemyBehaviours
         }
 
         enemy.Board.Tint = null;
-        var attack = new Attack(CreateObject(bladeCenter, aim.Angle()), bladeShape, Side.Player, ParryKind.None);
-        Game.AnimationsPool.Add(new LineTraceAnimation(position, position + aim * s.BladeLength, s.BladeWidth, s.BladeAttackDuration, s.BladeAttackColor));
+        var attack = CreateAttack(CreateObject(bladeCenter, aim.Angle()), bladeShape, Side.Player, ParryKind.None);
+        Animations.LineTrace(position, position + aim * s.BladeLength, s.BladeWidth, s.BladeAttackDuration, s.BladeAttackColor);
         await Timer(s.BladeAttackDuration);
         attack.Destroy();
     }
@@ -50,7 +50,7 @@ public static class EnemyBehaviours
         var position = enemy.Transform.Position;
         var aim = AimAtPlayer(enemy);
 
-        var parrybox = new Parrybox(CreateObject(position), Enemy.BodyShape(s), Side.Enemy, ParryKind.Fire);
+        var parrybox = CreateParrybox(CreateObject(position), Shapes.EnemyBody(s), Side.Enemy, ParryKind.Fire);
         enemy.Board.Tint = s.FireTelegraphColor;
         var telegraph = Timer(s.FireTelegraphDuration);
         var elapsed = 0f;
@@ -69,7 +69,7 @@ public static class EnemyBehaviours
         if (parried)
         {
             var target = parriedBy?.ParryPoint ?? (position + (G.Player?.Transform.Position ?? position)) / 2;
-            Game.AnimationsPool.Add(new LineTraceAnimation(position, target, s.FireWidth, s.FireTraceDuration, s.FireTraceColor));
+            Animations.LineTrace(position, target, s.FireWidth, s.FireTraceDuration, s.FireTraceColor);
             enemy.Board.Tint = s.FireParriedColor;
             await Timer(s.FireParriedDuration);
             enemy.Board.Tint = null;
@@ -77,13 +77,13 @@ public static class EnemyBehaviours
         }
 
         enemy.Board.Tint = null;
-        var attack = new Attack(
+        var attack = CreateAttack(
             CreateObject(position + aim * s.FireDistance / 2, aim.Angle()),
             Shapes.Rectangle(s.FireDistance, s.FireWidth),
             Side.Player,
             ParryKind.None);
         await attack.Resolved;
-        Game.AnimationsPool.Add(new LineTraceAnimation(position, position + aim * s.FireDistance, s.FireWidth, s.FireTraceDuration, s.FireTraceColor));
+        Animations.LineTrace(position, position + aim * s.FireDistance, s.FireWidth, s.FireTraceDuration, s.FireTraceColor);
         attack.Destroy();
     }
 }

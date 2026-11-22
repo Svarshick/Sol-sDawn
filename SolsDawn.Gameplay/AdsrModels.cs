@@ -1,5 +1,3 @@
-using System;
-
 namespace SolsDawn.Gameplay;
 
 [AdsrModel(AllowedAdsrState.Attack)]
@@ -10,7 +8,7 @@ public class SimpleAttack : IAdsrModel
     public float Acceleration = 10f;
 
     public float Calculate(float dt, float speed, float fromSpeed, float toSpeed) =>
-        Math.Min(toSpeed, speed + Acceleration * dt);
+        Min(toSpeed, speed + Acceleration * dt);
 }
 
 [AdsrModel(AllowedAdsrState.Decay | AllowedAdsrState.Release)]
@@ -21,7 +19,7 @@ public class LinearSlowdown : IAdsrModel
     public float Deceleration = 10f;
 
     public float Calculate(float dt, float speed, float fromSpeed, float toSpeed) =>
-        Math.Max(toSpeed, speed - Deceleration * dt);
+        Max(toSpeed, speed - Deceleration * dt);
 }
 
 [AdsrModel(AllowedAdsrState.Attack)]
@@ -36,7 +34,7 @@ public class SimpleExpectedAttack : IAdsrModel
         if (range <= 0f || ExpectedTime <= 0f)
             return toSpeed;
 
-        return Math.Min(toSpeed, speed + range * dt / ExpectedTime);
+        return Min(toSpeed, speed + range * dt / ExpectedTime);
     }
 }
 
@@ -52,11 +50,11 @@ public class SquareRootExpectedAttack : IAdsrModel
         if (range <= 0f || ExpectedTime <= 0f)
             return toSpeed;
 
-        var normalizedSpeed = Math.Max(0f, speed - fromSpeed) / range;
+        var normalizedSpeed = Max(0f, speed - fromSpeed) / range;
         var normalizedTime = dt / ExpectedTime;
-        var next = MathF.Sqrt(normalizedSpeed * normalizedSpeed + normalizedTime * normalizedTime);
+        var next = Sqrt(normalizedSpeed * normalizedSpeed + normalizedTime * normalizedTime);
 
-        return Math.Min(toSpeed, fromSpeed + next * range);
+        return Min(toSpeed, fromSpeed + next * range);
     }
 }
 
@@ -72,10 +70,10 @@ public class SquareExpectedAttack : IAdsrModel
         if (range <= 0f || ExpectedTime <= 0f)
             return toSpeed;
 
-        var normalizedSpeed = Math.Max(0f, speed - fromSpeed) / range;
-        var root = MathF.Sqrt(normalizedSpeed) + dt / ExpectedTime;
+        var normalizedSpeed = Max(0f, speed - fromSpeed) / range;
+        var root = Sqrt(normalizedSpeed) + dt / ExpectedTime;
 
-        return Math.Min(toSpeed, fromSpeed + root * root * range);
+        return Min(toSpeed, fromSpeed + root * root * range);
     }
 }
 
@@ -87,11 +85,11 @@ public class LinearExpectedSlowdown : IAdsrModel
 
     public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var range = Math.Max(fromSpeed, speed) - toSpeed;
+        var range = Max(fromSpeed, speed) - toSpeed;
         if (range <= 0f || ExpectedTime <= 0f)
             return toSpeed;
 
-        return Math.Max(toSpeed, speed - range * dt / ExpectedTime);
+        return Max(toSpeed, speed - range * dt / ExpectedTime);
     }
 }
 
@@ -103,7 +101,7 @@ public class SquareRootExpectedSlowdown : IAdsrModel
 
     public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var range = Math.Max(fromSpeed, speed) - toSpeed;
+        var range = Max(fromSpeed, speed) - toSpeed;
         if (range <= 0f || ExpectedTime <= 0f)
             return toSpeed;
 
@@ -112,7 +110,7 @@ public class SquareRootExpectedSlowdown : IAdsrModel
         if (coef < 0.001f)
             return toSpeed;
 
-        return Math.Max(toSpeed, toSpeed + range * MathF.Sqrt(coef));
+        return Max(toSpeed, toSpeed + range * Sqrt(coef));
     }
 }
 
@@ -124,15 +122,15 @@ public class SquareExpectedSlowdown : IAdsrModel
 
     public float Calculate(float dt, float speed, float fromSpeed, float toSpeed)
     {
-        var range = Math.Max(fromSpeed, speed) - toSpeed;
+        var range = Max(fromSpeed, speed) - toSpeed;
         if (range <= 0f || ExpectedTime <= 0f)
             return toSpeed;
 
         var normalizedSpeed = (speed - toSpeed) / range;
-        var root = MathF.Sqrt(normalizedSpeed) - dt / ExpectedTime;
+        var root = Sqrt(normalizedSpeed) - dt / ExpectedTime;
         if (root <= 0f)
             return toSpeed;
 
-        return Math.Max(toSpeed, toSpeed + root * root * range);
+        return Max(toSpeed, toSpeed + root * root * range);
     }
 }
