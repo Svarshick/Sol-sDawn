@@ -14,6 +14,12 @@ public class LengthProjection : IProjectionModel
         Sign(Vector2.Dot(velocity, tangent)) * velocity.Length();
 }
 
+[ProjectionModel]
+public class ZeroProjection : IProjectionModel
+{
+    public float Calculate(Vector2 velocity, Vector2 tangent) => 0;
+}
+
 [AimAxisModel(AllowedAimAxis.Blade)]
 public class AimAxis : IAimAxisModel
 {

@@ -12,7 +12,7 @@ Requirements are `MOV-nn`.
 |---|---|
 | Movement model | A model that computes velocity along one axis, once per frame: `Adsr` or `Ads`. |
 | Phase model | A model in a phase slot. It computes speed for one phase. |
-| Velocity | Signed speed along the movement axis: the platform tangent in `RunState`, X or Y in the air. |
+| Velocity | Signed speed along the movement axis: the platform tangent in `RunState`, the jump axis in `JumpState`, X or Y in the air. |
 | Speed, `s` | The absolute value of velocity. |
 | Motion direction, `m` | The sign of the velocity passed to a movement model. |
 | `Sign` | A value that is always -1, 0 or 1. Any number converts to its sign implicitly, and `Sign` converts to `int` implicitly. It is defined in `SolsDawn.Engine` and has no spec. |
@@ -24,6 +24,7 @@ Requirements are `MOV-nn`.
 | Turn | The phases TD, TR and TA: Decay, Release and Attack of a `Dra`. |
 | Memory | A `MovementMemory` value: the phase a movement model ran on the previous frame of one Job. |
 | Platform tangent | The unit vector `(cos a, sin a)`, where `a` is the platform's world rotation. |
+| Platform normal | The platform tangent rotated by 90° counterclockwise: the side the player stands on. |
 | Platform change | An update of a state's Job in which the player is on ground and the current platform differs from the one in the previous update of that Job, or the first update on ground of that Job. Landing counts, since the platform before was none. |
 
 ## Movement models
@@ -34,8 +35,8 @@ Requirements are `MOV-nn`.
   | Model type | Slot | Category |
   |---|---|---|
   | `RunState` | `Movement` | `Movement` |
-  | `JumpState` | `Horizontal` | `Movement` |
-  | `JumpState` | `Vertical` | `Envelope` |
+  | `JumpState` | `Vertical/Movement` | `Envelope` |
+  | `JumpState` | `Horizontal/Movement` | `Envelope` |
   | `FallState` | `Horizontal` | `Movement` |
   | `FallState` | `Vertical` | `Envelope` |
   | `DownAttackState` | `Vertical` | `Envelope` |
@@ -135,7 +136,7 @@ Requirements are `MOV-nn`.
 
 ## Projection and axis models
 
-- **MOV-70** A projection model has the `Projection` category and implements `IProjectionModel`: `Calculate(velocity, tangent)` with `velocity` a vector and `tangent` a platform tangent returns the signed velocity along `tangent`.
+- **MOV-70** A projection model has the `Projection` category and implements `IProjectionModel`: `Calculate(velocity, tangent)` with `velocity` a vector and `tangent` a unit axis returns the signed velocity along `tangent`. The axis is the platform tangent in `RunState` and the jump axis in `JumpState`.
 - **MOV-71** An aim axis model has the `Aim axis` category with the states it allows, `Blade`, `Fire` or both, and implements `IAimAxisModel`: `Calculate(velocity, aim, tangent)` returns `(Axis, Speed)`. `aim` is a unit vector, `tangent` is the platform tangent or the zero vector in the air. `Axis` is a unit vector and `Speed` is at least 0.
 - **MOV-72** A slot of category `Aim axis` with a state accepts only aim axis models that allow that state (CFG-10).
 - **MOV-73** An axis model has the `Axis` category and implements `IAxisModel`: `Calculate(velocity)` returns `(Axis, Speed)`, with the same ranges as MOV-71.
@@ -153,19 +154,27 @@ Requirements are `MOV-nn`.
   3. Velocity is `v * tangent`.
 
   The Job never ends by itself. Running without a platform logs an error and ends the Job.
-- **MOV-82** `JumpState` has `Duration`, a `Horizontal` slot and a `Vertical` slot. On entry the vertical velocity is set to 0, the one velocity value a state sets without a model; the horizontal velocity is kept. Each update, in order:
-  1. `vx = Horizontal.Calculate(vx, Input.Move, dt, ref horizontalMemory)`.
-  2. `vy = Vertical.Calculate(vy, 1, dt, ref verticalMemory)`, along Y up.
-  3. Velocity is `(vx, vy)`.
-  4. In the first update with `t >= Duration`, the Job ends.
-- **MOV-83** `JumpState` starts at vertical speed 0 and `PlayerController` leaves Jump on ground (CMB-22). Unless the first update of `Vertical` lifts the player clear of the ground, the next frame enters Run and the jump is lost. At 60 fps this needs a first vertical speed above about 0.3, for example `SimpleAttack` with `Acceleration` above about 18.
+- **MOV-82** `JumpState` has two containers (CFG-04): `Vertical` and `Horizontal`. Each holds `Duration`, a `StartSpeed` slot (category `Projection`) and a `Movement` slot (category `Envelope`). `Horizontal` also holds `Angle`, in degrees from 0 to 90. On entry the state reads the platform tangent `T`, the platform normal `N` and `inputDir = Input.Move`, and picks the kind of jump once:
+
+  | Kind | When | Container | Jump axis `A` |
+  |---|---|---|---|
+  | Vertical | `inputDir = 0` | `Vertical` | `N` |
+  | Horizontal | `inputDir != 0` | `Horizontal` | `inputDir * T` rotated toward `N` by `Angle` |
+
+  Then `v = StartSpeed.Calculate(velocity, A)` from the picked container. Each update, in order:
+  1. `v = Movement.Calculate(v, 1, dt, ref memory)` from the picked container.
+  2. Velocity is `v * A`.
+  3. In the first update with `t >= Duration`, the Job ends, where `Duration` is the picked container's. It is read on every update.
+
+  At `Angle = 90` a horizontal jump moves along `N`, like a vertical one, with its own container.
+- **MOV-83** `PlayerController` leaves Jump on ground (CMB-22). Unless the first update lifts the player clear of the ground along `N`, the next frame enters Run and the jump is lost. At 60 fps this needs a first speed along `N` above about 0.3, for example `SimpleAttack` with `Acceleration` above about 18 from speed 0. A horizontal jump with `Angle = 0` never leaves the ground.
 - **MOV-84** `FallState` has a `Horizontal` slot and a `Vertical` slot. Each update, in order:
   1. `vx = Horizontal.Calculate(vx, Input.Move, dt, ref horizontalMemory)`.
   2. `vd = Vertical.Calculate(-vy, 1, dt, ref verticalMemory)`, along Y down.
   3. Velocity is `(vx, -vd)`.
 
   The Job never ends by itself.
-- **MOV-85** `FallState` on a platform logs an error and ends its Job. `JumpState` has no such check, because it starts on ground.
+- **MOV-85** `FallState` on a platform and `JumpState` entered without a platform log an error and end their Job.
 
 ## Verification
 

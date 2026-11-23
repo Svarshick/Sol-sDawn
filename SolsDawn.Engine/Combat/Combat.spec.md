@@ -125,7 +125,7 @@ Requirements are `CMB-nn`.
 - **CMB-23** A press that causes no transition is dropped. There is no input buffer and no cooldown.
 - **CMB-24** The pointer of `I:blade` and `I:fire` is stored in `PlayerBoard` when the state is entered.
 - **CMB-25** `PlayerBoard` has the signals `ControlBack` and `Parried`. `PlayerController` clears both in one place, whenever it enters a state. A state raises a signal in the same update, or the same Resolve handler, in which its condition happens, never one frame later.
-- **CMB-26** Only `PlayerController` changes state because of ground, velocity or input. A state's job never ends itself on these conditions. A job ends itself only by its own timeline, such as an attack state reaching its `PeakSpeed` (CMB-32) or Jump reaching its `Duration` (MOV-82).
+- **CMB-26** Only `PlayerController` changes state because of ground, velocity or input. A state's job never ends itself on these conditions. A job ends itself only by its own timeline, such as an attack state reaching its `PeakSpeed` (CMB-32) or Jump reaching the duration of its kind (MOV-82).
 - **CMB-27** A state's job runs its first update in the frame in which the state is entered. A signal raised, or a job ended, in frame `n` changes the state at the start of frame `n + 1`.
 
 ## Attack movement

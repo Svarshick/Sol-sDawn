@@ -141,32 +141,52 @@ internal class RunState : PlayerState
     }
 }
 
-[StateModel(AllowedState.Jump)]
-internal class JumpState : PlayerState
+internal class JumpKind
 {
     [Inspect(0.01f, 0f)] public float Duration = 0.3f;
 
-    [MovementCategory]
-    public CategorySlot<IMovementModel> Horizontal = new();
+    [ProjectionCategory]
+    public CategorySlot<IProjectionModel> StartSpeed = new();
 
     [EnvelopeCategory]
-    public CategorySlot<IMovementModel> Vertical = new();
+    public CategorySlot<IMovementModel> Movement = new();
+}
+
+internal class HorizontalJump : JumpKind
+{
+    [Inspect(1f, 0f, 90f)] public float Angle = 45f;
+}
+
+[StateModel(AllowedState.Jump)]
+internal class JumpState : PlayerState
+{
+    [Inspect] public JumpKind Vertical = new();
+    [Inspect] public HorizontalJump Horizontal = new();
 
     public override async Job Job(Player player)
     {
         var board = player.Board;
-        var horizontalMemory = new MovementMemory();
-        var verticalMemory = new MovementMemory();
+        if (board.CurrentPlatform is not { } platform)
+        {
+            Log.Logic.Error("Platform can't be null on jump start");
+            return;
+        }
+
+        var tangent = PlatformWatch.Tangent(platform);
+        var move = GameplayAPI.Input.Move;
+        var vertical = move == 0;
+        var axis = vertical ? tangent.Rotated(PI / 2) : (move * tangent).Rotated(move * Horizontal.Angle * PI / 180);
+        JumpKind kind = vertical ? Vertical : Horizontal;
+        var v = kind.StartSpeed.GetActiveInstance().Calculate(board.Velocity, axis);
+        var memory = new MovementMemory();
         var time = 0f;
-        board.Velocity = new Vector2(board.Velocity.X, 0f);
 
         while (true)
         {
-            var vx = Horizontal.GetActiveInstance().Calculate(board.Velocity.X, GameplayAPI.Input.Move, DeltaTime, ref horizontalMemory);
-            var vy = Vertical.GetActiveInstance().Calculate(board.Velocity.Y, Sign.Positive, DeltaTime, ref verticalMemory);
-            board.Velocity = new Vector2(vx, vy);
+            v = kind.Movement.GetActiveInstance().Calculate(v, Sign.Positive, DeltaTime, ref memory);
+            board.Velocity = v * axis;
 
-            if (time >= Duration)
+            if (time >= kind.Duration)
                 return;
 
             await NextFrame();
