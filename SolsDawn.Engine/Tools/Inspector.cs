@@ -102,6 +102,7 @@ internal static class AutoInspector
     {
         uint focusKey = ImGui.GetID($"##Focus_{entry.Guid}");
         bool changed;
+        ImGui.Indent(Gutter);
         if (_focus.TryGetValue(focusKey, out var focus) && TryGetFocusedSlot(focus, out var slot))
         {
             changed = DrawFocused(focusKey, focus, slot);
@@ -111,6 +112,7 @@ internal static class AutoInspector
             _focus.Remove(focusKey);
             changed = DrawFields(entry.Instance!, ModelEdit.ForModel(entry), focusKey, []);
         }
+        ImGui.Unindent(Gutter);
 
         if (changed)
             OnAnyValueChanged?.Invoke();
@@ -193,11 +195,20 @@ internal static class AutoInspector
                 if (nestedObj != null)
                 {
                     ImGui.PushID(field.Name);
-                    if (ImGui.TreeNodeEx(label, ImGuiTreeNodeFlags.DefaultOpen))
+                    uint foldId = ImGui.GetID("##container");
+                    bool isExpanded = !_slotExpanded.TryGetValue(foldId, out bool stored) || stored;
+                    if (DrawFoldRow(label, true, isExpanded))
+                        _slotExpanded[foldId] = isExpanded = !isExpanded;
+
+                    var guideTop = GuideTop();
+
+                    if (isExpanded)
                     {
+                        ImGui.Indent(Gutter);
                         if (DrawFields(nestedObj, edit.Container(field), focusKey, [..path, new PathStep(field.Name, label)]))
                             anyChanged = true;
-                        ImGui.TreePop();
+                        ImGui.Unindent(Gutter);
+                        DrawGuide(guideTop);
                     }
                     ImGui.PopID();
                 }
@@ -230,9 +241,7 @@ internal static class AutoInspector
 
         ImGui.AlignTextToFramePadding();
         ImGui.TextUnformatted(label);
-        ImGui.SameLine();
-        ImGui.TextDisabled("|");
-        ImGui.SameLine();
+        ImGui.SameLine(ValueColumn());
         ImGui.SetNextItemWidth(-1f);
 
         if (isReadOnly)
@@ -388,21 +397,9 @@ internal static class AutoInspector
         _slotExpanded.TryGetValue(slotId, out bool isExpanded);
         isExpanded &= foldable;
 
-        float column = Math.Max(ImGui.GetWindowWidth() * 0.45f, ImGui.GetCursorPosX() + 80f);
-        float foldWidth = column - ImGui.GetCursorPosX() - ImGui.GetStyle().ItemSpacing.X;
+        float column = ValueColumn();
 
-        if (!foldable)
-        {
-            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, NumVector4.Zero);
-            ImGui.PushStyleColor(ImGuiCol.HeaderActive, NumVector4.Zero);
-        }
-
-        bool foldClicked = ImGui.Selectable($"   {slotName}###Fold", false, ImGuiSelectableFlags.None, new NumVector2(foldWidth, 0f));
-
-        if (!foldable)
-            ImGui.PopStyleColor(2);
-
-        if (foldClicked && foldable)
+        if (DrawFoldRow(slotName, foldable, isExpanded))
         {
             isExpanded = !isExpanded;
             _slotExpanded[slotId] = isExpanded;
@@ -430,10 +427,8 @@ internal static class AutoInspector
             }
         }
 
-        var foldMin = ImGui.GetItemRectMin();
         float rowHeight = ImGui.GetItemRectSize().Y;
-        if (foldable)
-            DrawArrow(foldMin + new NumVector2(rowHeight * 0.5f, rowHeight * 0.5f), rowHeight, isExpanded);
+        var guideTop = GuideTop();
 
         ImGui.SameLine(column);
 
@@ -484,7 +479,7 @@ internal static class AutoInspector
 
         if (isExpanded)
         {
-            ImGui.Indent(12f);
+            ImGui.Indent(Gutter);
 
             if (isMissing)
             {
@@ -499,12 +494,57 @@ internal static class AutoInspector
             if (isMissing)
                 ImGui.EndDisabled();
 
-            ImGui.Unindent(12f);
+            ImGui.Unindent(Gutter);
+            DrawGuide(guideTop);
             ImGui.Spacing();
         }
 
         ImGui.PopID();
         return changed;
+    }
+
+    private static float Gutter => ImGui.GetFrameHeight();
+
+    private static float ValueColumn() => Math.Max(ImGui.GetWindowWidth() * 0.45f, ImGui.GetCursorPosX() + 80f);
+
+    private static bool DrawFoldRow(string label, bool foldable, bool isExpanded)
+    {
+        float x = ImGui.GetCursorPosX();
+        var start = ImGui.GetCursorScreenPos();
+        float width = ValueColumn() - x + Gutter - ImGui.GetStyle().ItemSpacing.X;
+        ImGui.SetCursorPosX(x - Gutter);
+
+        if (!foldable)
+        {
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, NumVector4.Zero);
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, NumVector4.Zero);
+        }
+
+        bool clicked = ImGui.Selectable("###Fold", false, ImGuiSelectableFlags.None, new NumVector2(width, 0f)) && foldable;
+
+        if (!foldable)
+            ImGui.PopStyleColor(2);
+
+        float height = ImGui.GetTextLineHeight();
+        var drawList = ImGui.GetWindowDrawList();
+        drawList.PushClipRect(start, ImGui.GetItemRectMax(), true);
+        drawList.AddText(start, ImGui.GetColorU32(ImGuiCol.Text), label);
+        drawList.PopClipRect();
+
+        if (foldable)
+            DrawArrow(start + new NumVector2(-Gutter * 0.5f, height * 0.5f), height, isExpanded != clicked);
+
+        return clicked;
+    }
+
+    private static float GuideTop() => ImGui.GetItemRectMax().Y;
+
+    private static void DrawGuide(float top)
+    {
+        var cursor = ImGui.GetCursorScreenPos();
+        float x = cursor.X - Gutter * 0.5f;
+        float bottom = cursor.Y - ImGui.GetStyle().ItemSpacing.Y;
+        ImGui.GetWindowDrawList().AddLine(new NumVector2(x, top), new NumVector2(x, bottom), ImGui.GetColorU32(ImGuiCol.TextDisabled, 0.4f));
     }
 
     private static void DrawArrow(NumVector2 center, float size, bool pointsDown)

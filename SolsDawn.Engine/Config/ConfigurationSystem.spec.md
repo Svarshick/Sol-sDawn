@@ -121,7 +121,9 @@ Requirements are `CFG-nn`.
 ## UI
 
 - **CFG-70** Constants are edited through input fields. A slider may be added when the field has a min and max.
-- **CFG-71** A slot is one row of two zones. The left zone shows a fold arrow and `<SlotName>`. The right zone shows `<ModelName>`, styled as a dropdown field. Right zones line up in a column across rows, including nested ones.
+- **CFG-71** A slot is one row of two zones. The left zone shows a fold arrow and `<SlotName>`. The right zone shows `<ModelName>`, styled as a dropdown field. Right zones and the input fields of constants line up in one column across rows, including nested ones.
+- **CFG-86** Rows follow the hierarchy: the names of all rows at one depth start at the same x, whether the row is a constant, a slot with or without a fold arrow, or a nested container. Each depth is indented by one arrow width. The fold arrow is drawn in the margin left of the name and never shifts it. A nested container folds like a slot, unfolded by default, and has no right zone.
+- **CFG-87** An unfolded slot or container draws a faint vertical guide line under its arrow, down to its last child row.
 - **CFG-72** Clicking the right zone opens the slot's search.
 - **CFG-73** The search opens as an overlay on top of other elements, as in Chrome or Unity.
 - **CFG-74** Double-clicking the right zone edits the model's name.
@@ -140,7 +142,7 @@ Requirements are `CFG-nn`.
 ## Verification
 
 - CFG-01 to CFG-69 and CFG-90 to CFG-95: automated tests with xUnit v3, headless, against a temporary folder, in a new test project. Focus behaviour in CFG-23 and CFG-62 and the build-time copy in CFG-92 are checked manually.
-- CFG-70 to CFG-85: manual checklist in the running game.
+- CFG-70 to CFG-87: manual checklist in the running game.
 
 ## Known limits
 
