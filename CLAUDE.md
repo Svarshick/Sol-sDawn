@@ -33,6 +33,7 @@ MonoGame game on .NET 10.
 - Do not write comments in code. If an existing comment could be important, ask before removing it.
 - Generated and third-party code keeps its comments: `SolsDawn.Content`, `SolsDawn.DesktopGL`, `DrawVertDeclaration.cs`, `ImGuiRenderer.cs`, `InputExtended.cs`.
 - Do not commit `SolsDawn.Gameplay/_Data/`. Designers own what is committed there, and local working data must not overwrite it.
+- The local `SolsDawn.Gameplay/_Data/` can be deleted safely, until the user says otherwise.
 - Everything code-specific is in English: code, specs, identifiers.
 - Tests use xUnit v3.
 
