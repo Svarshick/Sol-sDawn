@@ -9,6 +9,6 @@ public static class Main
         InitializeLibrary(DataDirectory());
         Config = LoadRoot<GameConfig>();
         InitializeSpeedGraphs(DataDirectory("Graphs"));
-        return RunLevels(Levels.Sandbox);
+        return RunLevels(Levels.Sandbox, Config.Camera);
     }
 }

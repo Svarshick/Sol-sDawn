@@ -24,7 +24,7 @@ Requirements are `API-nn`.
 
 ## Functions
 
-- **API-10** Startup: `DataDirectory(subdirectory)` is `_Data/subdirectory`, with `_Data` beside the calling source file in Debug builds and beside the executable in Release builds (CFG-91, CFG-92). `InitializeLibrary`, `LoadRoot<T>`, `InitializeSpeedGraphs` and `RunLevels` forward to `Library.Initialize`, `Library.LoadRoot<T>`, `SpeedGraphs.Initialize` and `LevelRunner.Run`.
+- **API-10** Startup: `DataDirectory(subdirectory)` is `_Data/subdirectory`, with `_Data` beside the calling source file in Debug builds and beside the executable in Release builds (CFG-91, CFG-92). `InitializeLibrary`, `LoadRoot<T>`, `InitializeSpeedGraphs` and `RunLevels` forward to `Library.Initialize`, `Library.LoadRoot<T>`, `SpeedGraphs.Initialize` and `LevelRunner.Run`. `RunLevels(start, camera)` also takes the camera slot (CAM-10).
 - **API-11** Math works on `float` and covers what designer code needs instead of `System.Math`: `PI`, `Abs`, `Sign`, `Min`, `Max`, `Clamp`, `Lerp`, `Sqrt`, `Pow`, `Exp`, `Floor`, `Round`, `Sin`, `Cos`, `Tan`, `ASin`, `ACos`, `ATan2`, `Angle`, `Rotated` and `Direction`.
 - **API-12** `Direction(from, to)` is `normalize(to - from)`, or `UnitX` when the points are equal.
 - **API-13** `Spawn` and `G` are nested in `GameplayAPI` (LVL-08 to LVL-11). `G.Player` is set only by Engine.

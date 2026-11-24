@@ -27,10 +27,6 @@ internal static class DebugWindow
             ImGui.Text("No player");
         }
 
-        var zoom = Camera.Zoom;
-        if (ImGui.SliderFloat("Zoom", ref zoom, 0.1f, 100f))
-            Camera.Zoom = zoom;
-
         ImGui.Checkbox("Library Browser", ref _showLibraryBrowser);
         ImGui.SameLine();
         ImGui.Checkbox("Speed Graph", ref _showSpeedGraph);

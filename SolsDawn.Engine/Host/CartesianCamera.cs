@@ -47,6 +47,8 @@ internal class CartesianCamera
 
     public Vector2 Center => Position;
 
+    public Vector2 WorldSize => new Vector2(_graphicsDevice.Viewport.Width, _graphicsDevice.Viewport.Height) / (PPU * Zoom);
+
     public Vector2 TopLeft
     {
         get

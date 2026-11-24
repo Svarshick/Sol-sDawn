@@ -16,12 +16,14 @@ internal static class LevelRunner
     private static JobMethod? _requested;
     private static JobMethod? _currentMethod;
     private static Job? _current;
+    private static CategorySlot<CameraSpecs> _camera = null!;
 
     public static IReadOnlyList<LevelInfo> Levels { get; private set; } = [];
     public static string? CurrentName { get; private set; }
 
-    public static async Job Run(JobMethod start)
+    public static async Job Run(JobMethod start, CategorySlot<CameraSpecs> camera)
     {
+        _camera = camera;
         Levels = FindLevels();
         ImGuiDrawer = DebugWindow.Draw;
         _requested = start;
@@ -77,8 +79,7 @@ internal static class LevelRunner
         while (true)
         {
             CombatSystem.Resolve();
-            if (G.Player is { IsDestroyed: false } player)
-                Camera.Position = player.Transform.Position;
+            CameraController.Update(_camera.GetActiveInstance(), G.Player is { IsDestroyed: false } player ? player : null, DeltaTime);
             await NextFrame();
         }
     }

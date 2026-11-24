@@ -95,7 +95,7 @@ public static class GameplayAPI
 
     public static void InitializeSpeedGraphs(string directory) => SpeedGraphs.Initialize(directory);
 
-    public static Job RunLevels(JobMethod start) => LevelRunner.Run(start);
+    public static Job RunLevels(JobMethod start, CategorySlot<CameraSpecs> camera) => LevelRunner.Run(start, camera);
 
     #endregion
 

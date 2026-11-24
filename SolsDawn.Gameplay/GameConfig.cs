@@ -7,4 +7,7 @@ public class GameConfig
 
     [EnemyCategory]
     public CategorySlot<EnemySpecs> Enemy = new();
+
+    [CameraCategory]
+    public CategorySlot<CameraSpecs> Camera = new();
 }
