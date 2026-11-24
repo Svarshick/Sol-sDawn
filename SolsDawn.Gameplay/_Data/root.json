@@ -1,0 +1,25 @@
+{
+  "Guid": "root",
+  "Name": "GameConfig",
+  "ModelType": "SolsDawn.Gameplay.GameConfig",
+  "CategoryTags": "GameConfig",
+  "LastUpdatedTicks": 639311249271242013,
+  "RawData": {
+    "Player": {
+      "ModelGuid": "e95d46b9b97f46f6948ac1e44eab4ab5",
+      "HistoryGuids": [
+        "e95d46b9b97f46f6948ac1e44eab4ab5"
+      ]
+    },
+    "Enemy": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Camera": {
+      "ModelGuid": "afed0767558947928bdbe72be2f59f54",
+      "HistoryGuids": [
+        "afed0767558947928bdbe72be2f59f54"
+      ]
+    }
+  }
+}

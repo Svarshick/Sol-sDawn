@@ -1,0 +1,10 @@
+{
+  "Guid": "25d35bf2dc894a069f67fbe06db2a258",
+  "Name": "TurnDecay(S)",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311465891634823,
+  "RawData": {
+    "ExpectedTime": 0.15
+  }
+}

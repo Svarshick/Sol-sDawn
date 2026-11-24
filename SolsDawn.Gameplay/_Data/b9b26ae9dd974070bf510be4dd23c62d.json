@@ -1,0 +1,26 @@
+{
+  "Guid": "b9b26ae9dd974070bf510be4dd23c62d",
+  "Name": "GameConfig_Player_Jump_Movement_Turn",
+  "ModelType": "SolsDawn.Engine.Dra",
+  "CategoryTags": "Turn",
+  "LastUpdatedTicks": 639311463248295014,
+  "RawData": {
+    "Decay": {
+      "ModelGuid": "fb29879ccede47d2b3d593f31e8bcc05",
+      "HistoryGuids": [
+        "2e048415930d41dfbf29ed58221da1ed",
+        "fb29879ccede47d2b3d593f31e8bcc05"
+      ]
+    },
+    "Release": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Attack": {
+      "ModelGuid": "84b62bb46b634be2b5fc56dba6420ba4",
+      "HistoryGuids": [
+        "84b62bb46b634be2b5fc56dba6420ba4"
+      ]
+    }
+  }
+}

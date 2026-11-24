@@ -1,0 +1,38 @@
+{
+  "Guid": "bde6d04a32d04575856eab5cb6c7f0f4",
+  "Name": "GameConfig_Player_Jump",
+  "ModelType": "SolsDawn.Engine.JumpState",
+  "CategoryTags": "States: Jump",
+  "LastUpdatedTicks": 639311459371524099,
+  "RawData": {
+    "Vertical": {
+      "Duration": 0.4,
+      "StartSpeed": {
+        "ModelGuid": "default:SolsDawn.Gameplay.ZeroProjection",
+        "HistoryGuids": []
+      },
+      "Movement": {
+        "ModelGuid": "70060e643cf047f79a5c36f49ff17bc9",
+        "HistoryGuids": [
+          "650d0f1cc7af48ef8818ba2a8d3fce33",
+          "70060e643cf047f79a5c36f49ff17bc9"
+        ]
+      }
+    },
+    "Horizontal": {
+      "Angle": 45,
+      "Duration": 0.4,
+      "StartSpeed": {
+        "ModelGuid": "default:SolsDawn.Gameplay.ZeroProjection",
+        "HistoryGuids": []
+      },
+      "Movement": {
+        "ModelGuid": "650d0f1cc7af48ef8818ba2a8d3fce33",
+        "HistoryGuids": [
+          "eaeb192b965f43b6bf21c70484560f0d",
+          "650d0f1cc7af48ef8818ba2a8d3fce33"
+        ]
+      }
+    }
+  }
+}

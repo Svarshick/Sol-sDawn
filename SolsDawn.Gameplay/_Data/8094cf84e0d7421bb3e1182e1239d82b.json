@@ -1,0 +1,10 @@
+{
+  "Guid": "8094cf84e0d7421bb3e1182e1239d82b",
+  "Name": "TurnAttack(SR)",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311463829793373,
+  "RawData": {
+    "ExpectedTime": 0.15
+  }
+}

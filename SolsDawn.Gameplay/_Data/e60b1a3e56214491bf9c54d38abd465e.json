@@ -1,0 +1,10 @@
+{
+  "Guid": "e60b1a3e56214491bf9c54d38abd465e",
+  "Name": "GameConfig_Player_Run_Movement_Decay",
+  "ModelType": "SolsDawn.Gameplay.LinearSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311281313001043,
+  "RawData": {
+    "Deceleration": 20
+  }
+}

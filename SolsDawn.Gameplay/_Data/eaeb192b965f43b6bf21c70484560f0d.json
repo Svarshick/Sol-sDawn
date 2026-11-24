@@ -1,0 +1,28 @@
+{
+  "Guid": "eaeb192b965f43b6bf21c70484560f0d",
+  "Name": "GameConfig_Player_Jump_Movement",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639311434043467748,
+  "RawData": {
+    "PeakSpeed": 20,
+    "Attack": {
+      "ModelGuid": "f52b884c90344b61a7e020c83a04f62a",
+      "HistoryGuids": [
+        "f52b884c90344b61a7e020c83a04f62a"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "d20bf8ada7b146eab771f883532ba89e",
+      "HistoryGuids": [
+        "d20bf8ada7b146eab771f883532ba89e"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "21b6574174f345afb0f14852b107afa2",
+      "HistoryGuids": [
+        "21b6574174f345afb0f14852b107afa2"
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "Guid": "0b91bfad30fb41589e0f078381050dc2",
+  "Name": "GameConfig_Player_DownAttack_Vertical_Turn",
+  "ModelType": "SolsDawn.Engine.Dra",
+  "CategoryTags": "Turn",
+  "LastUpdatedTicks": 639311277703162471,
+  "RawData": {
+    "Decay": {
+      "ModelGuid": "6f6987a9935441388650941c9c1d59d9",
+      "HistoryGuids": [
+        "6f6987a9935441388650941c9c1d59d9"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "9ef6d2b86b554986811143877ff0e1a5",
+      "HistoryGuids": [
+        "9ef6d2b86b554986811143877ff0e1a5"
+      ]
+    },
+    "Attack": {
+      "ModelGuid": "58ef2fbe10274c78a82261c306df6924",
+      "HistoryGuids": [
+        "58ef2fbe10274c78a82261c306df6924"
+      ]
+    }
+  }
+}

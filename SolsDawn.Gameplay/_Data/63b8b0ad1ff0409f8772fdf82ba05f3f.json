@@ -1,0 +1,28 @@
+{
+  "Guid": "63b8b0ad1ff0409f8772fdf82ba05f3f",
+  "Name": "GameConfig_Player_Fall_Vertical",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639311456092145944,
+  "RawData": {
+    "PeakSpeed": 15,
+    "Attack": {
+      "ModelGuid": "42dde076e39542ef993a56e79e19de8a",
+      "HistoryGuids": [
+        "42dde076e39542ef993a56e79e19de8a"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "adf4f2801e1142bc9a4b63de7e549219",
+      "HistoryGuids": [
+        "adf4f2801e1142bc9a4b63de7e549219"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "62cf1dca60494014bf3fcb07e9a7f7b8",
+      "HistoryGuids": [
+        "62cf1dca60494014bf3fcb07e9a7f7b8"
+      ]
+    }
+  }
+}

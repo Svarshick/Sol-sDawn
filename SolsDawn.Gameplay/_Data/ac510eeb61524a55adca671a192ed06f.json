@@ -1,0 +1,36 @@
+{
+  "Guid": "ac510eeb61524a55adca671a192ed06f",
+  "Name": "BasicRun",
+  "ModelType": "SolsDawn.Engine.Adsr",
+  "CategoryTags": "Movement",
+  "LastUpdatedTicks": 639311430688305795,
+  "RawData": {
+    "ControlledSpeed": 12,
+    "PeakSpeed": 12,
+    "Attack": {
+      "ModelGuid": "9ef03f682b5c40d092a5f5097b96f414",
+      "HistoryGuids": [
+        "9ef03f682b5c40d092a5f5097b96f414"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "f65b296c83d34039bb3cd8b0d7daeaa8",
+      "HistoryGuids": [
+        "e60b1a3e56214491bf9c54d38abd465e",
+        "f65b296c83d34039bb3cd8b0d7daeaa8"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "ed78263c0b9a4068921c80f72669c977",
+      "HistoryGuids": [
+        "ed78263c0b9a4068921c80f72669c977"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "94b6caa3f78f44cdaed2e67d4a7caa4f",
+      "HistoryGuids": [
+        "94b6caa3f78f44cdaed2e67d4a7caa4f"
+      ]
+    }
+  }
+}

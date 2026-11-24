@@ -1,0 +1,33 @@
+{
+  "Guid": "7ed25db63eb24f95af36750004f89fd1",
+  "Name": "GameConfig_Player_Fall_Horizontal",
+  "ModelType": "SolsDawn.Engine.Adsr",
+  "CategoryTags": "Movement",
+  "LastUpdatedTicks": 639311465876963278,
+  "RawData": {
+    "ControlledSpeed": 10,
+    "PeakSpeed": 10,
+    "Attack": {
+      "ModelGuid": "fe9f35cdd27341429814f04f86cfc442",
+      "HistoryGuids": [
+        "fe9f35cdd27341429814f04f86cfc442"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "25d35bf2dc894a069f67fbe06db2a258",
+      "HistoryGuids": [
+        "25d35bf2dc894a069f67fbe06db2a258"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "f37ba0e5b302430ebd3467c4648e9035",
+      "HistoryGuids": [
+        "f37ba0e5b302430ebd3467c4648e9035"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    }
+  }
+}

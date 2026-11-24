@@ -1,0 +1,27 @@
+{
+  "Guid": "12ff56d023174df8817368417f4b6769",
+  "Name": "GameConfig_Player_Blade",
+  "ModelType": "SolsDawn.Engine.BladeState",
+  "CategoryTags": "States: Blade",
+  "LastUpdatedTicks": 639311274277822358,
+  "RawData": {
+    "PeakSpeed": 14,
+    "Axis": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Movement": {
+      "ModelGuid": "265b9e7a8ff4400a8e7cfaac2c083ed4",
+      "HistoryGuids": [
+        "d196b0cda5d646c5936a94ca0946ac05",
+        "265b9e7a8ff4400a8e7cfaac2c083ed4"
+      ]
+    },
+    "Length": 1,
+    "HalfWidth": 1,
+    "TipLength": 1,
+    "HitboxStart": 0,
+    "HitboxEnd": 0.3,
+    "ControlBackTime": 0.3
+  }
+}

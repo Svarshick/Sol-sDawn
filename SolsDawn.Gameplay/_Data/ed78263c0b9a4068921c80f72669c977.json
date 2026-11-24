@@ -1,0 +1,10 @@
+{
+  "Guid": "ed78263c0b9a4068921c80f72669c977",
+  "Name": "MoveDecay(R)",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311431852795720,
+  "RawData": {
+    "ExpectedTime": 0.2
+  }
+}

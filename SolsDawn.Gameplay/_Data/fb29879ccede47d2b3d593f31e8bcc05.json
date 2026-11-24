@@ -1,0 +1,10 @@
+{
+  "Guid": "fb29879ccede47d2b3d593f31e8bcc05",
+  "Name": "GameConfig_Player_Jump_Movement_Turn_Decay",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311459371522563,
+  "RawData": {
+    "ExpectedTime": 0.2
+  }
+}

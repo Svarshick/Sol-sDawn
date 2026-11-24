@@ -1,0 +1,10 @@
+{
+  "Guid": "f65b296c83d34039bb3cd8b0d7daeaa8",
+  "Name": "RunDecay",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311430121959196,
+  "RawData": {
+    "ExpectedTime": 0.1
+  }
+}

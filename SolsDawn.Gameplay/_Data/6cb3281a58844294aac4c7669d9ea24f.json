@@ -1,0 +1,24 @@
+{
+  "Guid": "6cb3281a58844294aac4c7669d9ea24f",
+  "Name": "GameConfig_Player_DownAttack",
+  "ModelType": "SolsDawn.Engine.DownAttackState",
+  "CategoryTags": "States: DownAttack",
+  "LastUpdatedTicks": 639311278229832202,
+  "RawData": {
+    "Vertical": {
+      "ModelGuid": "446eb44a2a0a4b80b995e7af0dd05ed2",
+      "HistoryGuids": [
+        "446eb44a2a0a4b80b995e7af0dd05ed2"
+      ]
+    },
+    "Horizontal": {
+      "ModelGuid": "15d3dcad3d0646f49565cd2207c0ba22",
+      "HistoryGuids": [
+        "15d3dcad3d0646f49565cd2207c0ba22"
+      ]
+    },
+    "Length": 2,
+    "HalfWidth": 1,
+    "TipLength": 0.6
+  }
+}

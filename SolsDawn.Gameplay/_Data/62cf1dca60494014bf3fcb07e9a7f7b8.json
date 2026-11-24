@@ -1,0 +1,28 @@
+{
+  "Guid": "62cf1dca60494014bf3fcb07e9a7f7b8",
+  "Name": "GameConfig_Player_Fall_Vertical_Turn",
+  "ModelType": "SolsDawn.Engine.Dra",
+  "CategoryTags": "Turn",
+  "LastUpdatedTicks": 639311270970161392,
+  "RawData": {
+    "Decay": {
+      "ModelGuid": "12da8618f6d745d49d2aa5d4b574fa2f",
+      "HistoryGuids": [
+        "1bfae89c7f2e41b8aef5719e70199939",
+        "12da8618f6d745d49d2aa5d4b574fa2f"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "0b7505fa7c9744099291d00ac9801acc",
+      "HistoryGuids": [
+        "0b7505fa7c9744099291d00ac9801acc"
+      ]
+    },
+    "Attack": {
+      "ModelGuid": "e07ba1f68d3040c6a1c3e95672d184e7",
+      "HistoryGuids": [
+        "e07ba1f68d3040c6a1c3e95672d184e7"
+      ]
+    }
+  }
+}

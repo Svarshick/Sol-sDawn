@@ -1,0 +1,10 @@
+{
+  "Guid": "58ef2fbe10274c78a82261c306df6924",
+  "Name": "DownwardAttack",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311280556501958,
+  "RawData": {
+    "ExpectedTime": 0.4
+  }
+}
