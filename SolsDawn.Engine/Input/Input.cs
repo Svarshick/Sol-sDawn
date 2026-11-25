@@ -7,7 +7,10 @@ namespace SolsDawn.Engine;
 
 internal class Input : IUpdatable
 {
-    public Sign Move { get; private set; } 
+    [Flags]
+    public enum MoveKeys { None = 0, Right = 1, Left = 2, Up = 4, Down = 8 }
+    public MoveKeys MoveHeld { get; private set; }
+    public Vector2 Move { get; private set; }
     public bool Jump { get; private set; }
     
     public enum TeleportState { None, Started, Updated, Released }
@@ -15,7 +18,7 @@ internal class Input : IUpdatable
     public (Vector2 ScreenPosition, bool IsPressed) Fire { get; private set; }
     public (Vector2 ScreenPosition, bool IsPressed) Blade { get; private set; }
     
-    public event Action<Sign>? OnMove;
+    public event Action<Vector2>? OnMove;
     public event Action? OnJump;
     
     public event Action<Vector2>? OnTeleportStarted;
@@ -63,20 +66,18 @@ internal class Input : IUpdatable
         MouseStateExtended mouseState,
         KeyboardStateExtended keyboardState)
     {
-        var move = 0;
-        if (keyboardState.IsKeyDown(Keys.D) ||
-            keyboardState.IsKeyDown(Keys.Right))
-        {
-            move += 1;
-        }
+        var held = MoveKeys.None;
+        if (keyboardState.IsKeyDown(Keys.D) || keyboardState.IsKeyDown(Keys.Right))
+            held |= MoveKeys.Right;
+        if (keyboardState.IsKeyDown(Keys.A) || keyboardState.IsKeyDown(Keys.Left))
+            held |= MoveKeys.Left;
+        if (keyboardState.IsKeyDown(Keys.W) || keyboardState.IsKeyDown(Keys.Up))
+            held |= MoveKeys.Up;
+        if (keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.Down))
+            held |= MoveKeys.Down;
 
-        if (keyboardState.IsKeyDown(Keys.A) ||
-            keyboardState.IsKeyDown(Keys.Left))
-        {
-            move -= 1;
-        }
-
-        Move = move;
+        MoveHeld = held;
+        Move = Direction(held);
         OnMove?.Invoke(Move);
         
         if (keyboardState.WasKeyPressed(Keys.Space))
@@ -88,6 +89,14 @@ internal class Input : IUpdatable
         {
             Jump = false;
         }
+    }
+
+    public static Vector2 Direction(MoveKeys held)
+    {
+        var v = new Vector2(
+            (held.HasFlag(MoveKeys.Right) ? 1 : 0) - (held.HasFlag(MoveKeys.Left) ? 1 : 0),
+            (held.HasFlag(MoveKeys.Up) ? 1 : 0) - (held.HasFlag(MoveKeys.Down) ? 1 : 0));
+        return v == Vector2.Zero ? v : Vector2.Normalize(v);
     }
 
     private void UpdateTeleport(

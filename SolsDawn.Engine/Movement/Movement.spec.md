@@ -2,7 +2,7 @@
 
 This spec is the source of truth. Where the code disagrees, the code is wrong unless the spec is changed first.
 
-Code: `Movement.cs`, `Adsr.cs`, `PlayerStates.cs`. Phase, projection and axis model types are designer content in `SolsDawn.Gameplay`; this spec covers only the contracts they follow (MOV-60 to MOV-75). The attack and bounce states are in the Combat spec (CMB-30 to CMB-54).
+Code: `Movement.cs`, `Adsr.cs`, `PlayerStates.cs`, `MoveSign.cs`, and the move input in `Input.cs`. Phase, projection and axis model types are designer content in `SolsDawn.Gameplay`; this spec covers only the contracts they follow (MOV-60 to MOV-75). The attack and bounce states are in the Combat spec (CMB-30 to CMB-54).
 
 Requirements are `MOV-nn`.
 
@@ -47,7 +47,17 @@ Requirements are `MOV-nn`.
 - **MOV-04** A `PlayerState` Job creates one zero-valued memory per movement slot when it starts, keeps it as a local value and passes it to every `Calculate` of that slot. It reads the slot's active model on every frame, so a model swapped while the game runs takes effect at once (CFG-67).
 - **MOV-05** Movement models, `Dra` and phase models hold only configuration. All movement runtime state is in the memory, which is never saved and never shared between Jobs, so any number of slots and entities may reference the same model.
 - **MOV-06** A movement model accepts any memory value on any frame, including one written by the other movement model type before a swap. A phase value it does not know is treated as Idle.
-- **MOV-07** States read input as `Input.Move`, which is a `Sign`: 1 for right, -1 for left, 0 for none or both.
+- **MOV-07** States read the move input as `PlayerBoard.Move`, a `Sign` along the movement axis (MOV-10 to MOV-14).
+
+## Move input
+
+- **MOV-10** The move keys are four directions: right is D or Right, left is A or Left, up is W or Up, down is S or Down. A direction is held while either of its keys is down. `Input.MoveHeld` is the set of held directions, an `Input.MoveKeys` flags value.
+- **MOV-11** `Input.Move` is a unit vector in world space (Y up), or zero: `(right - left, up - down)` normalized, each term 1 when held and 0 otherwise. Left with right, and up with down, cancel.
+- **MOV-12** Input projection: the sign of `Dot(Input.Move, axis)`, and 0 when its absolute value is below `0.001`. The axis is the platform tangent on ground and `(1, 0)` in the air.
+- **MOV-13** Input holding. `PlayerController` keeps a tracked set of directions and a held sign, both empty at start. Each frame, before it picks the state (CMB-22), it sets `PlayerBoard.Move`:
+  1. While the tracked set is not empty and all its directions are still held, `Move` is the held sign. Other directions pressed meanwhile are ignored.
+  2. Otherwise `Move` is the input projection (MOV-12) of the current input. If it is not 0, it becomes the held sign and the current `Input.MoveHeld` becomes the tracked set. If it is 0, the tracked set is emptied.
+- **MOV-14** The held sign stays while the platform changes or the player leaves the ground, even if the projection on the new axis differs.
 
 ## ADSR
 
@@ -152,11 +162,11 @@ Requirements are `MOV-nn`.
 - **MOV-80** `IdleState` sets the velocity to zero on entry. Its Job ends after the first update.
 - **MOV-81** `RunState` has a `Projection` slot (category `Projection`) and a `Movement` slot. It keeps the velocity along the platform `v` as a Job local. Each update, in order:
   1. On a platform change, `v = Projection.Calculate(velocity, tangent)` with the current platform's tangent.
-  2. `v = Movement.Calculate(v, Input.Move, dt, ref memory)`.
+  2. `v = Movement.Calculate(v, Move, dt, ref memory)`.
   3. Velocity is `v * tangent`.
 
   The Job never ends by itself. Running without a platform logs an error and ends the Job.
-- **MOV-82** `JumpState` has two containers (CFG-04): `Vertical` and `Horizontal`. Each holds `Duration`, a `StartSpeed` slot (category `Projection`) and a `Movement` slot (category `Envelope`). `Horizontal` also holds `Angle`, in degrees from 0 to 90. On entry the state reads the platform tangent `T`, the platform normal `N` and `inputDir = Input.Move`, and picks the kind of jump once:
+- **MOV-82** `JumpState` has two containers (CFG-04): `Vertical` and `Horizontal`. Each holds `Duration`, a `StartSpeed` slot (category `Projection`) and a `Movement` slot (category `Envelope`). `Horizontal` also holds `Angle`, in degrees from 0 to 90. On entry the state reads the platform tangent `T`, the platform normal `N` and `inputDir = Move`, and picks the kind of jump once:
 
   | Kind | When | Container | Jump axis `A` |
   |---|---|---|---|
@@ -171,7 +181,7 @@ Requirements are `MOV-nn`.
   At `Angle = 90` a horizontal jump moves along `N`, like a vertical one, with its own container.
 - **MOV-83** `PlayerController` leaves Jump on ground (CMB-22). Unless the first update lifts the player clear of the ground along `N`, the next frame enters Run and the jump is lost. At 60 fps this needs a first speed along `N` above about 0.3, for example `SimpleAttack` with `Acceleration` above about 18 from speed 0. A horizontal jump with `Angle = 0` never leaves the ground.
 - **MOV-84** `FallState` has a `Horizontal` slot and a `Vertical` slot. Each update, in order:
-  1. `vx = Horizontal.Calculate(vx, Input.Move, dt, ref horizontalMemory)`.
+  1. `vx = Horizontal.Calculate(vx, Move, dt, ref horizontalMemory)`.
   2. `vd = Vertical.Calculate(-vy, 1, dt, ref verticalMemory)`, along Y down.
   3. Velocity is `(vx, -vd)`.
 
@@ -182,7 +192,8 @@ Requirements are `MOV-nn`.
 
 - MOV-03, MOV-05, MOV-06, MOV-30 to MOV-39 and MOV-50 to MOV-53: automated tests with xUnit v3 that call `Calculate` directly with a fixed `dt`, using phase models defined in the test project.
 - MOV-31 through CFG-66: automated tests with xUnit v3.
-- MOV-01, MOV-02, MOV-04, MOV-07, MOV-40, MOV-60 to MOV-63, MOV-70 to MOV-75 and MOV-80 to MOV-85: manual check in the running game.
+- MOV-11 to MOV-13: automated tests with xUnit v3 that call the projection and holding with given directions and axes.
+- MOV-01, MOV-02, MOV-04, MOV-07, MOV-10, MOV-14, MOV-40, MOV-60 to MOV-63, MOV-70 to MOV-75 and MOV-80 to MOV-85: manual check in the running game.
 
 ## Known gaps
 

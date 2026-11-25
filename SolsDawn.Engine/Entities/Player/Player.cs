@@ -47,6 +47,7 @@ public record PlayerBoard
     public bool OnGround => CurrentPlatform is not null;
     public Platform? CurrentPlatform;
     public Vector2 Velocity;
+    internal Sign Move;
     public Vector2 AttackPointer;
     public bool ControlBack;
     public bool Parried;

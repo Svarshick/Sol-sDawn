@@ -151,7 +151,7 @@ internal class RunState : PlayerState
             if (platforms.Changed(platform))
                 v = Projection.GetActiveInstance().Calculate(board.Velocity, tangent);
 
-            v = Movement.GetActiveInstance().Calculate(v, GameplayAPI.Input.Move, DeltaTime, ref memory);
+            v = Movement.GetActiveInstance().Calculate(v, board.Move, DeltaTime, ref memory);
             board.Velocity = v * tangent;
             await NextFrame();
         }
@@ -190,7 +190,7 @@ internal class JumpState : PlayerState
         }
 
         var tangent = PlatformWatch.Tangent(platform);
-        var move = GameplayAPI.Input.Move;
+        var move = board.Move;
         var vertical = move == 0;
         var axis = vertical ? tangent.Rotated(PI / 2) : (move * tangent).Rotated(move * Horizontal.Angle * PI / 180);
         JumpKind kind = vertical ? Vertical : Horizontal;
@@ -235,7 +235,7 @@ internal class FallState : PlayerState
                 return;
             }
 
-            var vx = Horizontal.GetActiveInstance().Calculate(board.Velocity.X, GameplayAPI.Input.Move, DeltaTime, ref horizontalMemory);
+            var vx = Horizontal.GetActiveInstance().Calculate(board.Velocity.X, board.Move, DeltaTime, ref horizontalMemory);
             var vd = Vertical.GetActiveInstance().Calculate(-board.Velocity.Y, Sign.Positive, DeltaTime, ref verticalMemory);
             board.Velocity = new Vector2(vx, -vd);
             await NextFrame();

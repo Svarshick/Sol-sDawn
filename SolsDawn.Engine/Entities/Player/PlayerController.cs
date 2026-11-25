@@ -11,6 +11,7 @@ internal class PlayerController
 {
     private readonly Player _player;
     private float _colliderRadius;
+    private readonly InputHolding _move = new();
 
     public PlayerController(Player player)
     {
@@ -33,6 +34,9 @@ internal class PlayerController
 
         if (_player.State is null)
             Log.Logic.Fatal("Player state can't be null");
+
+        var axis = board.CurrentPlatform is { } platform ? PlatformWatch.Tangent(platform) : Vector2.UnitX;
+        board.Move = _move.Get(GameplayAPI.Input.MoveHeld, axis);
 
         if (SelectState(board, specs) is { } next)
         {
@@ -80,7 +84,7 @@ internal class PlayerController
         var center = _player.Transform.Position;
         var ground = board.OnGround;
         var air = !ground;
-        var run = GameplayAPI.Input.Move != 0;
+        var run = board.Move != 0;
         var still = board.Velocity == Vector2.Zero;
         var moving = !still;
         var stateEnded = _player.StateJob is not { IsEnded: false };

@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using Xunit;
+using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace SolsDawn.Tests;
 
@@ -448,5 +449,56 @@ public sealed class MovementTests : IDisposable
 
         Assert.Equal(expected, Phase(memory));
         Assert.Equal(Math.Sign(velocity), Math.Sign(result));
+    }
+}
+
+public class MoveInputTests
+{
+    private const Input.MoveKeys R = Input.MoveKeys.Right;
+    private const Input.MoveKeys L = Input.MoveKeys.Left;
+    private const Input.MoveKeys U = Input.MoveKeys.Up;
+    private const Input.MoveKeys D = Input.MoveKeys.Down;
+    private static readonly Vector2 Flat = Vector2.UnitX;
+    private static readonly Vector2 Slope = Vector2.Normalize(new Vector2(1, 1));
+
+    [Fact]
+    public void Direction_IsNormalizedAndOppositesCancel()
+    {
+        Assert.Equal(Vector2.Normalize(new Vector2(1, 1)), Input.Direction(R | U));
+        Assert.Equal(Vector2.Zero, Input.Direction(R | L));
+        Assert.Equal(new Vector2(0, 1), Input.Direction(U | R | L));
+    }
+
+    [Fact]
+    public void Projection_ZeroWhenPerpendicular()
+    {
+        Assert.Equal(0, (int)InputProjection.Get(Input.Direction(U), Flat));
+        Assert.Equal(0, (int)InputProjection.Get(Input.Direction(U), new Vector2(MathF.Cos(MathF.PI), MathF.Sin(MathF.PI))));
+        Assert.Equal(1, (int)InputProjection.Get(Input.Direction(U), Slope));
+        Assert.Equal(-1, (int)InputProjection.Get(Input.Direction(L), Slope));
+    }
+
+    [Fact]
+    public void Holding_KeepsSignWhileTrackedKeysHeld()
+    {
+        var holding = new InputHolding();
+        Assert.Equal(1, (int)holding.Get(U | R, Flat));
+        Assert.Equal(1, (int)holding.Get(U | R | L | D, Flat));
+        Assert.Equal(1, (int)holding.Get(U | R, -Flat));
+        Assert.Equal(-1, (int)holding.Get(U | L, Flat));
+        Assert.Equal(-1, (int)holding.Get(U | L, Slope));
+        Assert.Equal(-1, (int)holding.Get(U | L | R, Flat));
+    }
+
+    [Fact]
+    public void Holding_DoesNotTrackZero()
+    {
+        var holding = new InputHolding();
+        Assert.Equal(0, (int)holding.Get(U, Flat));
+        Assert.Equal(1, (int)holding.Get(U, Slope));
+        Assert.Equal(1, (int)holding.Get(U, -Slope));
+        Assert.Equal(0, (int)holding.Get(Input.MoveKeys.None, Slope));
+        Assert.Equal(0, (int)holding.Get(R | L, Flat));
+        Assert.Equal(-1, (int)holding.Get(L, Flat));
     }
 }

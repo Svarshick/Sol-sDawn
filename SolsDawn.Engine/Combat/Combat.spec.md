@@ -73,7 +73,7 @@ Requirements are `CMB-nn`.
   | Term | Meaning |
   |---|---|
   | Ground, air | On ground, not on ground |
-  | `I:run` | `Input.Move != 0` |
+  | `I:run` | `PlayerBoard.Move != 0` (MOV-13) |
   | `I:jump` | `Input.Jump` |
   | `I:downA` | `Input.Jump` in air |
   | `I:blade`, `I:fire` | `Input.Blade`, `Input.Fire` with a valid pointer: farther than `0.001` from the center |
