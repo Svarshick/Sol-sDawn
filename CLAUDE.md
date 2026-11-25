@@ -34,6 +34,8 @@ MonoGame game on .NET 10.
 - Generated and third-party code keeps its comments: `SolsDawn.Content`, `SolsDawn.DesktopGL`, `DrawVertDeclaration.cs`, `ImGuiRenderer.cs`, `InputExtended.cs`.
 - Do not commit `SolsDawn.Gameplay/_Data/`. Designers own what is committed there, and local working data must not overwrite it.
 - The local `SolsDawn.Gameplay/_Data/` can be deleted safely, until the user says otherwise.
+- To keep a local `_Data` as a reference, snapshot it in a dead-end commit under a tag, never on a branch. On the code commit the data belongs to, with nothing else staged: `git add SolsDawn.Gameplay/_Data`, `git commit -m "data snapshot for <hash>"`, `git tag data/<hash>`, `git reset HEAD~1`. The tagged commit's parent is that code commit. Push the tag by name: `git push origin data/<hash>`.
+- "Change the config according to `data/<hash>`" means: read `_Data` from that tag (`git show data/<hash>:SolsDawn.Gameplay/_Data/<file>`) and fit the current local `_Data` to it, migrating what the code changed since the tag's parent.
 - Everything code-specific is in English: code, specs, identifiers.
 - Tests use xUnit v3.
 
