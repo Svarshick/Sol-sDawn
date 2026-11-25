@@ -1,0 +1,35 @@
+{
+  "Guid": "4b0e779e359049a4a214ae7823f7e931",
+  "Name": "Fire*",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639312281203782435,
+  "RawData": {
+    "PeakSpeed": 25,
+    "Attack": {
+      "ModelGuid": "7768d56f2efa4949a2f0c62a93debb41",
+      "HistoryGuids": [
+        "0619103b008b4f02aeb7149a38296b32",
+        "a876121932cd4c2c8e168e5a880f8f77",
+        "4d7ffee0cc0841289040bba7e85f366f",
+        "7768d56f2efa4949a2f0c62a93debb41"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "b73df63a93ad44088fa3c55057a795c6",
+      "HistoryGuids": [
+        "d20bf8ada7b146eab771f883532ba89e",
+        "85d22445f2b642e5a2882cb9533eb3a3",
+        "b73df63a93ad44088fa3c55057a795c6"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "2fbfd3fb379e43ca82ad2fa3d5438df3",
+      "HistoryGuids": [
+        "21b6574174f345afb0f14852b107afa2",
+        "25da97f79d484cf19bde7e6425b7db23",
+        "2fbfd3fb379e43ca82ad2fa3d5438df3"
+      ]
+    }
+  }
+}

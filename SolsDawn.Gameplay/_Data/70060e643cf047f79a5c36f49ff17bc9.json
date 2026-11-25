@@ -1,0 +1,32 @@
+{
+  "Guid": "70060e643cf047f79a5c36f49ff17bc9",
+  "Name": "VerticalTunedJump",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639311460176451699,
+  "RawData": {
+    "PeakSpeed": 15,
+    "Attack": {
+      "ModelGuid": "5a3ba4e86ea04e6dacd9a3ffd397854f",
+      "HistoryGuids": [
+        "0619103b008b4f02aeb7149a38296b32",
+        "a876121932cd4c2c8e168e5a880f8f77",
+        "5a3ba4e86ea04e6dacd9a3ffd397854f"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "da61589f8013495681e4b1b60520217a",
+      "HistoryGuids": [
+        "d20bf8ada7b146eab771f883532ba89e",
+        "da61589f8013495681e4b1b60520217a"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "b9b26ae9dd974070bf510be4dd23c62d",
+      "HistoryGuids": [
+        "21b6574174f345afb0f14852b107afa2",
+        "b9b26ae9dd974070bf510be4dd23c62d"
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "Guid": "e07ba1f68d3040c6a1c3e95672d184e7",
+  "Name": "GameConfig_Player_Fall_Vertical_Turn_Attack",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311457974614014,
+  "RawData": {
+    "ExpectedTime": 0.4
+  }
+}

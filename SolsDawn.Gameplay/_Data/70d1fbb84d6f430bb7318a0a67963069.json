@@ -1,0 +1,10 @@
+{
+  "Guid": "70d1fbb84d6f430bb7318a0a67963069",
+  "Name": "FallHorizontal*_Turn_Decay",
+  "ModelType": "SolsDawn.Gameplay.LinearSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639312286198529560,
+  "RawData": {
+    "Deceleration": 10
+  }
+}

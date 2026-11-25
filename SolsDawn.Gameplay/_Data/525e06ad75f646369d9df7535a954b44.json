@@ -1,0 +1,35 @@
+{
+  "Guid": "525e06ad75f646369d9df7535a954b44",
+  "Name": "Verical*",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639312284375956108,
+  "RawData": {
+    "PeakSpeed": 30,
+    "Attack": {
+      "ModelGuid": "1d0f18c8d63848b48f0a6d4b17a2e584",
+      "HistoryGuids": [
+        "0619103b008b4f02aeb7149a38296b32",
+        "a876121932cd4c2c8e168e5a880f8f77",
+        "5a3ba4e86ea04e6dacd9a3ffd397854f",
+        "1d0f18c8d63848b48f0a6d4b17a2e584"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "3bea656eacfd46bf9bfdcaf21ab2253c",
+      "HistoryGuids": [
+        "d20bf8ada7b146eab771f883532ba89e",
+        "da61589f8013495681e4b1b60520217a",
+        "3bea656eacfd46bf9bfdcaf21ab2253c"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "e921848dd1594cf19691019d032e733e",
+      "HistoryGuids": [
+        "21b6574174f345afb0f14852b107afa2",
+        "b9b26ae9dd974070bf510be4dd23c62d",
+        "e921848dd1594cf19691019d032e733e"
+      ]
+    }
+  }
+}

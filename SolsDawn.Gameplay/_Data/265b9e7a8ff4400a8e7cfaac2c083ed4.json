@@ -1,0 +1,10 @@
+{
+  "Guid": "265b9e7a8ff4400a8e7cfaac2c083ed4",
+  "Name": "GameConfig_Player_Blade_Movement",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311273784488315,
+  "RawData": {
+    "ExpectedTime": 0.2
+  }
+}

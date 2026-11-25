@@ -1,0 +1,10 @@
+{
+  "Guid": "7768d56f2efa4949a2f0c62a93debb41",
+  "Name": "GameConfig_Player_Jump_Movement_Attack",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639312281162290225,
+  "RawData": {
+    "ExpectedTime": 0.1
+  }
+}

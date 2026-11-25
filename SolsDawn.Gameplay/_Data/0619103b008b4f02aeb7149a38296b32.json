@@ -1,0 +1,10 @@
+{
+  "Guid": "0619103b008b4f02aeb7149a38296b32",
+  "Name": "GameConfig_Player_Jump_Movement_Attack",
+  "ModelType": "SolsDawn.Gameplay.SimpleAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311258568963369,
+  "RawData": {
+    "Acceleration": 30
+  }
+}

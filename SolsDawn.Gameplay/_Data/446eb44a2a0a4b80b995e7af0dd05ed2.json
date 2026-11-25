@@ -1,0 +1,27 @@
+{
+  "Guid": "446eb44a2a0a4b80b995e7af0dd05ed2",
+  "Name": "GameConfig_Player_DownAttack_Vertical",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639311280493508255,
+  "RawData": {
+    "PeakSpeed": 25,
+    "Attack": {
+      "ModelGuid": "58ef2fbe10274c78a82261c306df6924",
+      "HistoryGuids": [
+        "5181c6bde3ca466f9784fe9cd2ca1a08",
+        "58ef2fbe10274c78a82261c306df6924"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Turn": {
+      "ModelGuid": "0b91bfad30fb41589e0f078381050dc2",
+      "HistoryGuids": [
+        "0b91bfad30fb41589e0f078381050dc2"
+      ]
+    }
+  }
+}

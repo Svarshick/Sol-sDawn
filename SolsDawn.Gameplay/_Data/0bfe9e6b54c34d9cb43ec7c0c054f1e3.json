@@ -1,0 +1,19 @@
+{
+  "Guid": "0bfe9e6b54c34d9cb43ec7c0c054f1e3",
+  "Name": "GameConfig_Player_Run",
+  "ModelType": "SolsDawn.Engine.RunState",
+  "CategoryTags": "States: Run",
+  "LastUpdatedTicks": 639311249271243564,
+  "RawData": {
+    "Projection": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Movement": {
+      "ModelGuid": "ac510eeb61524a55adca671a192ed06f",
+      "HistoryGuids": [
+        "ac510eeb61524a55adca671a192ed06f"
+      ]
+    }
+  }
+}

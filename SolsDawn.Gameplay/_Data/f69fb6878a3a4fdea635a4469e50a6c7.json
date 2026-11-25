@@ -1,0 +1,39 @@
+{
+  "Guid": "f69fb6878a3a4fdea635a4469e50a6c7",
+  "Name": "Fire*",
+  "ModelType": "SolsDawn.Engine.FireState",
+  "CategoryTags": "States: Fire",
+  "LastUpdatedTicks": 639312285212969464,
+  "RawData": {
+    "Axis": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Movement": {
+      "ModelGuid": "4b0e779e359049a4a214ae7823f7e931",
+      "HistoryGuids": [
+        "4fed7826e23a49cba3cd26dd692431d1",
+        "4b0e779e359049a4a214ae7823f7e931"
+      ]
+    },
+    "Duration": 0.15,
+    "ControlBackTime": 0.05,
+    "Distance": 20,
+    "Width": 0.3,
+    "TraceDuration": 0.4,
+    "TraceColor": {
+      "R": 255,
+      "G": 69,
+      "B": 0,
+      "A": 255
+    },
+    "ExplosionRadius": 1.5,
+    "ExplosionDuration": 0.5,
+    "ExplosionColor": {
+      "R": 255,
+      "G": 165,
+      "B": 0,
+      "A": 255
+    }
+  }
+}

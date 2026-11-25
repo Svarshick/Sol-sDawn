@@ -1,0 +1,10 @@
+{
+  "Guid": "12da8618f6d745d49d2aa5d4b574fa2f",
+  "Name": "GameConfig_Player_Fall_Vertical_Turn_Decay",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311455826479498,
+  "RawData": {
+    "ExpectedTime": 0.1
+  }
+}

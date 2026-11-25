@@ -1,0 +1,38 @@
+{
+  "Guid": "935b7b002b484c92a838b3eeef6d7756",
+  "Name": "FallHorizontal*",
+  "ModelType": "SolsDawn.Engine.Adsr",
+  "CategoryTags": "Movement",
+  "LastUpdatedTicks": 639312285855502796,
+  "RawData": {
+    "ControlledSpeed": 10,
+    "PeakSpeed": 10,
+    "Attack": {
+      "ModelGuid": "b0ebab1413674cf79d101b8cafb58953",
+      "HistoryGuids": [
+        "fe9f35cdd27341429814f04f86cfc442",
+        "b0ebab1413674cf79d101b8cafb58953"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "756dbd9764d14cda9acf0ec853148589",
+      "HistoryGuids": [
+        "25d35bf2dc894a069f67fbe06db2a258",
+        "756dbd9764d14cda9acf0ec853148589"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "cd169ef9c34d4e67ba686284f3bdb791",
+      "HistoryGuids": [
+        "f37ba0e5b302430ebd3467c4648e9035",
+        "cd169ef9c34d4e67ba686284f3bdb791"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "b58ab9effaaf4beaaacfbc7027a7ab0e",
+      "HistoryGuids": [
+        "b58ab9effaaf4beaaacfbc7027a7ab0e"
+      ]
+    }
+  }
+}

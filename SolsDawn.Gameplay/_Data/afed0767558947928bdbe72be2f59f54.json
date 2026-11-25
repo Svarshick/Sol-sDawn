@@ -1,0 +1,18 @@
+{
+  "Guid": "afed0767558947928bdbe72be2f59f54",
+  "Name": "GameConfig_Camera",
+  "ModelType": "SolsDawn.Engine.CameraSpecs",
+  "CategoryTags": "Camera",
+  "LastUpdatedTicks": 639311283113171191,
+  "RawData": {
+    "Zoom": 0.8,
+    "X": {
+      "ModelGuid": "default:SolsDawn.Engine.Forward",
+      "HistoryGuids": []
+    },
+    "Y": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "Guid": "0098241476d94beb9a6750fc93367cb9",
+  "Name": "HorizontalTunedJump",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639312283847120979,
+  "RawData": {
+    "PeakSpeed": 30,
+    "Attack": {
+      "ModelGuid": "20c624bc64214fdab17b843313f9a2ad",
+      "HistoryGuids": [
+        "0619103b008b4f02aeb7149a38296b32",
+        "a876121932cd4c2c8e168e5a880f8f77",
+        "20c624bc64214fdab17b843313f9a2ad"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "4723b354241d41a782af868852c58cc4",
+      "HistoryGuids": [
+        "d20bf8ada7b146eab771f883532ba89e",
+        "4723b354241d41a782af868852c58cc4"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "dc211f18134b4d968f9f8b4a37e8a5f9",
+      "HistoryGuids": [
+        "21b6574174f345afb0f14852b107afa2",
+        "dc211f18134b4d968f9f8b4a37e8a5f9"
+      ]
+    }
+  }
+}

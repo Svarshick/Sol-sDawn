@@ -1,0 +1,32 @@
+{
+  "Guid": "40655427d26447e991162b350d1ec79f",
+  "Name": "Blade*",
+  "ModelType": "SolsDawn.Engine.Ads",
+  "CategoryTags": "Envelope",
+  "LastUpdatedTicks": 639312280643115469,
+  "RawData": {
+    "PeakSpeed": 25,
+    "Attack": {
+      "ModelGuid": "4d7ffee0cc0841289040bba7e85f366f",
+      "HistoryGuids": [
+        "0619103b008b4f02aeb7149a38296b32",
+        "a876121932cd4c2c8e168e5a880f8f77",
+        "4d7ffee0cc0841289040bba7e85f366f"
+      ]
+    },
+    "Decay": {
+      "ModelGuid": "85d22445f2b642e5a2882cb9533eb3a3",
+      "HistoryGuids": [
+        "d20bf8ada7b146eab771f883532ba89e",
+        "85d22445f2b642e5a2882cb9533eb3a3"
+      ]
+    },
+    "Turn": {
+      "ModelGuid": "25da97f79d484cf19bde7e6425b7db23",
+      "HistoryGuids": [
+        "21b6574174f345afb0f14852b107afa2",
+        "25da97f79d484cf19bde7e6425b7db23"
+      ]
+    }
+  }
+}

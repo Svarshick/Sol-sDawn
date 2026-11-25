@@ -1,0 +1,21 @@
+{
+  "Guid": "11b6f3b8934440a7b57a8a9eb584d14d",
+  "Name": "GameConfig_Player_Fall",
+  "ModelType": "SolsDawn.Engine.FallState",
+  "CategoryTags": "States: Fall",
+  "LastUpdatedTicks": 639311464836469732,
+  "RawData": {
+    "Horizontal": {
+      "ModelGuid": "7ed25db63eb24f95af36750004f89fd1",
+      "HistoryGuids": [
+        "7ed25db63eb24f95af36750004f89fd1"
+      ]
+    },
+    "Vertical": {
+      "ModelGuid": "63b8b0ad1ff0409f8772fdf82ba05f3f",
+      "HistoryGuids": [
+        "63b8b0ad1ff0409f8772fdf82ba05f3f"
+      ]
+    }
+  }
+}

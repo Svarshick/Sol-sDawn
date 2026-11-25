@@ -1,0 +1,10 @@
+{
+  "Guid": "9ef03f682b5c40d092a5f5097b96f414",
+  "Name": "MoveAttack(SR)",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311430282792567,
+  "RawData": {
+    "ExpectedTime": 0.2
+  }
+}

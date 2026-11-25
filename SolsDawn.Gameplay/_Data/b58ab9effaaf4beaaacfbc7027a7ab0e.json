@@ -1,0 +1,25 @@
+{
+  "Guid": "b58ab9effaaf4beaaacfbc7027a7ab0e",
+  "Name": "FallHorizontal*_Turn",
+  "ModelType": "SolsDawn.Engine.Dra",
+  "CategoryTags": "Turn",
+  "LastUpdatedTicks": 639312285902662693,
+  "RawData": {
+    "Decay": {
+      "ModelGuid": "70d1fbb84d6f430bb7318a0a67963069",
+      "HistoryGuids": [
+        "70d1fbb84d6f430bb7318a0a67963069"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "ea24b3b099844e0e8d058f5fb761cc3c",
+      "HistoryGuids": [
+        "ea24b3b099844e0e8d058f5fb761cc3c"
+      ]
+    },
+    "Attack": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    }
+  }
+}

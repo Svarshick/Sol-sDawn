@@ -1,0 +1,27 @@
+{
+  "Guid": "94b6caa3f78f44cdaed2e67d4a7caa4f",
+  "Name": "BasicRun_Turn",
+  "ModelType": "SolsDawn.Engine.Dra",
+  "CategoryTags": "Turn",
+  "LastUpdatedTicks": 639311432612966604,
+  "RawData": {
+    "Decay": {
+      "ModelGuid": "82d5394e29d6446d812ec08ffadfe2d9",
+      "HistoryGuids": [
+        "82d5394e29d6446d812ec08ffadfe2d9"
+      ]
+    },
+    "Release": {
+      "ModelGuid": "f2d9dabeef324d10a97653ce1819dd23",
+      "HistoryGuids": [
+        "f2d9dabeef324d10a97653ce1819dd23"
+      ]
+    },
+    "Attack": {
+      "ModelGuid": "3fd3a0a911014ffda9e059c1a1a03920",
+      "HistoryGuids": [
+        "3fd3a0a911014ffda9e059c1a1a03920"
+      ]
+    }
+  }
+}

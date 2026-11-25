@@ -1,0 +1,23 @@
+{
+  "Guid": "05e1591edf31458ba3cbf83e3daea095",
+  "Name": "Fall*",
+  "ModelType": "SolsDawn.Engine.FallState",
+  "CategoryTags": "States: Fall",
+  "LastUpdatedTicks": 639312285398463541,
+  "RawData": {
+    "Horizontal": {
+      "ModelGuid": "935b7b002b484c92a838b3eeef6d7756",
+      "HistoryGuids": [
+        "7ed25db63eb24f95af36750004f89fd1",
+        "935b7b002b484c92a838b3eeef6d7756"
+      ]
+    },
+    "Vertical": {
+      "ModelGuid": "46f9bb54b8254477a63f653d88bb0172",
+      "HistoryGuids": [
+        "63b8b0ad1ff0409f8772fdf82ba05f3f",
+        "46f9bb54b8254477a63f653d88bb0172"
+      ]
+    }
+  }
+}

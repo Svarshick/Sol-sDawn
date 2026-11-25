@@ -1,0 +1,10 @@
+{
+  "Guid": "9ef6d2b86b554986811143877ff0e1a5",
+  "Name": "GameConfig_Player_DownAttack_Vertical_Turn_Release",
+  "ModelType": "SolsDawn.Gameplay.SquareRootExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311276991997466,
+  "RawData": {
+    "ExpectedTime": 0.3
+  }
+}

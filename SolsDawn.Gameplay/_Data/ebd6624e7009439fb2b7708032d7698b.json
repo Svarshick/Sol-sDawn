@@ -1,0 +1,20 @@
+{
+  "Guid": "ebd6624e7009439fb2b7708032d7698b",
+  "Name": "GameConfig_Player_Bounce",
+  "ModelType": "SolsDawn.Engine.BounceState",
+  "CategoryTags": "States: Bounce",
+  "LastUpdatedTicks": 639311493616814562,
+  "RawData": {
+    "PeakSpeed": 18,
+    "Axis": {
+      "ModelGuid": null,
+      "HistoryGuids": []
+    },
+    "Movement": {
+      "ModelGuid": "84b62bb46b634be2b5fc56dba6420ba4",
+      "HistoryGuids": [
+        "84b62bb46b634be2b5fc56dba6420ba4"
+      ]
+    }
+  }
+}

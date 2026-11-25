@@ -1,0 +1,10 @@
+{
+  "Guid": "fe9f35cdd27341429814f04f86cfc442",
+  "Name": "GameConfig_Player_Fall_Horizontal_Attack",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedAttack",
+  "CategoryTags": "ADSR: Attack",
+  "LastUpdatedTicks": 639311465370462073,
+  "RawData": {
+    "ExpectedTime": 0.3
+  }
+}

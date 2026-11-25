@@ -1,0 +1,10 @@
+{
+  "Guid": "15d3dcad3d0646f49565cd2207c0ba22",
+  "Name": "GameConfig_Player_DownAttack_Horizontal",
+  "ModelType": "SolsDawn.Gameplay.SquareExpectedSlowdown",
+  "CategoryTags": "ADSR: Decay, Release",
+  "LastUpdatedTicks": 639311278300335199,
+  "RawData": {
+    "ExpectedTime": 0.1
+  }
+}
