@@ -12,7 +12,7 @@ Requirements are `MOV-nn`.
 |---|---|
 | Movement model | A model that computes velocity along one axis, once per frame: `Adsr` or `Ads`. |
 | Phase model | A model in a phase slot. It computes speed for one phase. |
-| Velocity | Signed speed along the movement axis: the platform tangent in `RunState`, the jump axis in `JumpState`, X or Y in the air. |
+| Velocity | Signed speed along the movement axis: the platform tangent in `RunState`, the jump axis in `JumpState`, the movement axis in `BladeState` and `FireState`, X or Y in the air. |
 | Speed, `s` | The absolute value of velocity. |
 | Motion direction, `m` | The sign of the velocity passed to a movement model. |
 | `Sign` | A value that is always -1, 0 or 1. Any number converts to its sign implicitly, and `Sign` converts to `int` implicitly. It is defined in `SolsDawn.Engine` and has no spec. |
@@ -40,6 +40,8 @@ Requirements are `MOV-nn`.
   | `FallState` | `Horizontal` | `Movement` |
   | `FallState` | `Vertical` | `Envelope` |
   | `DownAttackState` | `Vertical` | `Envelope` |
+  | `BladeState` | `Movement` | `Envelope` |
+  | `FireState` | `Movement` | `Envelope` |
 
 - **MOV-03** `IMovementModel` has one operation: `Calculate(velocity, inputDir, dt, ref memory)` with `inputDir` a `Sign` advances one frame, updates `memory` and returns the new velocity.
 - **MOV-04** A `PlayerState` Job creates one zero-valued memory per movement slot when it starts, keeps it as a local value and passes it to every `Calculate` of that slot. It reads the slot's active model on every frame, so a model swapped while the game runs takes effect at once (CFG-67).

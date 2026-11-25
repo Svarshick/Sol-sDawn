@@ -129,6 +129,7 @@ internal class PlayerController
                 if (controlBack && state is BladeState && fire) return Fire();
                 if (controlBack && state is FireState && blade) return Blade();
                 if (controlBack && downA) return specs.DownAttack.GetActiveInstance();
+                if (controlBack && ground && jump) return specs.Jump.GetActiveInstance();
                 if (ground && ((controlBack && run) || (stateEnded && moving))) return specs.Run.GetActiveInstance();
                 if (ground && stateEnded && still) return specs.Idle.GetActiveInstance();
                 if (air && stateEnded) return specs.Fall.GetActiveInstance();

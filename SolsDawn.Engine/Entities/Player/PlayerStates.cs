@@ -88,6 +88,23 @@ internal struct AttackMotion
         return Speed >= peakSpeed;
     }
 
+    public void Step(PlayerBoard board, IMovementModel movement, ref MovementMemory memory)
+    {
+        Speed = movement.Calculate(Speed, Sign.Positive, DeltaTime, ref memory);
+        board.Velocity = Axis * Speed;
+    }
+
+    public static void Constrain(string? editedField, ref float duration, ref float controlBackTime)
+    {
+        if (controlBackTime <= duration)
+            return;
+
+        if (editedField == nameof(BladeState.Duration))
+            controlBackTime = duration;
+        else
+            duration = controlBackTime;
+    }
+
     public void SetAim(PlayerBoard board, IAimAxisModel model, Vector2 aim)
     {
         var tangent = board.CurrentPlatform is { } platform ? PlatformWatch.Tangent(platform) : Vector2.Zero;
@@ -227,15 +244,15 @@ internal class FallState : PlayerState
 }
 
 [StateModel(AllowedState.Blade)]
-internal class BladeState : PlayerState
+internal class BladeState : PlayerState, IConstrainedModel
 {
-    [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
-
     [AimAxisCategory(AllowedAimAxis.Blade)]
     public CategorySlot<IAimAxisModel> Axis = new();
 
-    [AdsrCategory(AllowedAdsrState.Attack)]
-    public CategorySlot<IAdsrModel> Movement = new();
+    [EnvelopeCategory]
+    public CategorySlot<IMovementModel> Movement = new();
+
+    [Inspect(0.01f, 0f, 5f)] public float Duration = 0.3f;
 
     [Inspect(0.01f, 0.01f, 10f)] public float Length = 0.6f;
     [Inspect(0.01f, 0.01f, 10f)] public float HalfWidth = 0.5f;
@@ -244,11 +261,14 @@ internal class BladeState : PlayerState
     [Inspect(0.01f, 0f, 5f)] public float HitboxEnd = 0.3f;
     [Inspect(0.01f, 0f, 5f)] public float ControlBackTime = 0.3f;
 
+    void IConstrainedModel.Constrain(string? editedField) => AttackMotion.Constrain(editedField, ref Duration, ref ControlBackTime);
+
     public override async Job Job(Player player)
     {
         var board = player.Board;
         var aim = CombatMath.Direction(player.Transform.Position, board.AttackPointer);
         var motion = new AttackMotion();
+        var memory = new MovementMemory();
         var platforms = new PlatformWatch();
         motion.SetAim(board, Axis.GetActiveInstance(), aim);
         platforms.Changed(board.CurrentPlatform);
@@ -260,7 +280,7 @@ internal class BladeState : PlayerState
             if (platforms.Changed(board.CurrentPlatform))
                 motion.SetAim(board, Axis.GetActiveInstance(), aim);
 
-            var done = motion.Step(board, Movement.GetActiveInstance(), PeakSpeed);
+            motion.Step(board, Movement.GetActiveInstance(), ref memory);
 
             if (attack is null && time >= HitboxStart && time < HitboxEnd)
                 attack = CreateHitbox(player);
@@ -275,7 +295,7 @@ internal class BladeState : PlayerState
             if (time >= ControlBackTime)
                 board.ControlBack = true;
 
-            if (done)
+            if (time >= Duration)
                 return;
 
             await NextFrame();
@@ -294,15 +314,15 @@ internal class BladeState : PlayerState
 }
 
 [StateModel(AllowedState.Fire)]
-internal class FireState : PlayerState
+internal class FireState : PlayerState, IConstrainedModel
 {
-    [Inspect(0.5f, 0f, 200f)] public float PeakSpeed = 15f;
-
     [AimAxisCategory(AllowedAimAxis.Fire)]
     public CategorySlot<IAimAxisModel> Axis = new();
 
-    [AdsrCategory(AllowedAdsrState.Attack)]
-    public CategorySlot<IAdsrModel> Movement = new();
+    [EnvelopeCategory]
+    public CategorySlot<IMovementModel> Movement = new();
+
+    [Inspect(0.01f, 0f, 5f)] public float Duration = 0.3f;
 
     [Inspect(0.01f, 0f, 5f)] public float ControlBackTime = 0.2f;
     [Inspect(0.5f, 0f, 200f)] public float Distance = 20f;
@@ -313,6 +333,8 @@ internal class FireState : PlayerState
     [Inspect(0.01f, 0f, 5f)] public float ExplosionDuration = 0.5f;
     [Inspect] public Color ExplosionColor = Color.Orange;
 
+    void IConstrainedModel.Constrain(string? editedField) => AttackMotion.Constrain(editedField, ref Duration, ref ControlBackTime);
+
     public override async Job Job(Player player)
     {
         var board = player.Board;
@@ -321,6 +343,7 @@ internal class FireState : PlayerState
         Effects.Start(() => Shot(center, aim));
 
         var motion = new AttackMotion();
+        var memory = new MovementMemory();
         var platforms = new PlatformWatch();
         motion.SetAim(board, Axis.GetActiveInstance(), aim);
         platforms.Changed(board.CurrentPlatform);
@@ -331,12 +354,12 @@ internal class FireState : PlayerState
             if (platforms.Changed(board.CurrentPlatform))
                 motion.SetAim(board, Axis.GetActiveInstance(), aim);
 
-            var done = motion.Step(board, Movement.GetActiveInstance(), PeakSpeed);
+            motion.Step(board, Movement.GetActiveInstance(), ref memory);
 
             if (time >= ControlBackTime)
                 board.ControlBack = true;
 
-            if (done)
+            if (time >= Duration)
                 return;
 
             await NextFrame();

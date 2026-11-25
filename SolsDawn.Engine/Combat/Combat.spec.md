@@ -110,14 +110,16 @@ Requirements are `CMB-nn`.
   | | 5 | Air, `stateEnded` | Fall |
   | Blade | 1 | `controlBack`, `I:fire` | Fire |
   | | 2 | `controlBack`, `I:downA` | DownAttack |
-  | | 3 | Ground, (`controlBack` and `I:run`) or (`stateEnded` and `V != 0`) | Run |
-  | | 4 | Ground, `stateEnded`, `V = 0` | Idle |
-  | | 5 | Air, `stateEnded` | Fall |
+  | | 3 | Ground, `controlBack`, `I:jump` | Jump |
+  | | 4 | Ground, (`controlBack` and `I:run`) or (`stateEnded` and `V != 0`) | Run |
+  | | 5 | Ground, `stateEnded`, `V = 0` | Idle |
+  | | 6 | Air, `stateEnded` | Fall |
   | Fire | 1 | `controlBack`, `I:blade` | Blade |
   | | 2 | `controlBack`, `I:downA` | DownAttack |
-  | | 3 | Ground, (`controlBack` and `I:run`) or (`stateEnded` and `V != 0`) | Run |
-  | | 4 | Ground, `stateEnded`, `V = 0` | Idle |
-  | | 5 | Air, `stateEnded` | Fall |
+  | | 3 | Ground, `controlBack`, `I:jump` | Jump |
+  | | 4 | Ground, (`controlBack` and `I:run`) or (`stateEnded` and `V != 0`) | Run |
+  | | 5 | Ground, `stateEnded`, `V = 0` | Idle |
+  | | 6 | Air, `stateEnded` | Fall |
   | DownAttack | 1 | `parried` | Bounce |
   | | 2 | Ground, `I:run` or `V != 0` | Run |
   | | 3 | Ground, `V = 0` | Idle |
@@ -125,36 +127,37 @@ Requirements are `CMB-nn`.
 - **CMB-23** A press that causes no transition is dropped. There is no input buffer and no cooldown.
 - **CMB-24** The pointer of `I:blade` and `I:fire` is stored in `PlayerBoard` when the state is entered.
 - **CMB-25** `PlayerBoard` has the signals `ControlBack` and `Parried`. `PlayerController` clears both in one place, whenever it enters a state. A state raises a signal in the same update, or the same Resolve handler, in which its condition happens, never one frame later.
-- **CMB-26** Only `PlayerController` changes state because of ground, velocity or input. A state's job never ends itself on these conditions. A job ends itself only by its own timeline, such as an attack state reaching its `PeakSpeed` (CMB-32) or Jump reaching the duration of its kind (MOV-82).
+- **CMB-26** Only `PlayerController` changes state because of ground, velocity or input. A state's job never ends itself on these conditions. A job ends itself only by its own timeline, such as an attack state reaching its `Duration` (CMB-28), Bounce reaching its `PeakSpeed` (CMB-54) or Jump reaching the duration of its kind (MOV-82).
 - **CMB-27** A state's job runs its first update in the frame in which the state is entered. A signal raised, or a job ended, in frame `n` changes the state at the start of frame `n + 1`.
 
 ## Attack movement
 
-Blade, Fire and Bounce move the same way: a model sets the movement axis and a speed, then an A phase model raises the speed to `PeakSpeed` along that axis.
+Blade and Fire move like a jump: a model sets the movement axis and a start speed, then an `Ads` envelope drives the speed along that axis until `Duration`. Bounce uses an A phase model instead (CMB-54).
 
-- **CMB-28** An attack motion keeps the movement axis and the speed as Job locals. Each update, in order:
-  1. On entry, and in Blade and Fire also on a platform change, the state's `Axis` model sets the movement axis and the speed.
-  2. If `speed < PeakSpeed`, `speed = Movement.Calculate(dt, speed, 0, PeakSpeed)`. Otherwise speed does not change.
+`t` is the time since entry: `(n - 1) * dt` in the n-th update of a state's Job.
+
+- **CMB-28** Blade and Fire have a `Movement` slot of category `Envelope` (default `Ads`), `Duration` and `ControlBackTime`. They keep the movement axis, the speed and one memory (MOV-04) as Job locals. Each update, in order:
+  1. On entry and on a platform change, the state's `Axis` model sets the movement axis and the speed. The memory is kept.
+  2. `speed = Movement.Calculate(speed, 1, dt, ref memory)`.
   3. Velocity is `movement axis * speed`.
-  4. When `speed >= PeakSpeed`, the job ends in this update, after the state's other steps. The velocity stays as step 3 set it.
-- **CMB-29** Gravity does not act during these states. Their slots are read on every update, so a model swapped while the game runs takes effect at once (CFG-67).
+  4. The state's own steps.
+  5. In the first update with `t >= ControlBackTime`, `ControlBack` is raised.
+  6. In the first update with `t >= Duration`, the job ends, after the steps above. The velocity stays as step 3 set it. `Duration` is read on every update.
+- **CMB-29** `ControlBackTime <= Duration` always, so `ControlBack` is raised no later than the update in which the job ends. Blade and Fire keep it through CFG-66: an edit that sets `Duration` below `ControlBackTime` lowers `ControlBackTime` to it, and an edit of `ControlBackTime` above `Duration`, or a load with `ControlBackTime > Duration`, raises `Duration` to `ControlBackTime`.
+- **CMB-33** Gravity does not act during Blade, Fire and Bounce. Their slots are read on every update, so a model swapped while the game runs takes effect at once (CFG-67).
 
 ## BladeState
 
-- **CMB-30** `BladeState` has `PeakSpeed`, an `Axis` slot of category `Aim axis` for `Blade` (default by CFG-25), a `Movement` slot that accepts A phase models (default by CFG-25), `Length`, `HalfWidth`, `TipLength`, `HitboxStart`, `HitboxEnd` and `ControlBackTime`.
+- **CMB-30** `BladeState` has an `Axis` slot of category `Aim axis` for `Blade` (default by CFG-25), the fields of CMB-28, `Length`, `HalfWidth`, `TipLength`, `HitboxStart` and `HitboxEnd`.
 - **CMB-31** The `Axis` call is `Axis.Calculate(velocity, aim, tangent)`, with the current platform's tangent on ground and the zero vector in the air. In the air the movement axis keeps its direction, so leaving a platform does not turn it.
-- **CMB-32** Each update, in order:
-  1. CMB-28 steps 1 to 3.
-  2. While `HitboxStart <= t < HitboxEnd`, an attack exists: a pentagon hitbox along the movement axis of the current update, moving with the player, targets `Enemy`, parry kind `Blade`.
-  3. In the first update with `t >= ControlBackTime`, `ControlBack` is raised.
-  4. CMB-28 step 4.
+- **CMB-32** Blade moves by CMB-28 and CMB-31. Its own step: while `HitboxStart <= t < HitboxEnd`, an attack exists: a pentagon hitbox along the movement axis of the current update, moving with the player, targets `Enemy`, parry kind `Blade`.
 - **CMB-34** When the attack's `Parried` fires, the attack is destroyed at once. Movement does not change.
 
 ## FireState
 
-- **CMB-40** `FireState` has `PeakSpeed`, an `Axis` slot of category `Aim axis` for `Fire` (default by CFG-25), a `Movement` slot that accepts A phase models (default by CFG-25), `ControlBackTime`, `Distance`, `Width`, `TraceDuration`, `TraceColor`, `ExplosionRadius`, `ExplosionDuration` and `ExplosionColor`.
+- **CMB-40** `FireState` has an `Axis` slot of category `Aim axis` for `Fire` (default by CFG-25), the fields of CMB-28, `Distance`, `Width`, `TraceDuration`, `TraceColor`, `ExplosionRadius`, `ExplosionDuration` and `ExplosionColor`.
 - **CMB-41** On entry the job creates an attack: a rectangle `Distance` long and `Width` wide, centred at `center + aim * Distance / 2` and rotated to the aim, targets `Enemy`, parry kind `Fire`. The attack takes part in exactly one Resolve, then it is destroyed. Its owner job is the `Effects` job of the level runner, not the fire state job, so leaving Fire early does not cancel the shot or its trace. In CMB-41 to CMB-44, `center` is the center at entry, and the shot does not follow the player.
-- **CMB-42** The player moves by CMB-28 and CMB-31 with the Fire `Axis` slot. The shot always uses the aim, whatever axis the model returns. `ControlBack` is raised as in CMB-32 step 3.
+- **CMB-42** The player moves by CMB-28 and CMB-31 with the Fire `Axis` slot. The shot always uses the aim, whatever axis the model returns.
 - **CMB-43** When the attack's `Parried` fires:
   1. `t = clamp(min over ParriedBoxes of dot(box position - center, aim) / 2, 0, Distance)`. The parry point is `center + aim * t`, so it lies on the aim.
   2. The attack's `ParryPoint` is set to it.
@@ -175,7 +178,10 @@ Blade, Fire and Bounce move the same way: a model sets the movement axis and a s
 
   The job never ends by itself. `PlayerController` leaves the state on ground or on a parry (CMB-22).
 - **CMB-53** When the attack's `Parried` fires, the attack is destroyed at once and `Parried` is raised. Movement does not change.
-- **CMB-54** `BounceState` has `PeakSpeed`, an `Axis` slot of category `Axis` (default by CFG-25) and a `Movement` slot that accepts A phase models (default by CFG-25). It moves by CMB-28 and CMB-29, with the movement axis and speed from `Axis.Calculate(velocity)` on entry only.
+- **CMB-54** `BounceState` has `PeakSpeed`, an `Axis` slot of category `Axis` (default by CFG-25) and a `Movement` slot that accepts A phase models (default by CFG-25). It moves by CMB-33, with the movement axis and speed from `Axis.Calculate(velocity)` on entry only. Each update, in order:
+  1. If `speed < PeakSpeed`, `speed = Movement.Calculate(dt, speed, 0, PeakSpeed)`. Otherwise speed does not change.
+  2. Velocity is `movement axis * speed`.
+  3. When `speed >= PeakSpeed`, the job ends in this update. The velocity stays as step 2 set it.
 
 ## Hits and visuals
 
@@ -203,7 +209,7 @@ Blade, Fire and Bounce move the same way: a model sets the movement axis and a s
 
 - CMB-43 step 1: automated tests with xUnit v3 on `CombatMath`.
 - CMB-11 to CMB-17: automated tests with xUnit v3 that build attacks, parryboxes and hurtboxes inside a job and call Resolve directly.
-- CMB-01 to CMB-07, CMB-10, CMB-18, CMB-20 to CMB-32, CMB-34, CMB-40 to CMB-42, CMB-43 steps 2 to 4, CMB-44, CMB-45, CMB-50 to CMB-54, CMB-60 to CMB-63, CMB-70 to CMB-73 and CMB-76: manual check in the running game.
+- CMB-01 to CMB-07, CMB-10, CMB-18, CMB-20 to CMB-34, CMB-40 to CMB-42, CMB-43 steps 2 to 4, CMB-44, CMB-45, CMB-50 to CMB-54, CMB-60 to CMB-63, CMB-70 to CMB-73 and CMB-76: manual check in the running game.
 
 ## Known gaps
 
