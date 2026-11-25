@@ -34,4 +34,8 @@
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <None Update="_Data\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="RegisterGitDataAlias" BeforeTargets="Build" Condition="Exists('$(MSBuildThisFileDirectory)../.git')">
+    <Exec Command='git config alias.data "!sh scripts/data.sh"' WorkingDirectory="$(MSBuildThisFileDirectory).." IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low" />
+  </Target>
 </Project>
